@@ -1,0 +1,47 @@
+{
+  "name": "livet-desktop",
+  "productName": "LIVET",
+  "version": "1.0.0",
+  "description": "LIVET para escritorio: agenda, finanzas, empresa y creadores en una sola app.",
+  "main": "main.js",
+  "author": "LIVET",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --publish never"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "work.livet.app",
+    "productName": "LIVET",
+    "copyright": "© LIVET",
+    "files": ["main.js", "offline.html", "build/icon.png"],
+    "directories": { "output": "dist", "buildResources": "build" },
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "artifactName": "LIVET-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "LIVET"
+    },
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }],
+      "category": "public.app-category.productivity",
+      "identity": null,
+      "artifactName": "LIVET-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "category": "Office",
+      "artifactName": "LIVET-${version}.${ext}"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<title>LIVET · Sin conexión</title>
+<style>
+  html,body{height:100%;margin:0}
+  body{display:grid;place-items:center;background:#0c1a20;color:#e8f1f4;font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .box{text-align:center;max-width:380px;padding:24px}
+  .logo{width:56px;height:56px;border-radius:14px;background:#06b6d4;position:relative;margin:0 auto 22px}
+  .logo::after{content:"";position:absolute;right:8px;bottom:8px;width:18px;height:18px;border-radius:50%;background:#facc15}
+  h1{font:400 30px/1.15 "Iowan Old Style",Palatino,Georgia,serif;margin:0 0 8px}
+  p{color:#8aa0a9;margin:0 0 22px}
+  button{height:42px;padding:0 22px;border:0;border-radius:6px;background:#06b6d4;color:#03181d;font:600 15px system-ui,sans-serif;cursor:pointer}
+  button:hover{background:#67e8f9}
+</style>
+</head>
+<body>
+  <div class="box">
+    <div class="logo" aria-hidden="true"></div>
+    <h1>Sin conexión</h1>
+    <p>LIVET necesita internet para mostrar tu cuenta. Apenas vuelva la conexión, se abre sola.</p>
+    <button id="retry" type="button">Reintentar</button>
+  </div>
+<script>
+  const go = () => { location.href = "https://app.livet.work"; };
+  document.getElementById("retry").addEventListener("click", go);
+  window.addEventListener("online", go);
+</script>
+</body>
+</html>
