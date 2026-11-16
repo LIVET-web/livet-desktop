@@ -1,5 +1,5 @@
 # Genera los instaladores de LIVET en los servidores de GitHub.
-# - "Run workflow" (pestaña Actions): arma los instaladores y los deja para descargar en esa ejecución.
+# - Cada vez que se sube un cambio a main, o "Run workflow" (pestaña Actions): arma los instaladores y los deja para descargar en esa ejecución.
 # - Crear un tag que empiece con "v" (por ejemplo v1.0.0): además los publica en Releases,
 #   con un enlace fijo para que cualquiera los descargue.
 name: Instaladores LIVET
@@ -7,6 +7,7 @@ name: Instaladores LIVET
 on:
   workflow_dispatch:
   push:
+    branches: [main]
     tags: ["v*"]
 
 permissions:
