@@ -1,7 +1,7 @@
 # Genera los instaladores de LIVET en los servidores de GitHub.
-# - Cada vez que se sube un cambio a main, o "Run workflow" (pestaña Actions): arma los instaladores y los deja para descargar en esa ejecución.
-# - Crear un tag que empiece con "v" (por ejemplo v1.0.0): además los publica en Releases,
-#   con un enlace fijo para que cualquiera los descargue.
+# Cada vez que se sube un cambio a main, arma los instaladores y los publica en Releases
+# con la versión de package.json (por ejemplo v1.0.0). Enlace fijo de descarga:
+# https://github.com/LIVET-web/livet-desktop/releases/latest
 name: Instaladores LIVET
 
 on:
@@ -45,10 +45,29 @@ jobs:
             dist/*.AppImage
           if-no-files-found: error
 
+  release:
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Leer versión
+        id: ver
+        run: echo "v=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Bajar instaladores
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
       - name: Publicar en Releases
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || steps.ver.outputs.v }}
+          name: LIVET ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || steps.ver.outputs.v }}
+          make_latest: true
           files: |
             dist/*.exe
             dist/*.dmg
