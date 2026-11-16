@@ -939,6 +939,13 @@ dialog::backdrop{background:radial-gradient(circle at 50% 48%,rgba(14,116,144,.5
 .dl-top{height:36px}
 .dl-top[aria-current="page"]{border-color:var(--accent);color:var(--accent-strong)}
 @media (max-width:980px){.dl-top span{display:none}.dl-top{width:36px;padding:0;justify-content:center}}
+
+/* Estudio HyperFrames */
+.hf-stage{position:relative;width:100%;max-height:70vh;margin:0 auto 14px;background:#000;border-radius:10px;overflow:hidden;display:grid;place-items:center}
+.hf-stage .empty{color:#a3c2d0}
+.hf-stage hyperframes-player{width:100%;height:100%}
+.tlink,.search-btn,.search-btn kbd,.dl-top{white-space:nowrap}
+@media (max-width:1240px){.search-btn span,.search-btn kbd{display:none}.search-btn{width:36px;padding:0;justify-content:center}}
 </style>
 </head>
 <body>
@@ -2392,7 +2399,7 @@ const LEGAL_DOCS = {
         [["Sesión: ", "al ingresar, el servicio de autenticación guarda un token de sesión en el almacenamiento local del navegador (localStorage) para que no tengas que ingresar en cada visita. Es estrictamente necesario para el funcionamiento que pedís y se borra al cerrar sesión."],
          ["Tema: ", "si elegís tema claro u oscuro, guardamos esa preferencia (livet-theme) en el mismo almacenamiento local. Es una preferencia de interfaz que vos pedís; no identifica ni rastrea a nadie."]]),
       sec("Recursos de terceros",
-        "La app descarga una librería técnica desde jsDelivr (cdn.jsdelivr.net). Ese servidor puede registrar tu dirección IP como cualquier servidor web. No cargamos fuentes, mapas, videos ni widgets de otros sitios."),
+        "La app descarga librerías técnicas desde jsDelivr (cdn.jsdelivr.net): la de conexión con la base de datos y, en la pestaña Video, el reproductor de HyperFrames y GSAP. Ese servidor puede registrar tu dirección IP como cualquier servidor web. No cargamos fuentes, mapas, videos ni widgets de otros sitios."),
       sec("¿Hace falta un banner de cookies?",
         "Con lo anterior, no: solo usamos almacenamiento estrictamente necesario, que no requiere consentimiento previo, y te informamos acá. Si algún día agregamos analíticas, publicidad o cualquier seguimiento, vamos a pedir tu consentimiento previo antes de activarlo y vamos a actualizar este documento."),
       sec("Cómo borrarlo", "Cerrando sesión o borrando los datos del sitio desde la configuración de tu navegador.")],
@@ -3070,13 +3077,150 @@ const agentCard = a => h("article", { class: "agent", "data-tone": a.tone },
       h("div", { class: "agent-body" }, h("h3", {}, a.name), h("p", {}, a.line),
         h("ul", {}, a.makes.map(m => h("li", {}, m)))),
       h("button", { class: "btn primary", type: "button", onclick: () => AgentDialog(a) }, "Pedir"));
+/* ------------------------- Video: estudio HyperFrames ------------------------- */
+// HyperFrames (HeyGen, Apache 2.0) convierte HTML + GSAP en MP4. El MP4 se renderiza con Chrome sin pantalla y FFmpeg
+// (app de escritorio HyperFrames o CLI), así que acá se genera, se previsualiza y se descarga la composición.
+const HF_SAMPLE = "<!doctype html>\n<html lang=\"es\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=1080, height=1920\">\n<title>LIVET · 3 hábitos para ordenar tu semana</title>\n<style>\n  html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:#0c1a20}\n  #stage{position:relative;width:1080px;height:1920px;overflow:hidden;font-family:system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;color:#e8f1f4;\n    background:radial-gradient(900px 700px at 80% 0%,rgba(6,182,212,.35),transparent 60%),radial-gradient(800px 600px at 0% 100%,rgba(250,204,21,.18),transparent 60%),#0c1a20}\n  .clip{position:absolute;left:0;right:0;opacity:0}\n  .scene{top:0;bottom:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 90px;text-align:center}\n  .kicker{font-size:44px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#06b6d4}\n  .big{font-size:118px;line-height:1.02;font-weight:800;margin-top:28px}\n  .big mark{background:#facc15;color:#1d1700;padding:0 .12em;border-radius:12px}\n  .num{width:180px;height:180px;border-radius:50%;display:grid;place-items:center;background:#facc15;color:#1d1700;font-size:110px;font-weight:900}\n  .tip{font-size:92px;line-height:1.08;font-weight:800;margin-top:48px}\n  .sub{font-size:48px;line-height:1.3;color:#a3c2d0;margin-top:30px;max-width:860px}\n  .caption{bottom:170px;left:80px;right:80px;text-align:center;font-size:46px;font-weight:700;background:rgba(0,0,0,.55);padding:20px 26px;border-radius:22px}\n  .logo{position:absolute;top:110px;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:22px;font-size:58px;font-weight:800;opacity:1}\n  .logo i{width:66px;height:66px;border-radius:16px;background:#06b6d4;position:relative;display:block}\n  .logo i::after{content:\"\";position:absolute;right:9px;bottom:9px;width:22px;height:22px;border-radius:50%;background:#facc15}\n  .cta{font-size:84px;font-weight:800;line-height:1.1}\n  .pill{margin-top:44px;font-size:52px;font-weight:700;background:#06b6d4;color:#03181d;padding:24px 48px;border-radius:999px}\n</style>\n</head>\n<body>\n<div id=\"stage\" data-composition-id=\"livet\" data-start=\"0\" data-duration=\"12\" data-width=\"1080\" data-height=\"1920\">\n  <div class=\"logo\"><i></i>LIVET</div>\n\n  <section id=\"s1\" class=\"clip scene\" data-start=\"0\" data-duration=\"2.6\" data-track-index=\"0\">\n    <div class=\"kicker\">Tu semana, en orden</div>\n    <div class=\"big\">3 hábitos que <mark>cambian</mark> tu lunes</div>\n  </section>\n\n  <section id=\"s2\" class=\"clip scene\" data-start=\"2.6\" data-duration=\"2.6\" data-track-index=\"0\">\n    <div class=\"num\">1</div>\n    <div class=\"tip\">Elegí 3 tareas, no 30</div>\n    <div class=\"sub\">Lo urgente primero. El resto, a la semana.</div>\n  </section>\n\n  <section id=\"s3\" class=\"clip scene\" data-start=\"5.2\" data-duration=\"2.6\" data-track-index=\"0\">\n    <div class=\"num\">2</div>\n    <div class=\"tip\">Anotá cada gasto el mismo día</div>\n    <div class=\"sub\">Dos minutos hoy evitan sorpresas a fin de mes.</div>\n  </section>\n\n  <section id=\"s4\" class=\"clip scene\" data-start=\"7.8\" data-duration=\"2.2\" data-track-index=\"0\">\n    <div class=\"num\">3</div>\n    <div class=\"tip\">Cerrá el día mirando mañana</div>\n    <div class=\"sub\">Tildá lo hecho y dejá listo lo que sigue.</div>\n  </section>\n\n  <section id=\"s5\" class=\"clip scene\" data-start=\"10\" data-duration=\"2\" data-track-index=\"0\">\n    <div class=\"cta\">Probalo gratis en LIVET</div>\n    <div class=\"pill\">app.livet.work</div>\n  </section>\n\n  <div id=\"c1\" class=\"clip caption\" data-start=\"0.3\" data-duration=\"2.2\" data-track-index=\"1\">Tres hábitos simples. Empiezan hoy.</div>\n  <div id=\"c2\" class=\"clip caption\" data-start=\"2.8\" data-duration=\"2.3\" data-track-index=\"1\">Menos lista, más foco.</div>\n  <div id=\"c3\" class=\"clip caption\" data-start=\"5.4\" data-duration=\"2.3\" data-track-index=\"1\">Tu plata, siempre a la vista.</div>\n  <div id=\"c4\" class=\"clip caption\" data-start=\"8\" data-duration=\"2\" data-track-index=\"1\">Mañana arrancás sin pensar.</div>\n\n  <script src=\"https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js\"><\/script>\n  <script>\n    const tl = gsap.timeline({ paused: true });\n    const show = (sel, t, d) => {\n      tl.fromTo(sel, { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: 0.45, ease: \"power3.out\" }, t);\n      tl.to(sel, { opacity: 0, y: -40, duration: 0.35, ease: \"power2.in\" }, t + d - 0.35);\n    };\n    show(\"#s1\", 0, 2.6); show(\"#s2\", 2.6, 2.6); show(\"#s3\", 5.2, 2.6); show(\"#s4\", 7.8, 2.2);\n    tl.fromTo(\"#s5\", { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.5, ease: \"back.out(1.6)\" }, 10);\n    tl.from(\"#s1 mark\", { backgroundColor: \"rgba(250,204,21,0)\", duration: 0.5 }, 0.7);\n    tl.from(\".num\", { scale: 0.4, duration: 0.4, ease: \"back.out(2)\", stagger: 0 }, 2.7);\n    [[\"#c1\", 0.3, 2.2], [\"#c2\", 2.8, 2.3], [\"#c3\", 5.4, 2.3], [\"#c4\", 8, 2]].forEach(([s, t, d]) => {\n      tl.fromTo(s, { opacity: 0 }, { opacity: 1, duration: 0.2 }, t);\n      tl.to(s, { opacity: 0, duration: 0.2 }, t + d - 0.2);\n    });\n    tl.to({}, { duration: 0.01 }, 11.99);\n    window.__timelines = window.__timelines || {};\n    window.__timelines.livet = tl;\n  <\/script>\n</div>\n</body>\n</html>\n";
+const HF_FORMATS = { vertical: ["Vertical 9:16 (Reels, TikTok, Shorts)", 1080, 1920], horizontal: ["Horizontal 16:9 (YouTube)", 1920, 1080], cuadrado: ["Cuadrado 1:1 (feed)", 1080, 1080] };
+const HF_PLAYER_JS = "https://cdn.jsdelivr.net/npm/@hyperframes/player/dist/hyperframes-player.global.js";
+const HF = (() => {
+  let list = [];
+  try { list = JSON.parse(localStorage.getItem("livet-hf") || "[]"); } catch { list = []; }
+  return { list, cur: null, url: null, loading: null, form: { idea: "", format: "vertical", seconds: "15", style: "" } };
+})();
+const hfSave = () => { try { localStorage.setItem("livet-hf", JSON.stringify(HF.list.slice(0, 20))); } catch { /* sin almacenamiento */ } };
+function hfLoadPlayer() {
+  if (customElements.get("hyperframes-player")) return Promise.resolve(true);
+  if (HF.loading) return HF.loading;
+  HF.loading = new Promise(res => {
+    const sc = document.createElement("script"); sc.src = HF_PLAYER_JS; sc.async = true;
+    sc.onload = () => res(!!customElements.get("hyperframes-player")); sc.onerror = () => { HF.loading = null; res(false); };
+    document.head.append(sc);
+  });
+  return HF.loading;
+}
+function hfExtract(text) {
+  const m = /```(?:html)?\s*([\s\S]*?)```/i.exec(text || "");
+  const html = (m ? m[1] : text || "").trim();
+  return /data-composition-id/.test(html) && /<\w/.test(html) ? html : "";
+}
+function hfMeta(html) {
+  const num = (re, d) => { const m = re.exec(html); return m ? Number(m[1]) : d; };
+  const title = (/<title>([^<]{1,120})<\/title>/i.exec(html) || [])[1];
+  return { w: num(/data-width="(\d+)"/, 1080), h: num(/data-height="(\d+)"/, 1920), title: title || "Video sin título" };
+}
+function hfOpen(item) {
+  if (HF.url) URL.revokeObjectURL(HF.url);
+  HF.cur = item; HF.url = URL.createObjectURL(new Blob([item.html], { type: "text/html" }));
+}
+function hfAdd(html, idea) {
+  const m = hfMeta(html);
+  const item = { id: "hf-" + Date.now(), title: m.title, idea: idea || "", html, created: new Date().toISOString() };
+  HF.list.unshift(item); HF.list = HF.list.slice(0, 20); hfSave(); hfOpen(item);
+  return item;
+}
+function hfDownload(item) {
+  const name = (item.title || "video").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "video";
+  const a = h("a", { href: URL.createObjectURL(new Blob([item.html], { type: "text/html" })), download: `${name}.html` });
+  document.body.append(a); a.click(); a.remove();
+  toast("Descargado. Abrilo con la app HyperFrames para exportar el MP4.");
+}
+async function hfGenerate() {
+  const f = HF.form, idea = f.idea.trim();
+  if (!idea) throw new Error("Contá de qué trata el video.");
+  const [, W, H] = HF_FORMATS[f.format] || HF_FORMATS.vertical, secs = Math.min(90, Math.max(5, Number(f.seconds) || 15));
+  const brief = `${idea}
+
+FORMATO OBLIGATORIO (respondé SOLO con un bloque \`\`\`html con el archivo completo, sin texto fuera del bloque):
+- Archivo HTML completo y autocontenido (<!doctype html>, <head> con <title> corto en español, <style> y <body>).
+- Raíz: <div id="stage" data-composition-id="livet" data-start="0" data-duration="${secs}" data-width="${W}" data-height="${H}"> con width:${W}px;height:${H}px;overflow:hidden y position:relative. html y body del mismo tamaño, sin márgenes.
+- Cada escena, texto o subtítulo es un elemento con class="clip", data-start, data-duration (segundos) y data-track-index (0 escenas, 1 subtítulos). Todo dentro de #stage. La duración total es exactamente ${secs} segundos.
+- Animaciones SOLO con GSAP 3 desde <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"><\/script>: const tl = gsap.timeline({ paused: true }); ... window.__timelines = window.__timelines || {}; window.__timelines.livet = tl; Nada de setTimeout, requestAnimationFrame, Math.random ni Date: tiene que ser determinista.
+- Clips con opacity:0 de inicio y que GSAP los muestre y oculte en sus tiempos. Agregá al final tl.to({}, { duration: 0.01 }, ${secs} - 0.01).
+- Sin imágenes, videos, audio ni fuentes externas (solo texto, formas, degradados y emojis), salvo URLs que yo haya escrito arriba.
+- Texto grande y legible en celular, máximo 8 palabras por pantalla, subtítulos abajo, márgenes seguros de 80px. Hook fuerte en el primer segundo.
+- Colores de LIVET salvo que pida otros: fondo #0c1a20, cian #06b6d4, amarillo #facc15, texto #e8f1f4. ${f.style ? "Estilo pedido: " + f.style : ""}`;
+  const r = await AI.call("agent", { role: "hyperframes", brief: brief.slice(0, 6000) });
+  const html = hfExtract(r.text);
+  if (!html) throw new Error("La IA no devolvió una composición válida. Probá de nuevo o con una idea más concreta.");
+  hfAdd(html, idea); render(); toast("Video generado. Miralo en la vista previa.");
+}
+function HfPreview(item) {
+  const m = hfMeta(item.html);
+  const box = h("div", { class: "hf-stage", style: `aspect-ratio:${m.w}/${m.h};width:min(100%, calc(68vh * ${m.w} / ${m.h}))` }, h("div", { class: "empty" }, h("span", { class: "spin" }), " Cargando la vista previa…"));
+  hfLoadPlayer().then(ok => {
+    if (HF.cur !== item) return;
+    if (ok) box.replaceChildren(h("hyperframes-player", { src: HF.url, controls: "", width: String(m.w), height: String(m.h), style: "width:100%;height:100%;display:block" }));
+    else {
+      const fr = h("iframe", { src: HF.url, title: "Vista previa", sandbox: "allow-scripts", style: `position:absolute;left:0;top:0;width:${m.w}px;height:${m.h}px;border:0;transform-origin:0 0` });
+      const fit = () => { fr.style.transform = `scale(${box.clientWidth / m.w})`; };
+      try { new ResizeObserver(fit).observe(box); } catch { /* sin observer */ } setTimeout(fit, 0);
+      box.replaceChildren(fr,
+      h("p", { class: "hint", style: "position:absolute;bottom:6px;left:8px;right:8px;color:#e8f1f4" }, "No se pudo cargar el reproductor de HyperFrames: se muestra sin controles."));
+    }
+  });
+  return box;
+}
+function hfRenderGuide() {
+  modal({ title: "Exportar el video a MP4", wide: true, hideSubmit: true, body: [
+    h("p", {}, "El MP4 se genera en tu computadora con HyperFrames (gratis, código abierto). LIVET arma y previsualiza el video; la exportación la hace HyperFrames."),
+    h("ol", { class: "plain" },
+      h("li", {}, h("b", {}, "Descargá el HTML "), "con el botón \"Descargar\"."),
+      h("li", {}, h("b", {}, "Abrí la app HyperFrames "), "(Mac, Windows o Linux). Si no la tenés: ", ext("https://github.com/heygen-com/hyperframes", "github.com/heygen-com/hyperframes"), "."),
+      h("li", {}, "Creá un proyecto nuevo y reemplazá su ", h("code", {}, "index.html"), " por el archivo descargado."),
+      h("li", {}, "Tocá ", h("b", {}, "Render"), " y elegí MP4. Listo para subir a Instagram, TikTok o YouTube.")),
+    h("details", { class: "dl-how" }, h("summary", {}, "Con la terminal (opcional)"),
+      h("ol", { class: "plain" }, h("li", {}, h("code", {}, "npx hyperframes init mi-video")), h("li", {}, "Copiá el archivo como ", h("code", {}, "mi-video/index.html")),
+        h("li", {}, h("code", {}, "cd mi-video && npx hyperframes render")), h("li", {}, "Necesita Node.js 22 o más y FFmpeg."))),
+    h("p", { class: "hint" }, "Las imágenes, videos y música que agregues tienen que ser tuyos o con licencia.")] });
+}
+function hfEdit(item) {
+  const area = ta(item.html, { rows: 18, style: "font:12px/1.45 ui-monospace,Menlo,monospace;min-height:340px", "aria-label": "HTML de la composición", spellcheck: "false" });
+  modal({ title: "Editar el HTML", wide: true, submit: "Aplicar cambios", body: [h("p", { class: "hint" }, "Cambiá textos, colores o tiempos (data-start y data-duration). Se guarda en este navegador."), area],
+    onSubmit: () => {
+      const v = area.value.trim();
+      if (!/data-composition-id/.test(v)) throw new Error("Falta el atributo data-composition-id: así HyperFrames no puede leer el video.");
+      item.html = v; item.title = hfMeta(v).title; hfSave(); hfOpen(item); toast("Cambios aplicados");
+    } });
+}
 function VideoView() {
+  const f = HF.form;
+  if (!HF.cur && HF.list[0]) hfOpen(HF.list[0]);
+  const idea = ta(f.idea, { rows: 4, maxLength: 1500, placeholder: "Ej: video de 15 segundos con 3 consejos para ahorrar en el súper, con un hook fuerte y cierre invitando a probar LIVET" });
+  idea.addEventListener("input", () => { f.idea = idea.value; });
+  const fmt = sel(Object.entries(HF_FORMATS).map(([k, v]) => [k, v[0]]), f.format); fmt.onchange = () => { f.format = fmt.value; };
+  const secs = sel([["10", "10 segundos"], ["15", "15 segundos"], ["30", "30 segundos"], ["45", "45 segundos"], ["60", "60 segundos"]], f.seconds); secs.onchange = () => { f.seconds = secs.value; };
+  const style = inp({ value: f.style, maxLength: 200, placeholder: "Opcional: minimalista, colores pastel, tipografía grande…" }); style.addEventListener("input", () => { f.style = style.value; });
+  const cur = HF.cur;
   return h("div", {},
-    PageHead("Video", "La edición de video vive en esta pestaña, aparte del resto de LIVET."),
-    Card("Conexión con la página de edición", null, h("div", { class: "card-p", style: "display:grid;gap:8px" },
-      h("p", {}, "Todavía no hay una página de edición conectada. La idea es enlazarla más adelante con otra página."),
-      h("p", { class: "hint" }, "LIVET no edita ni renderiza video: acá se planifica y se escribe el guion técnico. El resultado lo editás o renderizás en tu herramienta."))),
-    h("div", { class: "agent-list", style: "margin-top:16px" }, AGENTS.filter(a => a.area === "video").map(agentCard)));
+    PageHead("Video", "Generá videos con IA usando HyperFrames: los ves acá mismo y los exportás a MP4.",
+      h("button", { class: "btn", type: "button", onclick: hfRenderGuide }, "Cómo exportar a MP4")),
+    h("div", { class: "grid g-main" },
+      h("div", { class: "grid", style: "align-content:start" },
+        Card("Vista previa", cur ? h("span", { class: "muted", style: "font-size:12px" }, cur.title) : null,
+          h("div", { class: "card-p" }, cur ? [HfPreview(cur),
+            h("div", { class: "actions-row" },
+              h("button", { class: "btn primary", type: "button", onclick: () => hfDownload(cur) }, icon("download"), "Descargar"),
+              h("button", { class: "btn", type: "button", onclick: () => hfEdit(cur) }, "Editar HTML"),
+              h("button", { class: "btn", type: "button", onclick: () => copyText(cur.html) }, icon("copy"), "Copiar HTML"),
+              h("button", { class: "btn", type: "button", onclick: hfRenderGuide }, icon("play"), "Exportar MP4"))]
+            : Empty("Todavía no hay videos", "Escribí una idea y generalo con IA, o cargá el ejemplo para ver cómo funciona.",
+                h("button", { class: "btn", type: "button", onclick: () => { hfAdd(HF_SAMPLE, "Ejemplo"); render(); } }, "Cargar ejemplo"))))),
+      h("div", { class: "grid", style: "align-content:start" },
+        Card("Nuevo video con IA", null, h("div", { class: "card-p", style: "display:grid;gap:12px" },
+          F("¿De qué trata?", idea), h("div", { class: "row2" }, F("Formato", fmt), F("Duración", secs)), F("Estilo", style),
+          aiButton("Generar video", hfGenerate, { cls: "btn primary", ic: "spark" }),
+          h("p", { class: "hint", style: "margin:0" }, "Usa 2 créditos de IA. El video es un borrador: revisá textos y tiempos antes de publicar."))),
+        Card("Mis videos", h("button", { class: "btn sm ghost", type: "button", onclick: () => { hfAdd(HF_SAMPLE, "Ejemplo"); render(); } }, "Ejemplo"),
+          h("div", { class: "card-b" }, HF.list.length ? HF.list.map(it => h("div", { class: "task", style: "grid-template-columns:1fr auto" },
+            h("div", { class: "t-main", onclick: () => { hfOpen(it); render(); } }, h("div", { class: "t-title" }, (HF.cur === it ? "▶ " : "") + it.title),
+              h("div", { class: "t-meta" }, new Date(it.created).toLocaleDateString("es", { day: "numeric", month: "short" }), it.idea ? " · " + clip(it.idea, 40) : "")),
+            h("button", { class: "btn sm ghost danger", type: "button", "aria-label": "Borrar video", onclick: e => {
+              const b = e.currentTarget; if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "¿Borrar?"; return; }
+              HF.list = HF.list.filter(x => x !== it); hfSave(); if (HF.cur === it) { HF.cur = null; } render(); } }, "✕")))
+            : h("p", { class: "muted", style: "padding:12px" }, "Los videos se guardan en este navegador.")))),
+    ),
+    h("div", { class: "agent-list", style: "margin-top:16px" }, AGENTS.filter(a => a.area === "video" && a.id !== "hyperframes").map(agentCard)));
 }
 VIEWS.video = VideoView;
 function AgentsView() {
