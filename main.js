@@ -36,7 +36,7 @@ function createWindow() {
     minWidth: 380,
     minHeight: 560,
     title: "LIVET",
-    backgroundColor: "#0c1a20",
+    backgroundColor: "#2b2f33",
     icon: path.join(__dirname, "build", "icon.png"),
     autoHideMenuBar: true,
     show: false,
