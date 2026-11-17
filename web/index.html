@@ -389,7 +389,7 @@ dialog h3{font-size:24px}
 
 /* ===== Suite de edición: la semana como línea de tiempo =====
    Cian = señal (acción), amarillo = cabeza de reproducción / resaltado, rojo = REC y urgencia. */
-:root{--ease:cubic-bezier(.22,1,.36,1);--spring:cubic-bezier(.34,1.56,.64,1);--top:60px}
+:root{--ease:cubic-bezier(.22,1,.36,1);--spring:cubic-bezier(.34,1.56,.64,1);--sat:env(safe-area-inset-top,0px);--top:calc(60px + var(--sat))}
 body{background-image:radial-gradient(900px 480px at 85% -10%,color-mix(in srgb,var(--accent) 14%,transparent),transparent 70%),radial-gradient(700px 400px at 0% 110%,color-mix(in srgb,var(--hot) 10%,transparent),transparent 70%);background-attachment:fixed}
 .serif{font-family:var(--display);font-weight:800;letter-spacing:-.035em}
 
@@ -412,7 +412,7 @@ body{background-image:radial-gradient(900px 480px at 85% -10%,color-mix(in srgb,
 .linkbtn{font-weight:500}
 
 /* Barra superior */
-.topbar{position:sticky;top:0;z-index:30;height:var(--top);display:flex;align-items:center;gap:20px;padding:0 max(16px,env(safe-area-inset-left,0px),calc((100vw - 1120px) / 2));background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(14px) saturate(1.4);border-bottom:1px solid var(--line)}
+.topbar{position:sticky;top:0;z-index:30;height:var(--top);padding-top:var(--sat)!important;display:flex;align-items:center;gap:20px;padding:0 max(16px,env(safe-area-inset-left,0px),calc((100vw - 1120px) / 2));background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(14px) saturate(1.4);border-bottom:1px solid var(--line)}
 .logo-btn{font-size:17px;padding:4px 6px;border-radius:8px}
 .logo i{border-radius:7px;background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 55%,#fff))}
 .tlinks{display:flex;gap:2px;margin:0 auto}
