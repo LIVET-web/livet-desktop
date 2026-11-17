@@ -1,7 +1,7 @@
 // LIVET para escritorio.
 // La app abre https://app.livet.work en su propia ventana: es la misma LIVET de la web,
 // así que cada vez que actualizás la página en GitHub, la app de escritorio se actualiza sola.
-const { app, BrowserWindow, Menu, shell } = require("electron");
+const { app, BrowserWindow, Menu, shell, session } = require("electron");
 const path = require("path");
 
 const APP_URL = "https://app.livet.work";
@@ -67,7 +67,7 @@ function createWindow() {
     }
   });
 
-  win.loadURL(APP_URL);
+  win.loadURL(APP_URL, { extraHeaders: "pragma: no-cache\n" });
 }
 
 function buildMenu() {
@@ -136,7 +136,9 @@ if (!app.requestSingleInstanceLock()) {
     win.focus();
   });
 
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
+    // Siempre la última versión de la web: se borra la caché HTTP al abrir (no toca la sesión ni los datos).
+    try { await session.defaultSession.clearCache(); } catch (e) { /* sigue */ }
     if (process.platform === "win32") app.setAppUserModelId("work.livet.app");
     buildMenu();
     createWindow();
