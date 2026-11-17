@@ -1084,6 +1084,30 @@ dialog{background:var(--surface);border:1px solid var(--line-strong)}
 .task.on{border-color:var(--orange)}
 .actions-row{display:flex;flex-wrap:wrap;gap:8px}
 input[type=color].input{cursor:pointer}
+
+/* Números que siempre entran en su tarjeta */
+.stat{container-type:inline-size;min-width:0;overflow:hidden}
+.card.stat b{font-size:clamp(18px,11.5cqi,40px);font-stretch:100%;white-space:nowrap;letter-spacing:-.025em;overflow:hidden;text-overflow:ellipsis}
+.grid.stats>*{min-width:0}
+/* Ventanas con la marca: grafito, borde fino, sin brillo celeste */
+dialog{--surface:#181b1e;--surface-2:#1f2327;--line:#2a2e33;--line-strong:#3a3f45;--text:#f5f2ed;--muted:#a8a29a;--faint:#8f8981;--control:#4b5056;--accent:#ff6600;--accent-strong:#ff8a3d;--accent-soft:#2b1a0e;--on-accent:#120800;--hot:#ffb066;--hot-soft:#2a2016;--hot-ink:#ffc68f;
+  background:var(--surface);border:1px solid var(--line-strong);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.6);color:var(--text)}
+dialog::backdrop{background:rgba(10,11,12,.72);backdrop-filter:blur(4px)}
+dialog .input:focus{box-shadow:0 0 0 4px color-mix(in srgb,var(--orange) 22%,transparent)}
+dialog .btn.primary{background:var(--orange);border-color:var(--orange);color:var(--on-accent);box-shadow:none}
+dialog .btn.primary:hover{background:#fff;border-color:#fff;color:var(--graphite)}
+:root[data-theme="light"] dialog{--surface:#fffdf9;--surface-2:#f1ebe3;--line:#e6ddd1;--line-strong:#d3c8ba;--text:#141619;--muted:#625c55;--faint:#6d675f;--accent-strong:#c24d00;--accent-soft:#ffe5d2;color-scheme:light}
+:root[data-theme="light"] dialog::backdrop{background:rgba(20,22,25,.45)}
+/* Tablas en las respuestas */
+.md .tbl{overflow-x:auto;margin:8px 0 14px;border:1px solid var(--line);border-radius:12px}
+.md table{width:100%;border-collapse:collapse;font-size:13.5px}
+.md th,.md td{padding:8px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+.md th{background:var(--surface-2);font-weight:700;white-space:nowrap}
+.md tr:last-child td{border-bottom:0}
+.md ol{padding-left:20px;display:grid;gap:4px;margin:6px 0}
+.md h2{font-size:22px;margin:16px 0 6px}
+.md h3{font-size:17px;margin:12px 0 4px}
+@media (max-width:440px){.logo-btn{width:116px}.logo{width:112px;height:20px}.tright{gap:4px}.tright .btn.primary{padding:0 12px;font-size:13px}.tright .icon-btn,.tright .search-btn{width:32px;height:32px}.tright .dl-top{display:none}}
 @media (prefers-reduced-motion:reduce){.hf-tpl-art i{animation:none}body::before,.ticker-track,.s-cta::after,.live-dot{animation:none}.rv{opacity:1;transform:none;transition:none}}
 </style>
 </head>
@@ -1346,12 +1370,29 @@ function inline(text) {
   return out;
 }
 function markdown(src) {
-  const root = h("div", { class: "md" }); let ul = null;
+  const root = h("div", { class: "md" }); let list = null, tbl = null;
+  const cells = l => l.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map(c => c.trim());
   for (const raw of String(src || "").split("\n")) {
     const line = raw.trimEnd();
-    if (/^\s*[-*•]\s+/.test(line)) { if (!ul) { ul = h("ul"); root.append(ul); } ul.append(h("li", {}, inline(line.replace(/^\s*[-*•]\s+/, "")))); continue; }
-    ul = null;
-    if (/^#{1,4}\s+/.test(line)) root.append(h("h2", {}, line.replace(/^#{1,4}\s+/, "")));
+    if (/^\s*\|.*\|\s*$/.test(line)) {
+      list = null;
+      if (/^\s*\|?\s*:?-{2,}/.test(line)) continue;
+      const cs = cells(line);
+      if (!tbl) { const body = h("tbody"); tbl = { body, t: h("table", {}, h("thead", {}, h("tr", {}, cs.map(c => h("th", {}, inline(c))))), body) }; root.append(h("div", { class: "tbl" }, tbl.t)); }
+      else tbl.body.append(h("tr", {}, cs.map(c => h("td", {}, inline(c)))));
+      continue;
+    }
+    tbl = null;
+    const ol = /^\s*\d+[.)]\s+/.test(line), ul = /^\s*[-*•]\s+/.test(line);
+    if (ol || ul) {
+      const tag = ol ? "OL" : "UL";
+      if (!list || list.tagName !== tag) { list = h(tag.toLowerCase()); root.append(list); }
+      list.append(h("li", {}, inline(line.replace(/^\s*(\d+[.)]|[-*•])\s+/, "")))); continue;
+    }
+    list = null;
+    if (/^#{3,4}\s+/.test(line)) root.append(h("h3", {}, inline(line.replace(/^#{1,4}\s+/, ""))));
+    else if (/^#{1,2}\s+/.test(line)) root.append(h("h2", {}, inline(line.replace(/^#{1,4}\s+/, ""))));
+    else if (/^\s*\*[^*].*\*\s*$/.test(line)) root.append(h("p", { class: "hint" }, inline(line.trim().replace(/^\*|\*$/g, ""))));
     else if (line.trim()) root.append(h("p", {}, inline(line)));
   }
   return root;
