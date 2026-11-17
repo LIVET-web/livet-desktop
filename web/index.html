@@ -2560,8 +2560,18 @@ async function macCalRead() {
   if (!macCalAvailable()) return { ok: false, error: "no_app" };
   const from = Date.now() - 60 * 864e5, to = Date.now() + 240 * 864e5;
   const r = await window.livetDesktop.readCalendar(from, to).catch(() => ({ ok: false, error: "lector" }));
-  if (r?.ok) Ext.mac = (r.events || []).map(e => ({ ...e, mac: true }));
+  if (r?.ok) { Ext.mac = (r.events || []).map(e => ({ ...e, mac: true })); macCalPush(); }
   return r || { ok: false };
+}
+// Sube a la cuenta lo que trajo la Mac, así se ve también en el celular y en la web (solo si cambió o cada 5 minutos).
+let macPushSig = "", macPushAt = 0;
+async function macCalPush(force) {
+  if (!sb || state.demo || !state.user) return;
+  const rows = Ext.mac.slice(0, 5000).map(e => ({ id: e.id, title: e.title, starts_at: e.starts_at, ends_at: e.ends_at, all_day: e.all_day, cal: e.cal, color: e.color, place: e.place || "" }));
+  const sig = rows.length + ":" + rows.map(r => r.id + r.title + r.starts_at + r.ends_at).join("|").length;
+  if (!force && sig === macPushSig && Date.now() - macPushAt < 5 * 60000) return;
+  const { error } = await sb.rpc("sync_calendar", { p_events: rows });
+  if (!error) { macPushSig = sig; macPushAt = Date.now(); } else console.warn("sincronizar calendario", error);
 }
 const extDay = e => (e.all_day ? String(e.starts_at).slice(0, 10) : isoDay(e.starts_at));
 const byStart = (a, b) => String(a.starts_at).localeCompare(String(b.starts_at));
@@ -2583,6 +2593,11 @@ async function extLoad(force) {
       if (r.data?.ok) { Ext.events = (r.data.events || []).map(e => ({ ...e, exclusiveEnd: !!e.all_day })); Ext.errors = r.data.errors || []; }
     } else { Ext.events = []; Ext.errors = []; }
     if (macCalOn() && macCalAvailable()) { const r = await macCalRead(); if (!r.ok && r.error === "denied") { macCalSet(false); Ext.mac = []; } }
+    else {
+      // En el celular y la web: lo que la app de la Mac subió a tu cuenta.
+      const { data } = await sb.from("synced_events").select("ext_id,title,starts_at,ends_at,all_day,cal,color,place").gte("starts_at", from).lte("starts_at", to).limit(5000);
+      Ext.mac = (data || []).map(e => ({ id: e.ext_id, title: e.title, starts_at: new Date(e.starts_at).toISOString(), ends_at: e.ends_at ? new Date(e.ends_at).toISOString() : null, all_day: e.all_day, cal: e.cal, color: e.color, place: e.place, mac: true }));
+    }
     Ext.at = Date.now();
   } catch (e) { console.error("calendarios", e); }
   finally { Ext.loading = false; }
@@ -2695,9 +2710,11 @@ async function CalSyncDialog() {
       h("div", { class: "cs-block" },
         h("div", { class: "cs-h" }, h("div", {}, h("h3", {}, "Tu calendario dentro de LIVET"), h("p", { class: "muted" }, "Todo lo que tenés en el Calendario del iPhone y la Mac, adentro de LIVET."))),
         !macCalAvailable()
-          ? h("p", { class: "hint" }, "Funciona en la app LIVET Work para Mac. ", h("button", { class: "linkbtn", type: "button", onclick: () => { $("#dlg").close(); navTo("descargar"); } }, "Descargar la app"))
+          ? (Ext.mac.length
+              ? h("div", { class: "cs-cal" }, h("span", {}, icon("check"), ` Conectado desde tu Mac · ${Ext.mac.length} eventos`))
+              : h("p", { class: "hint" }, "Se conecta una vez desde la app LIVET Work para Mac, y después lo ves acá y en todos tus dispositivos. ", h("button", { class: "linkbtn", type: "button", onclick: () => { $("#dlg").close(); navTo("descargar"); } }, "Descargar la app")))
           : macCalOn()
-            ? h("div", { class: "cs-cal" }, h("span", {}, icon("check"), ` Conectado · ${Ext.mac.length} eventos`), h("button", { class: "linkbtn", type: "button", onclick: () => { macCalSet(false); Ext.mac = []; draw(); render(); } }, "Desconectar"))
+            ? h("div", { class: "cs-cal" }, h("span", {}, icon("check"), ` Conectado · ${Ext.mac.length} eventos`), h("button", { class: "linkbtn", type: "button", onclick: async () => { macCalSet(false); Ext.mac = []; await macCalPush(true); draw(); render(); } }, "Desconectar"))
             : h("button", { class: "btn big cal-btn", type: "button", onclick: async ev => {
                 const b = ev.currentTarget; b.disabled = true; b.textContent = "Esperando tu permiso…";
                 const r = await macCalRead();
