@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        os: [windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
@@ -42,7 +42,6 @@ jobs:
           path: |
             dist/*.exe
             dist/*.dmg
-            dist/*.AppImage
           if-no-files-found: error
 
   release:
@@ -71,4 +70,3 @@ jobs:
           files: |
             dist/*.exe
             dist/*.dmg
-            dist/*.AppImage

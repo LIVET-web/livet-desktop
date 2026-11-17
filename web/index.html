@@ -5700,7 +5700,7 @@ function HomePage() {
         fold("Equipo, clientes y tareas con revisión", CompanyPanel()),
         fold("Marketing para agencias y empresas", h("p", { class: "muted" }, "Plan de campaña, análisis de competencia con búsqueda web, contenido y email. Son borradores para que revises; la IA es opcional y pide tu permiso."), h("div", { class: "cta-row" }, h("button", { type: "button", class: "btn primary", onclick: () => enterDemo("agencia") }, "Ver como agencia"))),
         fold("Para creadores: laboratorio de hooks", HookLab()))),
-    h("section", { class: "s-sec", id: "descargar" }, h("div", { class: "s-head" }, h("h2", { class: "serif" }, "Llevala con vos"), h("p", { class: "lead" }, "Usala en el navegador o descargala para tu computadora: Mac, Windows o Linux.")), DownloadCards()),
+    h("section", { class: "s-sec", id: "descargar" }, h("div", { class: "s-head" }, h("h2", { class: "serif" }, "Llevala con vos"), h("p", { class: "lead" }, "Instalala en tu computadora (Mac o Windows) o en tu celular.")), DownloadCards()),
     h("section", { class: "s-cta" }, h("h2", { class: "serif" }, "Empezá cuando quieras."),
       h("div", { class: "cta-row" }, h("button", { type: "button", class: "btn primary lg", onclick: () => enterDemo() }, "Probar la demo"),
         h("button", { type: "button", class: "btn lg", onclick: () => navTo("guia") }, "Leer la guía"))));
@@ -5820,24 +5820,18 @@ Object.assign(ICON, { download: "M12 3v12|M7 10l5 5 5-5|M5 21h14", monitor: "M3 
 const DESKTOP_REPO = "https://github.com/LIVET-web/livet-desktop";
 const DL = file => `${DESKTOP_REPO}/releases/latest/download/${file}`;
 const DOWNLOADS = [
-  { os: "mac-arm", name: "Mac con chip Apple", sub: "M1, M2, M3 o M4 · .dmg", file: "LIVET-mac-arm64.dmg",
-    how: ["Abrí el archivo y arrastrá LIVET a Aplicaciones.", "La primera vez: clic derecho en LIVET → Abrir. Si macOS lo frena, andá a Configuración del Sistema → Privacidad y seguridad → Abrir igualmente."] },
-  { os: "mac-intel", name: "Mac con Intel", sub: "Modelos anteriores a 2020 · .dmg", file: "LIVET-mac-x64.dmg",
-    how: ["Abrí el archivo y arrastrá LIVET a Aplicaciones.", "La primera vez: clic derecho en LIVET → Abrir."] },
-  { os: "win", name: "Windows", sub: "Windows 10 y 11 · instalador .exe", file: "LIVET-Setup.exe",
-    how: ["Abrí el instalador y seguí los pasos: crea el acceso directo en el escritorio.", "Si aparece \"Windows protegió tu PC\": Más información → Ejecutar de todas formas."] },
-  { os: "linux", name: "Linux", sub: "AppImage", file: "LIVET-linux.AppImage",
-    how: ["Dale permiso de ejecución (clic derecho → Propiedades → Permitir ejecutar) y abrilo."] },
+  { os: "mac-arm", name: "Mac", sub: "Chip Apple (M1 o posterior) · .dmg", file: "LIVET-mac-arm64.dmg",
+    how: ["Abrí el archivo y arrastrá LIVET Work a Aplicaciones.", "Si macOS lo frena: Ajustes del Sistema → Privacidad y seguridad → Abrir igualmente."] },
+  { os: "win", name: "Windows", sub: "Windows 10 y 11 · .exe", file: "LIVET-Setup.exe",
+    how: ["Abrí el instalador y seguí los pasos.", "Si aparece \"Windows protegió tu PC\": Más información → Ejecutar de todas formas."] },
 ];
 const isDesktopApp = () => /Electron/i.test(navigator.userAgent || "");
 function detectOS() {
   const ua = navigator.userAgent || "", plat = navigator.userAgentData?.platform || navigator.platform || "";
   if (/Win/i.test(plat) || /Windows/i.test(ua)) return "win";
   if (/Mac/i.test(plat) || /Macintosh/i.test(ua)) {
-    try { const gl = document.createElement("canvas").getContext("webgl"); const r = gl && gl.getParameter(gl.getExtension("WEBGL_debug_renderer_info")?.UNMASKED_RENDERER_WEBGL || 0); if (/Intel/i.test(String(r))) return "mac-intel"; } catch { /* sin WebGL */ }
     return "mac-arm";
   }
-  if (/Linux/i.test(plat) && !/Android/i.test(ua)) return "linux";
   return null;
 }
 Object.assign(ICON, { phone: "M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z|M11 18h2", monitor: "M3 4h18a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z|M8 21h8M12 17v4" });
