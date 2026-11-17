@@ -967,6 +967,7 @@ dialog::backdrop{background:radial-gradient(circle at 50% 48%,rgba(14,116,144,.5
 .cw-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .dl-hero{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;padding:24px;border-radius:18px;background:var(--surface);border:1px solid var(--line-strong);margin-bottom:16px}
 .dl-hero h2{font-size:26px;margin:8px 0 4px}.dl-hero p{color:var(--muted);max-width:520px}
+.dl-hero a.btn{text-decoration:none}.dl-alt{padding:18px 24px}.dl-alt h2{font-size:20px}
 .btn.big{padding:14px 22px;font-size:16px}
 .dl-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
 .dl-ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:rgba(255,102,0,.12);color:#ff6600;flex:none}.dl-ic svg{width:20px;height:20px;filter:none}
@@ -6113,7 +6114,9 @@ const INSTALL_STEPS = {
 function installSteps() { const m = mobileOS(); if (m) return INSTALL_STEPS[m]; return browserName() === "safari" ? INSTALL_STEPS.safari : INSTALL_STEPS.chrome; }
 async function installApp() {
   if (PWA_PROMPT) { PWA_PROMPT.prompt(); const r = await PWA_PROMPT.userChoice.catch(() => null); PWA_PROMPT = null; if (r?.outcome === "accepted") return; }
+  const chromeLike = !mobileOS() && ["chrome", "edge"].includes(browserName());
   modal({ title: "Instalar LIVET Work", hideSubmit: true, body: h("div", { class: "sec" },
+    chromeLike ? h("div", { class: "note" }, h("b", {}, "¿Ya la instalaste? "), "Si arriba a la derecha de la barra de direcciones ves «Abrir en la app», ya la tenés: tocá ahí y se abre.") : null,
     h("ol", { class: "steps-n" }, installSteps().map(x => h("li", {}, x))),
     h("p", { class: "hint" }, "No se descarga ningún archivo: se instala desde el navegador y se actualiza sola.")) });
 }
@@ -6125,11 +6128,17 @@ function DownloadCards() {
     h("header", {}, h("div", { class: "dl-ic" }, icon(ic)), h("div", {}, h("h3", {}, title), h("small", {}, sub))),
     h("ol", { class: "steps-n" }, steps.map(x => h("li", {}, x))));
   const desk = DOWNLOADS.map(d => h("a", { class: "linkbtn", href: DL(d.file), download: "", rel: "noopener" }, d.name));
+  const isMac = /^mac/.test(detectOS() || "") && !mobileOS();
+  const macDl = DOWNLOADS.find(d => d.os === "mac-arm");
   return h("div", { class: "dl-wrap" },
-    h("section", { class: "dl-hero" },
-      h("div", {}, h("span", { class: "plan-tag" }, "Recomendado"), h("h2", {}, "Instalala en un clic"),
+    isMac && macDl ? h("section", { class: "dl-hero" },
+      h("div", {}, h("span", { class: "plan-tag" }, "Para tu Mac"), h("h2", {}, "LIVET Work para Mac"),
+        h("p", {}, "La app completa: trae todo el Calendario de tu Mac y tu iPhone adentro de LIVET. La primera vez, si la Mac pregunta, elegí «Abrir igualmente» en Ajustes → Privacidad y seguridad.")),
+      h("a", { class: "btn primary big", href: DL(macDl.file), download: "", rel: "noopener" }, icon("download"), "Descargar para Mac")) : null,
+    h("section", { class: "dl-hero" + (isMac ? " dl-alt" : "") },
+      h("div", {}, isMac ? null : h("span", { class: "plan-tag" }, "Recomendado"), h("h2", {}, isMac ? "O desde el navegador" : "Instalala en un clic"),
         h("p", {}, "Se instala desde el navegador, con su ícono y su ventana propia. Sin archivos, sin avisos de seguridad y siempre actualizada.")),
-      h("button", { type: "button", class: "btn primary big", onclick: installApp }, icon("download"), mobileOS() ? "Instalar en el celular" : "Instalar LIVET Work")),
+      h("button", { type: "button", class: "btn big" + (isMac ? "" : " primary"), onclick: installApp }, icon("download"), mobileOS() ? "Instalar en el celular" : isMac ? "Instalar desde el navegador" : "Instalar LIVET Work")),
     h("div", { class: "dl-grid" },
       plat("iPhone y iPad", "Desde Safari", "phone", INSTALL_STEPS.ios),
       plat("Android", "Desde Chrome", "phone", INSTALL_STEPS.android),
