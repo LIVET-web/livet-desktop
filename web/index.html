@@ -2714,27 +2714,23 @@ function PhoneCalConnect(done) {
   };
   const paste = h("button", { class: "btn primary big cal-btn", type: "button", onclick: async () => {
     try { const t = await navigator.clipboard.readText(); if (t) { field.value = t.trim(); return go_(); } } catch { /* sin permiso: se pega a mano */ }
-    field.focus(); msg.textContent = "Mantené apretado el cuadro de abajo y elegí «Pegar».";
+    if (!field.isConnected) msg.before(h("div", { class: "cal-row" }, field, btn));
+    field.focus(); msg.textContent = "Mantené apretado el cuadro y elegí «Pegar».";
   } }, "Pegar el enlace y conectar");
   btn.onclick = go_; field.addEventListener("paste", () => setTimeout(go_, 60));
-  const step = (n, ...txt) => h("li", { class: "pc-step" }, h("span", { class: "pc-n" }, String(n)), h("span", {}, ...txt));
   const steps = android ? [
-    step(1, "En una computadora, entrá a ", h("b", {}, "calendar.google.com"), " con tu cuenta de Google."),
-    step(2, "Arriba a la derecha tocá la ", h("b", {}, "rueda ⚙︎ → Configuración"), "."),
-    step(3, "A la izquierda, abajo de «Configuración de mis calendarios», tocá ", h("b", {}, "tu nombre"), "."),
-    step(4, "Bajá hasta ", h("b", {}, "«Dirección secreta en formato iCal»"), " y tocá ", h("b", {}, "Copiar"), "."),
-    step(5, "Volvé acá y tocá ", h("b", {}, "Pegar el enlace y conectar"), ". ¡Listo!"),
+    ["En ", h("b", {}, "calendar.google.com"), ": ", h("b", {}, "⚙︎ Configuración"), " → tu calendario."],
+    ["Copiá la ", h("b", {}, "Dirección secreta en formato iCal"), "."],
+    ["Volvé acá y tocá ", h("b", {}, "Pegar"), "."],
   ] : [
-    step(1, "Salí de LIVET y abrí la app ", h("b", {}, "Calendario"), " del iPhone (la del ícono con la fecha)."),
-    step(2, "Abajo en el medio, tocá ", h("b", {}, "Calendarios"), "."),
-    step(3, "Vas a ver tus calendarios con un tilde. Al lado de uno (por ejemplo «Calendario»), tocá la ", h("b", {}, "ⓘ"), " de la derecha."),
-    step(4, "Bajá hasta el final, activá ", h("b", {}, "Calendario público"), ", tocá ", h("b", {}, "Compartir enlace…"), " y elegí ", h("b", {}, "Copiar"), "."),
-    step(5, "Volvé a LIVET y tocá ", h("b", {}, "Pegar el enlace y conectar"), ". Si el iPhone pregunta, tocá ", h("b", {}, "Permitir pegar"), ". ¡Listo!"),
+    ["En la app ", h("b", {}, "Calendario"), " tocá ", h("b", {}, "Calendarios"), " y la ", h("b", {}, "ⓘ"), " de tu calendario."],
+    ["Activá ", h("b", {}, "Calendario público"), " → ", h("b", {}, "Compartir enlace"), " → ", h("b", {}, "Copiar"), "."],
+    ["Volvé acá y tocá ", h("b", {}, "Pegar"), "."],
   ];
-  box.append(h("details", { class: "cs-ios", open: !!mobileOS() }, h("summary", {}, mobileOS() ? "Conectarlo desde el celular (2 minutos)" : "¿No tenés Mac? Conectalo desde el celular"),
-    h("ol", { class: "pc-steps" }, steps), paste, h("div", { class: "cal-row" }, field, btn), msg,
-    h("p", { class: "hint" }, android ? "" : "¿Tenés varios calendarios (Trabajo, Casa…)? Repetí los pasos con cada uno. ",
-      "Se hace una sola vez y queda guardado en tu cuenta: lo ves en todos tus dispositivos. Ojo: con «Calendario público» activado, quien tenga ese enlace puede ver ese calendario. LIVET lo guarda en privado y no lo comparte; si un día lo desactivás en el iPhone, se desconecta.")));
+  paste.textContent = "Pegar";
+  box.append(h("details", { class: "cs-ios", open: !!mobileOS() }, h("summary", {}, mobileOS() ? "Conectar desde el celular" : "¿No tenés Mac? Conectalo desde el celular"),
+    h("ol", { class: "steps-n" }, steps.map(x => h("li", {}, ...x))), paste, msg,
+    h("p", { class: "hint" }, "Quien tenga ese enlace puede ver ese calendario.")));
   return box;
 }
 async function CalSyncDialog() {
