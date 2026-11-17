@@ -1110,6 +1110,64 @@ body.ai-working::after{content:"";position:fixed;left:0;top:0;height:3px;width:1
 @keyframes ai-dot{0%,80%,100%{transform:scale(.5);opacity:.4}40%{transform:scale(1);opacity:1}}
 .ai-typing{padding:14px 16px}
 .md{line-height:1.55}.md p{margin:0 0 8px}.md ul{margin:4px 0 10px;padding-left:18px}.md li{margin:2px 0}
+
+/* Reproductor y línea de tiempo */
+.hf-player{display:grid;gap:10px}
+.hf-ctrl{display:flex;align-items:center;gap:10px}
+.hf-play{font-size:12px;width:34px}
+.hf-time{font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px;font-weight:600}
+.hf-tl{position:relative;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);padding:6px 8px 8px;user-select:none}
+.hf-tl-area{position:relative;cursor:pointer}
+.hf-tl.live .hf-tl-area{cursor:default}
+.hf-tl-ruler{position:relative;height:18px;margin-left:72px;font-size:10px;color:var(--faint)}
+.hf-tl-ruler span{position:absolute;top:2px;transform:translateX(-50%);font-variant-numeric:tabular-nums}
+.hf-tl-ruler span:first-child{transform:none}
+.hf-tl-row{display:grid;grid-template-columns:64px 1fr;gap:8px;align-items:center;margin-top:4px}
+.hf-tl-row b{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.hf-tl-lane{position:relative;height:30px;border-radius:8px;background:color-mix(in srgb,var(--text) 5%,transparent)}
+.hf-tl-clip{position:absolute;top:3px;bottom:3px;border-radius:6px;background:var(--orange);color:var(--on-accent);font-size:11px;font-weight:700;display:flex;align-items:center;padding:0 7px;overflow:hidden;white-space:nowrap;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+.hf-tl-clip span{overflow:hidden;text-overflow:ellipsis}
+.hf-tl-clip[data-tr="1"]{background:var(--text);color:var(--bg)}
+.hf-tl-clip[data-tr="5"]{background:var(--hot);color:#1d1100}
+.hf-tl-clip.new{animation:clip-pop .5s var(--spring) both}
+@keyframes clip-pop{from{transform:scaleX(.2);opacity:0;transform-origin:0 50%}to{transform:none;opacity:1}}
+.hf-tl-head{position:absolute;top:0;bottom:0;width:2px;background:#fff;pointer-events:none;left:72px}
+.hf-tl-head i{position:absolute;top:-2px;left:-5px;width:12px;height:12px;border-radius:3px;background:#fff}
+/* Generación en vivo */
+.hf-live{display:grid;gap:12px}
+.hf-live-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hf-live-top b{font-size:15px}
+.hf-steps{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+.hf-step{font-size:12px;font-weight:700;padding:4px 10px;border-radius:99px;border:1px solid var(--line-strong);color:var(--faint);transition:all .3s}
+.hf-step.on{border-color:var(--orange);color:var(--orange);background:var(--accent-soft)}
+.hf-step.ok{color:var(--text);border-color:var(--line-strong)}
+.hf-step.ok::before{content:"✓ ";color:var(--orange)}
+.hf-live-body{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start}
+.hf-live-stage{margin:0;background:#000}
+.hf-live-stage iframe{transition:opacity .35s}
+.hf-live-wait{position:absolute;inset:0;display:grid;place-items:center;align-content:center;gap:10px;color:var(--muted);font-size:13px}
+.hf-code-wrap{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#0c0d0f;min-width:0;align-self:stretch;display:flex;flex-direction:column}
+.hf-code-h{font:600 11px ui-monospace,Menlo,monospace;color:var(--faint);padding:8px 12px;border-bottom:1px solid var(--line)}
+.hf-code{margin:0;padding:10px 12px;font:11.5px/1.5 ui-monospace,Menlo,monospace;color:#c9c4bc;white-space:pre-wrap;word-break:break-all;flex:1;overflow:hidden;max-height:52vh;display:flex;flex-direction:column;justify-content:flex-end}
+.hf-caret{display:inline-block;width:7px;height:13px;background:var(--orange);vertical-align:-2px;animation:caret 1s steps(1) infinite}
+@keyframes caret{50%{opacity:0}}
+.card.flash{animation:flash 1.2s ease}
+@keyframes flash{0%,100%{box-shadow:none}30%{box-shadow:0 0 0 3px var(--orange)}}
+@media (max-width:900px){.hf-live-body{grid-template-columns:1fr!important}.hf-code{max-height:180px}}
+
+/* Casos */
+.case-h{font-size:clamp(22px,2.6vw,30px);margin:34px 0 14px}
+.case-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.case-grid.three{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+.case-card{display:grid;align-content:start;gap:10px;padding:20px;border:1px solid var(--line);border-radius:20px;background:var(--surface);transition:border-color .25s,transform .35s var(--spring)}
+.case-card:hover{border-color:var(--orange);transform:translateY(-4px) rotate(-.4deg)}
+.case-seg{justify-self:start;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--on-accent);background:var(--orange);border-radius:99px;padding:4px 10px}
+.case-card h3{font-size:22px;line-height:1.08;letter-spacing:-.02em}
+.case-ba{display:grid;gap:6px}
+.case-ba p{margin:0;font-size:14px;color:var(--muted);line-height:1.45}
+.case-ba b{color:var(--text)}
+.case-ba b.acc{color:var(--orange)}
+.case-grid.three .case-card{background:linear-gradient(160deg,color-mix(in srgb,var(--orange) 9%,var(--surface)),var(--surface) 60%)}
 @media (prefers-reduced-motion:reduce){.hf-tpl-art i{animation:none}body::before,.ticker-track,.s-cta::after,.live-dot{animation:none}.rv{opacity:1;transform:none;transition:none}}
 </style>
 </head>
@@ -1724,35 +1782,40 @@ const Logic = {
 /* ------------------------- Laboratorio de hooks (reglas, sin IA) ------------------------- */
 // Cada patrón es una fórmula real de apertura. Se completa con lo que escribe la persona.
 const HOOK_PATTERNS = [
-  { id: "resultado", name: "Resultado primero", need: ["resultado", "plazo"], t: "Logré {resultado} en {plazo}. Te cuento cómo.",
-    visual: "Mostrá el resultado ya terminado en el primer segundo, antes de explicar nada.", screen: "{resultado} en {plazo}" },
-  { id: "error", name: "Error común", need: ["audiencia", "tema"], t: "El error que más cometen {audiencia} con {tema}.",
-    visual: "Cortá directo a la acción equivocada, mientras la hacés mal a propósito.", screen: "El error #1 con {tema}" },
-  { id: "creencia", name: "Contra la creencia", need: ["tema"], t: "Lo que te dijeron sobre {tema} está mal.",
-    visual: "Tachá o girá en pantalla la frase típica que repite todo el mundo.", screen: "{tema}: lo que te mintieron" },
-  { id: "curiosidad", name: "Brecha de curiosidad", need: ["tema", "plazo"], t: "Probé {tema} durante {plazo} y el final me sorprendió.",
-    visual: "Mostrá un fragmento del final borroso o tapado, que se resuelve al terminar.", screen: "{plazo} con {tema}… ¿resultado?" },
-  { id: "numero", name: "Número específico", need: ["numero", "tema"], t: v => (Number(v.numero) === 1 ? "La única cosa que ojalá supiera antes de {tema}." : "{numero} cosas que ojalá supiera antes de {tema}."),
-    visual: "Abrí con los números en pantalla y una cuenta regresiva visible.", screen: v => (Number(v.numero) === 1 ? "Lo único que tenés que saber de {tema}" : "{numero} cosas sobre {tema}") },
-  { id: "apuesta", name: "Apuesta o consecuencia", need: ["error", "resultado"], t: "Dejá de {error} o olvidate de {resultado}.",
-    visual: "Primer plano a cámara, gesto serio, sin música los dos primeros segundos.", screen: "Para {resultado}: dejá de {error}" },
-  { id: "desafio", name: "Desafío directo", need: ["audiencia"], t: "{audiencia}: frená un segundo y mirá esto.",
-    visual: "Señalá a cámara o mostrá un objeto que ese perfil reconozca al instante.", screen: "Para {audiencia}" },
-  { id: "prueba", name: "Lo probé por vos", need: ["tema", "plazo"], t: "Probé {tema} durante {plazo} para que vos no tengas que hacerlo.",
-    visual: "Mostrá la evidencia del experimento: calendario, notas o capturas en pantalla.", screen: "Lo probé durante {plazo}" },
-  { id: "escena", name: "Mitad de escena", need: ["error"], t: "Estaba por {error} cuando pasó esto.",
-    visual: "Arrancá con el momento justo antes del giro, sin presentación.", screen: "Justo antes de {error}…" },
-  { id: "promesa", name: "Lo que haría distinto", need: ["resultado"], t: "Si tuviera que {resultado} de nuevo, haría esto distinto.",
-    visual: "Mostrá el antes y el después del cambio que harías, lado a lado.", screen: "Si tuviera que {resultado} de nuevo" },
+  { id: "error", name: "Error común", need: ["tema"], t: "Tu error #1 con {tema}.",
+    visual: "Hacé el error a propósito en el primer segundo.", screen: "Error #1: {tema}" },
+  { id: "creencia", name: "Contra la creencia", need: ["tema"], t: "Nadie te dice esto de {tema}.",
+    visual: "Tachá en pantalla la frase que repite todo el mundo.", screen: "{tema}: la verdad" },
+  { id: "curiosidad", name: "Brecha de curiosidad", need: ["tema"], t: "Probé {tema}. No esperaba esto…",
+    visual: "Mostrá el final tapado o borroso.", screen: "{tema}… ¿y?" },
+  { id: "tres", name: "Lista corta", need: ["tema"], t: "3 cosas de {tema} que nadie te dice.",
+    visual: "Tres dedos a cámara y el primer punto ya en pantalla.", screen: "3 cosas de {tema}" },
+  { id: "detras", name: "Detrás de escena", need: ["tema"], t: "Mirá cómo hacemos {tema} en 30 segundos.",
+    visual: "Arrancá en pleno rodaje, sin presentación.", screen: "Detrás de {tema}" },
+  { id: "desafio", name: "Desafío directo", need: ["audiencia"], t: "Esto es para {audiencia}.",
+    visual: "Señalá a cámara con algo que ese público reconozca.", screen: "Para {audiencia}" },
+  { id: "resultado", name: "Resultado primero", need: ["resultado"], t: "Así logré {resultado}. Te muestro.",
+    visual: "El resultado terminado en el primer segundo.", screen: "{resultado}: así" },
+  { id: "promesa", name: "Atajo", need: ["resultado"], t: "¿Querés {resultado}? Empezá por acá.",
+    visual: "Mostrá el antes y el después lado a lado.", screen: "Para {resultado}" },
+  { id: "apuesta", name: "Apuesta", need: ["error", "resultado"], t: "Dejá de {error} si querés {resultado}.",
+    visual: "Primer plano a cámara, serio, sin música.", screen: "Dejá de {error}" },
+  { id: "escena", name: "Mitad de escena", need: ["error"], t: "Iba a {error} y pasó esto…",
+    visual: "El momento justo antes del giro.", screen: "Justo antes de {error}…" },
 ];
 const HOOK_FIELDS = [
-  ["tema", "Tema (¿de qué trata?)", "ej: el presupuesto semanal"],
-  ["audiencia", "Para quién (en plural)", "ej: quienes viven solos"],
-  ["resultado", "Resultado, con un verbo", "ej: gastar la mitad en el súper"],
-  ["plazo", "Plazo", "ej: 30 días"],
-  ["numero", "Número", "ej: 5"],
-  ["error", "Hábito a evitar, con un verbo", "ej: comprar sin lista"],
+  ["tema", "Tema, corto (2 a 5 palabras)", "ej: grabar con Meta Ray-Ban"],
+  ["audiencia", "Para quién", "ej: marcas que quieren video"],
+  ["resultado", "Resultado, con un verbo", "ej: vender más con un reel"],
+  ["error", "Error a evitar, con un verbo", "ej: grabar sin guion"],
 ];
+// Acorta lo que escribió la persona: un hook se dice en un segundo.
+const HOOK_STOP = /^(de|del|un|una|unos|unas|el|la|los|las|con|y|en|para|a|al|que|por|sobre|mi|tu|su|como|cómo)$/i;
+function shortPhrase(x, max = 5) {
+  let w = String(x || "").replace(/^(un|una|el|la|mi|nuestro|nuestra)?\s*(video|vídeo|reel|post|contenido|publicación)s?\s+(de|con|sobre|del)\s+/i, "").split(/\s+/).filter(Boolean).slice(0, max);
+  while (w.length > 1 && HOOK_STOP.test(w[w.length - 1])) w.pop();
+  return w.join(" ");
+}
 // Lo que va en medio de la frase empieza en minúscula ("Gente que quiere…" → "gente que quiere…"); el tema se respeta como se escribió.
 const LOWER_KEYS = new Set(["audiencia", "resultado", "error"]);
 const lowFirst = x => (/^[A-ZÁÉÍÓÚÑ][a-záéíóúñü]/.test(x) ? x.charAt(0).toLowerCase() + x.slice(1) : x);
@@ -1763,24 +1826,20 @@ const VERB_RE = /^(?:[a-záéíóúñü]+(?:ar|er|ir|ár|ér|ír))(?:se|lo|la|lo
 const VERB_FIELDS = { error: "Hábito a evitar", resultado: "Resultado" };
 function normalizeHookVals(v) {
   const o = {}; for (const k of Object.keys(v)) o[k] = String(v[k] ?? "").replace(/\s+/g, " ").trim().replace(/[.!?,;:]+$/, "");
-  if (/^\d+$/.test(o.plazo || "")) o.plazo = o.plazo + (o.plazo === "1" ? " día" : " días");
-  o.plazo = (o.plazo || "").replace(/\bdias\b/i, "días");
-  if (/^\d+$/.test(o.numero || "") && Number(o.numero) < 1) o.numero = "";
+  o.tema = shortPhrase(o.tema, 5); o.audiencia = shortPhrase(o.audiencia.replace(/^para\s+/i, ""), 5); o.resultado = shortPhrase(o.resultado, 6); o.error = shortPhrase(o.error, 5);
   return o;
 }
 // Avisos sobre datos que harían quedar mal la frase.
 function hookWarnings(vals) {
   const o = normalizeHookVals(vals), w = [];
   for (const [k, lbl] of Object.entries(VERB_FIELDS)) if (o[k] && !VERB_RE.test(o[k])) w.push(`«${lbl}» tiene que empezar con un verbo en infinitivo (ej.: ${k === "error" ? "comprar sin lista" : "gastar la mitad en el súper"}). Esa fórmula quedó afuera.`);
-  if (o.numero && !/^\d+$/.test(o.numero)) w.push("«Número» tiene que ser una cifra, por ejemplo 5. Esa fórmula quedó afuera.");
-  if (o.plazo && !/\d|semana|mes|día|dia|año|hora/i.test(o.plazo)) w.push("«Plazo» funciona mejor con una cifra y una unidad, por ejemplo 30 días.");
   if (o.tema && /^\d+$/.test(o.tema)) w.push("«Tema» no puede ser solo un número.");
   return w;
 }
 function buildHooks(raw) {
   const vals = normalizeHookVals(raw);
   const okVerb = k => !vals[k] || VERB_RE.test(vals[k]);
-  return HOOK_PATTERNS.filter(p => p.need.every(k => vals[k]) && p.need.every(k => !(k in VERB_FIELDS) || okVerb(k)) && (!p.need.includes("numero") || /^\d+$/.test(vals.numero)))
+  return HOOK_PATTERNS.filter(p => p.need.every(k => vals[k]) && p.need.every(k => !(k in VERB_FIELDS) || okVerb(k)))
     .map(p => {
       const tpl = typeof p.t === "function" ? p.t(vals) : p.t, scr = typeof p.screen === "function" ? p.screen(vals) : p.screen;
       let text = fillTemplate(tpl, vals).replace(/\s+/g, " ").trim();
@@ -2988,7 +3047,7 @@ function HooksView() {
     h("div", { class: "grid g-2" },
       h("div", { class: "grid", style: "align-content:start" },
         Card("Constructor", null, h("div", { class: "card-p", style: "display:grid;gap:12px" },
-          h("p", { class: "muted", style: "font-size:13px" }, "Completá lo que sepas. Cada fórmula aparece cuando tiene los datos que necesita."),
+          h("p", { class: "muted", style: "font-size:13px" }, "Con el tema alcanza. Cuanto más corto, mejor."),
           fields, F("Plataforma", plat),
           h("div", { style: "display:flex;gap:8px;flex-wrap:wrap" },
             h("button", { class: "btn primary", type: "button", onclick: () => { state.hookWarn = hookWarnings(d); state.hookBuilt = buildHooks(d); render(); } }, icon("bolt"), "Generar hooks"),
@@ -3187,14 +3246,10 @@ const AGENTS = [
     line: "Arma el posicionamiento, el embudo y el plan de lanzamiento de una oferta.",
     makes: ["Propuesta de valor en una frase", "Plan de 2 semanas con llamadas a la acción", "Qué medir y cuándo decidir"],
     ph: "Ej: lanzar una guía de 20 recetas en PDF a mi audiencia de Instagram" },
-  { id: "hyperframes", name: "Hyperframes", icon: "play", tone: "red", area: "video",
-    line: "Escribe una composición en HTML para renderizar el video con HyperFrames.",
-    makes: ["Archivo HTML con escenas y tiempos", "Pasos para previsualizar y renderizar", "Lista de recursos que tenés que aportar"],
-    ph: "Ej: video vertical de 15 segundos con 3 consejos y subtítulos" },
   { id: "video", name: "Video", icon: "play", tone: "red", area: "video",
-    line: "Planifica la grabación y el montaje: tomas, ritmo, subtítulos y música.",
-    makes: ["Lista de tomas con duración", "Plan de montaje y cortes", "Checklist de grabación"],
-    ph: "Ej: plan de grabación y edición para un Reel de 30 segundos" },
+    line: "Crea videos animados con el motor HyperFrames. Los ves armarse en vivo y los bajás en MP4.",
+    makes: ["Video con tu logo, colores y clips", "Vista previa en vivo con línea de tiempo", "Descarga en MP4 para Reels, TikTok y YouTube"],
+    ph: "Ej: video vertical de 15 segundos con 3 consejos y subtítulos" },
   { id: "graficos", name: "Gráficos", icon: "img", tone: "cy",
     line: "Define portadas, láminas de carrusel y miniaturas: composición, texto y colores.",
     makes: ["Brief gráfico lámina por lámina", "Texto sobre imagen con jerarquía", "Qué material tenés que aportar"],
@@ -3725,6 +3780,7 @@ async function hfGenerate() {
 FORMATO OBLIGATORIO (respondé SOLO con un bloque \`\`\`html con el archivo completo, sin texto fuera del bloque):
 - Archivo HTML completo y autocontenido (<!doctype html>, <head> con <title> corto en español, <style> y <body>).
 - Raíz: <div id="stage" data-composition-id="livet" data-start="0" data-duration="${secs}" data-width="${W}" data-height="${H}"> con width:${W}px;height:${H}px;overflow:hidden y position:relative. html y body del mismo tamaño, sin márgenes.
+- Escribí en este orden: <head> (title y style), después cada escena en orden cronológico y al final los <script>.
 - Cada escena, texto o subtítulo es un elemento con class="clip", data-start, data-duration (segundos) y data-track-index (0 escenas, 1 subtítulos). Todo dentro de #stage. La duración total es exactamente ${secs} segundos.
 - Animaciones SOLO con GSAP 3 desde <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"><\/script>: const tl = gsap.timeline({ paused: true }); ... window.__timelines = window.__timelines || {}; window.__timelines.livet = tl; Nada de setTimeout, requestAnimationFrame, Math.random ni Date: tiene que ser determinista.
 - Clips con opacity:0 de inicio y que GSAP los muestre y oculte en sus tiempos. Agregá al final tl.to({}, { duration: 0.01 }, ${secs} - 0.01).
@@ -3733,25 +3789,181 @@ FORMATO OBLIGATORIO (respondé SOLO con un bloque \`\`\`html con el archivo comp
 ${res || "- (no hay recursos: solo texto, formas, degradados y emojis)"}
 - Texto grande y legible en celular, máximo 8 palabras por pantalla, márgenes seguros de 80px. Hook fuerte en el primer segundo. Movimiento con intención: entradas con power3.out o back.out, nada de rebotes eternos.
 - Colores de la marca salvo que pida otros: acento ${b.c1}, fondo ${b.c2}, texto ${b.c3}. Cierre con ${b.url}. ${f.style ? "Estilo pedido: " + f.style : ""}`;
-  const r = await AI.call("agent", { role: "hyperframes", brief: brief.slice(0, 7000) });
-  const html = hfExtract(r.text);
-  if (!html) throw new Error("La IA no devolvió una composición válida. Probá de nuevo o con una idea más concreta.");
-  hfAdd({ html, idea }); render(); toast("Video generado. Miralo en la vista previa.");
+  const g = HF.gen = { text: "", t0: Date.now(), secs, format: f.format, ctrl: new AbortController(), ui: null };
+  render(); document.querySelector(".hf-live")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  let queued = false;
+  try {
+    const text = await AI.stream("ai-video", { brief: brief.slice(0, 8000) }, t => {
+      g.text = t; if (queued) return; queued = true;
+      setTimeout(() => { queued = false; if (HF.gen === g) g.ui?.update(g.text); }, 120);
+    }, g.ctrl.signal);
+    g.ui?.update(text, true);
+    const html = hfExtract(text);
+    if (!html) throw new Error("La IA no terminó el video. Probá de nuevo o con una idea más concreta.");
+    await hfWait(500);
+    HF.gen = null; hfAdd({ html, idea }); render(); toast("¡Video listo! Ya se está reproduciendo.");
+    document.querySelector(".hf-player")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  } catch (e) {
+    HF.gen = null; render();
+    if (e.name === "AbortError") { toast("Generación cancelada."); return; }
+    throw e;
+  }
 }
-function HfPreview(item) {
+/* ---------- Reproductor propio con línea de tiempo ---------- */
+const hfFmtT = t => { t = Math.max(0, t); const m = Math.floor(t / 60), s = Math.floor(t % 60); return `${m}:${String(s).padStart(2, "0")}`; };
+const HF_TRACKS = { 0: "Escenas", 1: "Textos", 5: "Capas" };
+function hfClipsFrom(list, dur) {
+  return list.map(c => ({ s: Math.max(0, Number(c.s) || 0), d: Math.max(0.1, Number(c.d) || dur), tr: Number(c.tr) || 0, label: String(c.label || "").trim().slice(0, 40) }));
+}
+// Línea de tiempo: pistas, bloques, regla de segundos y cabezal (opcional).
+function HfTimeline({ clips, dur, onSeek, live }) {
+  dur = Math.max(1, dur || 1);
+  const tracks = [...new Set(clips.map(c => c.tr))].sort((a, b) => a - b);
+  if (!tracks.length) tracks.push(0);
+  const step = dur > 40 ? 10 : dur > 20 ? 5 : dur > 10 ? 2 : 1;
+  const ticks = []; for (let s = 0; s <= dur + 0.001; s += step) ticks.push(h("span", { style: `left:${(s / dur) * 100}%` }, hfFmtT(s)));
+  const head = h("div", { class: "hf-tl-head" }, h("i"));
+  const area = h("div", { class: "hf-tl-area" },
+    h("div", { class: "hf-tl-ruler" }, ticks),
+    ...tracks.map(tr => h("div", { class: "hf-tl-row" },
+      h("b", {}, HF_TRACKS[tr] || `Pista ${tr}`),
+      h("div", { class: "hf-tl-lane" }, clips.filter(c => c.tr === tr).map((c, i) => h("div", {
+        class: "hf-tl-clip" + (live && c.isNew ? " new" : ""), "data-tr": String(tr),
+        style: `left:${(c.s / dur) * 100}%;width:${Math.max(0.8, (Math.min(c.d, dur - c.s) / dur) * 100)}%`, title: `${c.label || "Clip"} · ${c.s.toFixed(1)}–${(c.s + c.d).toFixed(1)} s`,
+      }, h("span", {}, c.label || `Clip ${i + 1}`)))))),
+    onSeek ? head : null);
+  const el = h("div", { class: "hf-tl" + (live ? " live" : "") }, area);
+  if (onSeek) {
+    const lane0 = () => area.querySelector(".hf-tl-lane") || area;
+    const at = e => { const r = lane0().getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * dur; };
+    let drag = false;
+    area.addEventListener("pointerdown", e => { drag = true; area.setPointerCapture?.(e.pointerId); onSeek(at(e)); });
+    area.addEventListener("pointermove", e => { if (drag) onSeek(at(e)); });
+    area.addEventListener("pointerup", () => { drag = false; });
+    el.setHead = t => { const lane = lane0(), r = lane.getBoundingClientRect(), ar = area.getBoundingClientRect(); head.style.left = `${r.left - ar.left + (t / dur) * r.width}px`; };
+  }
+  return el;
+}
+function HfPlayer(item) {
   const m = hfMeta(hfHtml(item));
-  const box = h("div", { class: "hf-stage", style: `aspect-ratio:${m.w}/${m.h};width:min(100%, calc(66vh * ${m.w} / ${m.h}))` }, h("div", { class: "empty" }, h("span", { class: "spin" }), " Cargando la vista previa…"));
-  Promise.all([hfLoadPlayer(), HF.urlP]).then(([ok, url]) => {
+  const box = h("div", { class: "hf-stage", style: `aspect-ratio:${m.w}/${m.h};width:min(100%, calc(50vh * ${m.w} / ${m.h}))` }, h("div", { class: "empty" }, h("span", { class: "ai-dots" }, h("i"), h("i"), h("i")), " Cargando…"));
+  const playBtn = h("button", { class: "btn sm icon-btn hf-play", type: "button", "aria-label": "Pausar" }, "❚❚");
+  const time = h("span", { class: "hf-time" }, "0:00 / 0:00");
+  const tlWrap = h("div", { class: "hf-tl-wrap" });
+  const wrap = h("div", { class: "hf-player" }, box, h("div", { class: "hf-ctrl" }, playBtn, time), tlWrap);
+  HF.urlP.then(url => {
     if (HF.cur !== item || !url) return;
-    if (ok) box.replaceChildren(h("hyperframes-player", { src: url, controls: "", autoplay: "", loop: "", muted: "", width: String(m.w), height: String(m.h), style: "width:100%;height:100%;display:block" }));
-    else {
-      const fr = h("iframe", { src: url, title: "Vista previa", sandbox: "allow-scripts allow-same-origin", style: `position:absolute;left:0;top:0;width:${m.w}px;height:${m.h}px;border:0;transform-origin:0 0` });
-      const fit = () => { fr.style.transform = `scale(${box.clientWidth / m.w})`; };
-      try { new ResizeObserver(fit).observe(box); } catch { /* sin observer */ } setTimeout(fit, 0);
-      box.replaceChildren(fr, h("p", { class: "hint", style: "position:absolute;bottom:6px;left:8px;right:8px;color:#f5f2ed" }, "No se pudo cargar el reproductor de HyperFrames: se muestra sin controles."));
-    }
+    const fr = h("iframe", { src: url, title: "Vista previa del video", sandbox: "allow-scripts allow-same-origin", style: `position:absolute;left:0;top:0;width:${m.w}px;height:${m.h}px;border:0;transform-origin:0 0` });
+    const fit = () => { fr.style.transform = `scale(${box.clientWidth / m.w})`; };
+    try { new ResizeObserver(fit).observe(box); } catch { /* sin observer */ }
+    box.replaceChildren(fr); setTimeout(fit, 0);
+    fr.onload = async () => {
+      let tl = null, win = fr.contentWindow, doc = fr.contentDocument;
+      for (let i = 0; i < 80 && !tl; i++) { tl = Object.values(win.__timelines || {})[0]; if (!tl) await hfWait(60); }
+      if (!tl) { box.append(h("p", { class: "hint", style: "position:absolute;left:10px;bottom:6px;color:#fff" }, "Este video no tiene animación registrada.")); return; }
+      for (let i = 0; i < 30 && win.__hfRuntime && !win.__hfReady; i++) await hfWait(50);
+      const root = doc.querySelector("[data-composition-id]");
+      const dur = Number(root?.getAttribute("data-duration")) || tl.duration() || 10;
+      const els = [...doc.querySelectorAll(".clip")];
+      const clips = hfClipsFrom(els.map(el => ({ s: el.dataset.start, d: el.dataset.duration, tr: el.dataset.trackIndex, label: el.id && !/^[sc]\d+$/.test(el.id) ? el.id : (el.textContent || "").replace(/\s+/g, " ").trim() || (el.querySelector("img,video") ? "Imagen" : "") })), dur);
+      let t = 0, playing = true, last = performance.now();
+      const seek = v => {
+        t = Math.max(0, Math.min(dur - 0.001, v));
+        try { tl.seek(t, false); } catch { /* sigue */ }
+        for (const el of els) { const s = Number(el.dataset.start) || 0, d = Number(el.dataset.duration) || dur; el.style.visibility = t >= s && t < s + d ? "" : "hidden"; }
+        time.textContent = `${hfFmtT(t)} / ${hfFmtT(dur)}`; tlEl.setHead?.(t);
+      };
+      const tlEl = HfTimeline({ clips, dur, onSeek: v => { playing = false; playBtn.textContent = "▶"; playBtn.setAttribute("aria-label", "Reproducir"); seek(v); } });
+      tlWrap.replaceChildren(tlEl);
+      playBtn.onclick = () => { playing = !playing; playBtn.textContent = playing ? "❚❚" : "▶"; playBtn.setAttribute("aria-label", playing ? "Pausar" : "Reproducir"); last = performance.now(); };
+      const loop = now => {
+        if (!wrap.isConnected) return;
+        if (playing) { t += (now - last) / 1000; if (t >= dur) t = 0; seek(t); }
+        last = now; requestAnimationFrame(loop);
+      };
+      seek(0); requestAnimationFrame(loop);
+    };
   });
-  return box;
+  return wrap;
+}
+const HfPreview = HfPlayer;
+
+/* ---------- Generación en vivo ---------- */
+AI.stream = async function (fn, body, onText, signal) {
+  if (state.demo) throw new Error("En la demo no hay IA conectada. Ingresá con tu cuenta para usarla.");
+  if (AI.status && AI.status.consented === false && !(await AI.askConsent()))
+    throw Object.assign(new Error("Para usar la IA tenés que aceptar el envío de datos al proveedor."), { code: "no_consent" });
+  const { data: { session } } = await sb.auth.getSession();
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, { method: "POST", signal,
+    headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${session?.access_token || SUPABASE_KEY}` }, body: JSON.stringify(body) });
+  if (!r.ok || !r.body) { let msg = "El asistente no respondió."; try { const j = await r.json(); msg = j.message || msg; if (j.code) throw Object.assign(new Error(msg), { code: j.code }); } catch (e) { if (e.code) throw e; } throw new Error(msg); }
+  const rd = r.body.getReader(), dec = new TextDecoder(); let text = "";
+  while (true) { const { value, done } = await rd.read(); if (done) break; text += dec.decode(value, { stream: true }); onText(text); }
+  AI.refresh?.().then(() => AI.lowCheck?.());
+  return text;
+};
+function hfParsePartial(text, fallbackDur) {
+  let html = text.replace(/^[\s\S]*?```(?:html)?\s*/i, m => (/```/.test(m) ? "" : m)).replace(/```[\s\S]*$/, "");
+  const lt = html.lastIndexOf("<"); if (lt > html.lastIndexOf(">")) html = html.slice(0, lt);
+  const dur = Number((/data-composition-id[^>]*?data-duration="([\d.]+)"|data-duration="([\d.]+)"[^>]*?data-composition-id/.exec(html) || []).slice(1).find(Boolean)) || fallbackDur;
+  const clips = [];
+  const re = /<(\w+)([^>]*\bclass="[^"]*\bclip\b[^"]*"[^>]*)>/g; let m;
+  while ((m = re.exec(html))) {
+    const a = m[2], g = k => (new RegExp(`data-${k}="([^"]*)"`).exec(a) || [])[1];
+    const id = (/\bid="([^"]+)"/.exec(a) || [])[1];
+    const txt = html.slice(re.lastIndex, re.lastIndex + 400).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().split(" ").slice(0, 5).join(" ");
+    clips.push({ s: g("start"), d: g("duration"), tr: g("track-index"), label: txt || id || "" });
+  }
+  const phase = /<script/i.test(html.split(/<body/i)[1] || "") || /gsap\.timeline/.test(html) ? "anim" : /<body/i.test(html) ? "scenes" : /<style/i.test(html) ? "style" : "start";
+  return { html, dur, clips: hfClipsFrom(clips, dur), phase };
+}
+function hfLiveDoc(html) {
+  const clean = html.replace(/<script[\s\S]*?(<\/script>|$)/gi, "");
+  return clean + `<style>.clip{opacity:0!important;visibility:visible!important;transition:none!important}.clip.__live{opacity:1!important;transform:none!important}</style>
+<script>(function(){var cs=[].slice.call(document.querySelectorAll('.clip'));var by={};cs.forEach(function(c){var t=c.getAttribute('data-track-index')||'0';by[t]=c});Object.keys(by).forEach(function(k){by[k].classList.add('__live')});})();<\/script>`;
+}
+function HfLive() {
+  const g = HF.gen;
+  const [, W, H] = HF_FORMATS[g.format] || HF_FORMATS.vertical;
+  const stage = h("div", { class: "hf-stage hf-live-stage", style: `aspect-ratio:${W}/${H};width:100%` },
+    h("div", { class: "hf-live-wait" }, h("span", { class: "ai-dots" }, h("i"), h("i"), h("i")), h("span", {}, "Pensando el guion…")));
+  const code = h("pre", { class: "hf-code" });
+  const secs = h("span", { class: "ai-secs" }, "0 s");
+  const steps = [["style", "Estilo"], ["scenes", "Escenas"], ["anim", "Animación"], ["done", "Listo"]].map(([k, l]) => h("span", { class: "hf-step", "data-k": k }, l));
+  const tlWrap = h("div", { class: "hf-tl-wrap" }, HfTimeline({ clips: [], dur: g.secs, live: true }));
+  const cancel = h("button", { class: "btn sm ghost", type: "button", onclick: () => g.ctrl.abort() }, "Cancelar");
+  const el = h("div", { class: "hf-live" },
+    h("div", { class: "hf-live-top" }, h("span", { class: "ai-dots" }, h("i"), h("i"), h("i")), h("b", {}, "La IA está creando tu video"), secs, h("div", { class: "hf-steps" }, steps), cancel),
+    h("div", { class: "hf-live-body", style: `grid-template-columns:minmax(0, min(${W > H ? 60 : 42}%, calc(52vh * ${W} / ${H}))) minmax(0,1fr)` }, stage, h("div", { class: "hf-code-wrap" }, h("div", { class: "hf-code-h" }, "index.html"), code)),
+    tlWrap);
+  let frames = [], lastDoc = "", lastPrev = 0, nClips = 0;
+  const swapPreview = doc => {
+    const f = h("iframe", { sandbox: "allow-scripts", title: "Vista previa en vivo", style: `position:absolute;left:0;top:0;width:${W}px;height:${H}px;border:0;transform-origin:0 0;opacity:0;transform:scale(${stage.clientWidth / W || 0.3})` });
+    f.srcdoc = doc;
+    f.onload = () => { f.style.opacity = "1"; frames.filter(x => x !== f).forEach(x => x.remove()); frames = [f]; };
+    stage.querySelector(".hf-live-wait")?.remove(); stage.append(f); frames.push(f);
+  };
+  g.ui = {
+    update(text, final) {
+      const p = hfParsePartial(text, g.secs);
+      secs.textContent = Math.round((Date.now() - g.t0) / 1000) + " s";
+      const ph = final ? "done" : p.phase, order = ["start", "style", "scenes", "anim", "done"];
+      steps.forEach(s => { const k = s.dataset.k; s.classList.toggle("on", k === ph); s.classList.toggle("ok", order.indexOf(k) < order.indexOf(ph)); });
+      steps[1].textContent = p.clips.length ? `Escenas · ${p.clips.length}` : "Escenas";
+      const lines = p.html.split("\n"); code.textContent = lines.slice(-22).join("\n"); code.append(h("i", { class: "hf-caret" }));
+      if (p.clips.length !== nClips) {
+        p.clips.forEach((c, i) => { c.isNew = i >= nClips; }); nClips = p.clips.length;
+        tlWrap.replaceChildren(HfTimeline({ clips: p.clips, dur: p.dur, live: true }));
+      }
+      const now = Date.now();
+      if (/<body/i.test(p.html) && (now - lastPrev > 1300 || final)) { const d = hfLiveDoc(p.html); if (d !== lastDoc) { lastDoc = d; lastPrev = now; swapPreview(d); } }
+    },
+  };
+  try { new ResizeObserver(() => frames.forEach(f => { f.style.transform = `scale(${stage.clientWidth / W})`; })).observe(stage); } catch { /* sin observer */ }
+  if (g.text) setTimeout(() => g.ui === el._ui && g.ui.update(g.text), 0);
+  el._ui = g.ui;
+  const tick = setInterval(() => { if (!el.isConnected || HF.gen !== g) return clearInterval(tick); secs.textContent = Math.round((Date.now() - g.t0) / 1000) + " s"; }, 1000);
+  return el;
 }
 
 /* ---------- Exportar a MP4 en el navegador ----------
@@ -3974,6 +4186,11 @@ function HfLayers(item) {
       h("button", { class: "btn sm ghost danger", type: "button", "aria-label": "Quitar capa", onclick: () => { item.layers.splice(i, 1); hfSave(); hfOpen(item); render(); } }, "✕")))
       : h("p", { class: "muted", style: "padding:12px 16px" }, "Sumá tu logo como marca de agua, una foto o un clip tuyo sobre cualquier video, también los de IA.")));
 }
+function hfGoCreate() {
+  const box = document.getElementById("hf-new"); if (!box) return;
+  box.closest(".card")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  const t = box.querySelector("textarea"); setTimeout(() => { t?.focus(); box.closest(".card")?.classList.add("flash"); setTimeout(() => box.closest(".card")?.classList.remove("flash"), 1200); }, 450);
+}
 function VideoView() {
   const f = HF.form;
   if (!HFM.ready) hfMediaLoad().then(() => { if (state.view === "video") render(); });
@@ -3992,9 +4209,10 @@ function VideoView() {
   return h("div", { class: "hf-studio" },
     PageHead("Video", "Elegí un ejemplo, ponele tu marca y bajalo en MP4.",
       HfUploadButton("Subir recursos", "btn"),
-      cur ? h("button", { class: "btn primary", type: "button", onclick: () => hfExportDialog(cur) }, icon("play"), "Exportar MP4") : null),
+      h("button", { class: "btn primary", type: "button", onclick: hfGoCreate }, icon("spark"), "Crear video")),
     h("div", { class: "grid g-main" },
       h("div", { class: "grid", style: "align-content:start" },
+        HF.gen ? Card("Creando con IA", null, h("div", { class: "card-p" }, HfLive())) :
         Card("Vista previa", cur ? h("span", { class: "muted", style: "font-size:12px" }, h("span", { class: "live-dot" }), cur.title) : null,
           h("div", { class: "card-p" }, cur ? [HfPreview(cur),
             h("div", { class: "actions-row" },
@@ -4004,15 +4222,15 @@ function VideoView() {
               h("button", { class: "btn ghost", type: "button", onclick: () => hfEdit(cur) }, "Editar HTML"),
               h("button", { class: "btn ghost", type: "button", onclick: async () => copyText(await hfResolve(hfHtml(cur), "data")) }, icon("copy"), "Copiar"),
               h("button", { class: "btn ghost", type: "button", onclick: hfRenderGuide }, "Exportar con HyperFrames"))]
-            : Empty("Todavía no hay videos", "Elegí un video de ejemplo de la derecha, o escribí una idea y generalo con IA.",
-                h("button", { class: "btn primary", type: "button", onclick: () => { hfFromTpl("tips"); render(); } }, "Abrir un ejemplo")))),
+            : Empty("Todavía no hay videos", "Contale a la IA tu idea o elegí un ejemplo.",
+                h("button", { class: "btn primary", type: "button", onclick: hfGoCreate }, icon("spark"), "Crear video")))),
         cur && cur.tpl && HF_TPL[cur.tpl] ? HfCustomize(cur) : null,
         cur ? HfLayers(cur) : null),
       h("div", { class: "grid", style: "align-content:start" },
         HfTemplates(),
         HfAssets(),
         HfBrand(),
-        Card("Nuevo video con IA", null, h("div", { class: "card-p", style: "display:grid;gap:12px" },
+        Card("Crear video con IA", null, h("div", { class: "card-p", id: "hf-new", style: "display:grid;gap:12px" },
           F("¿De qué trata?", idea), h("div", { class: "row2" }, F("Formato", fmt), F("Duración", secs)), F("Estilo", style),
           h("div", {}, h("div", { class: "field" }, "Usar mis recursos"), useAssets),
           aiButton("Generar video", hfGenerate, { cls: "btn primary", ic: "spark" }),
@@ -4026,7 +4244,7 @@ function VideoView() {
               HF.list = HF.list.filter(x => x !== it); hfSave(); if (HF.cur === it) { HF.cur = null; } render(); } }, "✕")))
             : h("p", { class: "muted", style: "padding:12px" }, "Los videos se guardan en este navegador.")))),
     ),
-    h("div", { class: "agent-list", style: "margin-top:16px" }, AGENTS.filter(a => a.area === "video" && a.id !== "hyperframes").map(agentCard)));
+    );
 }
 VIEWS.video = VideoView;
 function AgentsView() {
@@ -5127,7 +5345,7 @@ function paletteItems() {
   const items = [{ k: "Sitio", l: "Inicio", run: () => navTo(SITE_HOME) },
     ...Object.entries(SITE_PAGES).map(([id, l]) => ({ k: "Sitio", l, run: () => navTo(id) })),
     ...Object.entries(LEGAL_DOCS).map(([id, d]) => ({ k: "Legal", l: d.title, run: () => openLegal(id) })),
-    ...AGENTS.map(a => ({ k: "Agente", l: `Agente de ${a.name}`, run: () => (state.user ? AgentDialog(a) : navTo("agentes")) }))];
+    ...AGENTS.map(a => ({ k: "Agente", l: `Agente de ${a.name}`, run: () => (state.user ? (a.id === "video" ? go("video") : AgentDialog(a)) : navTo("agentes")) }))];
   if (state.user) items.push(...ALL_NAV.map(n => ({ k: "App", l: n.label, run: () => { state.page = ""; go(n.id); route(); } })),
     { k: "App", l: "Mis datos", run: MyDataDialog });
   return items;
@@ -5272,7 +5490,7 @@ function HookLab() {
   const vals = { tema: "ahorrar en el súper", audiencia: "quienes viven solos", resultado: "gastar la mitad en el súper" };
   const out = h("ol", { class: "lab-out", "aria-live": "polite" });
   const paint = () => {
-    const hs = buildHooks({ ...vals, plazo: "", numero: "", error: "" }).slice(0, 4);
+    const hs = buildHooks({ ...vals, error: "" }).slice(0, 4);
     out.replaceChildren(...(hs.length ? hs.map(x => h("li", {}, h("span", { class: "lab-t" }, x.text), h("small", {}, `${x.pattern} · ${x.score.score}/${x.score.total} en la lista de control`)))
       : [h("li", { class: "muted" }, "Completá al menos el resultado para ver ideas.")]));
   };
@@ -5370,15 +5588,30 @@ function GuidePage() {
 const PageTitle = (t, sub) => h("header", { class: "doc-head" }, h("h1", {}, t), h("p", { class: "lead" }, sub));
 
 function CasesPage() {
-  const cases = [
-    ["Creadora de recetas rápidas", "Define su nicho y su audiencia en Mi marca, planifica tres Reels y un carrusel por semana, prueba hooks y revisa qué pieza guardó más gente.", ["Mi marca", "Lanzamientos", "Hooks", "Reseñas"]],
-    ["Freelance que ordena su semana", "Prioriza tareas con fecha, mira la semana en el calendario y registra ingresos y gastos para saber cuánto puede ahorrar.", ["Tareas", "Calendario", "Finanzas", "Asistente"]],
-    ["Estudiante que arma hábitos", "Divide una meta en hitos, marca hábitos cada día y mira la racha.", ["Objetivos", "Hábitos"]],
-    ["Emprendedora que lanza una oferta", "Le pide al agente de Marketing el plan de lanzamiento, al de Gráficos el brief del carrusel y al de Guiones el guion del video.", ["Equipo", "Lanzamientos"]],
+  const people = [
+    ["Creadora de contenido", "Dejó de improvisar los lunes", "Publicaba cuando se acordaba.", "3 Reels por semana en el calendario, hooks probados y una reseña de cada pieza.", ["Mi marca", "Lanzamientos", "Hooks"]],
+    ["Freelance", "Sabe cuánto gana antes de fin de mes", "Facturaba sin saber qué le quedaba.", "Tareas por cliente, ingresos y gastos cargados y el balance del mes siempre arriba.", ["Clientes", "Finanzas"]],
+    ["Fotógrafa", "Convierte cada sesión en un Reel", "Las fotos quedaban en el disco.", "Sube sus fotos, elige un video de ejemplo con su logo y lo baja en MP4.", ["Video"]],
+    ["Estudiante", "No abandona el gimnasio en marzo", "Arrancaba fuerte y a las dos semanas largaba.", "Una meta en hitos, el hábito marcado cada día y la racha a la vista.", ["Objetivos", "Hábitos"]],
+    ["Emprendedora", "Lanza su oferta en una tarde", "Pasaba semanas armando el lanzamiento.", "Marketing le arma el plan, Gráficos el carrusel y Video el anuncio animado.", ["Marketing", "Video"]],
   ];
-  return h("div", { class: "doc" }, PageTitle("Casos", "Escenarios de ejemplo para entender cómo se usa LIVET. No son clientes ni testimonios."),
-    h("div", { class: "cases" }, cases.map(([t, p, tags]) => h("article", {}, h("h3", {}, t), h("p", {}, p),
-      h("div", { class: "tags" }, tags.map(x => h("span", { class: "tag cy" }, x)))))));
+  const biz = [
+    ["Pyme · Comercio", "Una panadería que no pierde más pedidos", "Los pedidos se perdían en WhatsApp.", "Cada pedido es una tarea con responsable y fecha. El dueño ve quién está atrasado.", ["Empresa", "Tareas", "Clientes"]],
+    ["Pyme · Agencia", "8 personas, 12 clientes y todo a tiempo", "Nadie sabía quién tenía qué.", "Clientes asignados, tareas que el jefe revisa, chat por cliente e informes con IA.", ["Empresa", "Marketing"]],
+    ["Corporativo · Marketing", "20 piezas por mes con una sola voz", "Cada área publicaba a su manera.", "El agente de Marca revisa cada texto y Video produce con la plantilla y el logo de la empresa.", ["Marketing", "Video", "Equipo"]],
+  ];
+  const card = ([seg, title, before, after, tags]) => h("article", { class: "case-card" },
+    h("span", { class: "case-seg" }, seg), h("h3", {}, title),
+    h("div", { class: "case-ba" }, h("p", {}, h("b", {}, "Antes "), before), h("p", {}, h("b", { class: "acc" }, "Con LIVET "), after)),
+    h("div", { class: "tags" }, tags.map(x => h("span", { class: "tag cy" }, x))));
+  return h("div", { class: "doc wide" }, PageTitle("Casos", "Ejemplos de cómo se usa LIVET. Escenarios ilustrativos, no clientes reales."),
+    h("h2", { class: "case-h" }, "Para vos"),
+    h("div", { class: "case-grid" }, people.map(card)),
+    h("h2", { class: "case-h" }, "Para empresas: pymes y corporativos"),
+    h("div", { class: "case-grid three" }, biz.map(card)),
+    h("div", { class: "cta-row", style: "margin-top:28px" },
+      h("button", { type: "button", class: "btn primary lg", onclick: () => enterDemo() }, "Probar la demo"),
+      h("button", { type: "button", class: "btn lg", onclick: () => navTo("precios") }, "Ver planes")));
 }
 
 function AgentsPage() {
@@ -5401,7 +5634,7 @@ function FaqPage() {
     ["¿Puedo descargar o borrar mis datos?", "Sí, desde Mis datos: descargás un archivo JSON o borrás tu cuenta y todo lo que cargaste."],
     ["¿Cómo funciona Empresa?", "Creás tu empresa y obtenés códigos de invitación para tu equipo. Vos elegís quién es jefe. Los jefes cargan clientes, asignan tareas y revisan; los empleados ven solo sus tareas y las marcan como hechas. Todo queda separado por empresa."],
     ["¿Mis empleados y clientes ven los datos de otras empresas?", "No. Cada empresa está aislada con reglas de seguridad en la base de datos. Dentro de la empresa, un empleado ve sus propias tareas, los clientes cargados y los chats en los que participa."],
-    ["¿Los agentes graban o editan video?", "No. El video tiene su propia pestaña en la app. Escriben el guion, el plan de grabación o el archivo HTML de HyperFrames. Grabar y renderizar lo hacés vos."],
+    ["¿Los agentes graban o editan video?", "No. El video tiene su propia pestaña, con el motor HyperFrames: la IA lo crea en vivo y lo bajás en MP4."],
     ["¿Qué es el modo demo?", "Datos de ejemplo, sin registrarte. No se guarda nada."],
   ];
   return h("div", { class: "doc" }, PageTitle("Preguntas frecuentes", "Lo que más se pregunta antes de empezar."),
