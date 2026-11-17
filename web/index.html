@@ -1461,6 +1461,27 @@ function fmtRange(start) {
 }
 const fmtTime = iso => new Date(iso).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit", hour12: false });
 const isoDay = iso => ymd(new Date(iso));
+// Día de inicio y de fin (incluido) de un evento, para mostrarlo en todos los días que dura.
+function evSpan(e) {
+  const allDayIso = e.all_day && /T00:00:00(\.000)?Z$/.test(String(e.starts_at));
+  const start = allDayIso ? String(e.starts_at).slice(0, 10) : isoDay(e.starts_at);
+  if (!e.ends_at) return [start, start];
+  let end;
+  if (e.all_day) {
+    end = /T00:00:00(\.000)?Z$/.test(String(e.ends_at)) ? String(e.ends_at).slice(0, 10) : isoDay(e.ends_at);
+    if (e.exclusiveEnd) end = ymd(new Date(new Date(end + "T12:00").getTime() - 864e5));
+  } else end = isoDay(new Date(new Date(e.ends_at).getTime() - 1));
+  return [start, end < start ? start : end];
+}
+const evOnDay = (e, d) => { const [a, b] = evSpan(e); return d >= a && d <= b; };
+// Hora a mostrar en un día: el primero muestra el inicio, los siguientes dicen hasta cuándo sigue.
+function evLabel(e, d) {
+  const [a, b] = evSpan(e);
+  if (a === b) return e.all_day ? "Todo el día" : fmtTime(e.starts_at);
+  if (d === a) return e.all_day ? "Desde hoy" : "Desde " + fmtTime(e.starts_at);
+  if (d === b) return e.all_day ? "Último día" : "Hasta " + fmtTime(e.ends_at);
+  return "Sigue";
+}
 const toLocalInput = iso => { const d = new Date(iso); return `${ymd(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 const fromLocalInput = v => (v ? new Date(v).toISOString() : null);
 const curCode = () => (typeof state !== "undefined" && state.profile?.currency) || "UYU";
@@ -1891,7 +1912,7 @@ const Logic = {
   },
 
   /* Calendario */
-  eventsOn: d => DB().events.filter(e => isoDay(e.starts_at) === d).sort((a, b) => a.starts_at.localeCompare(b.starts_at)),
+  eventsOn: d => DB().events.filter(e => evOnDay(e, d)).sort((a, b) => a.starts_at.localeCompare(b.starts_at)),
   tasksDueOn: d => DB().tasks.filter(t => t.due_date === d && t.status !== "done"),
   contentOn: d => DB().content_items.filter(c => c.publish_at && isoDay(c.publish_at) === d).sort((a, b) => a.publish_at.localeCompare(b.publish_at)),
 
@@ -2471,29 +2492,33 @@ function GoalsView() {
 
 /* ------------------------- Calendario semanal ------------------------- */
 function EventDialog(ev, preset = {}) {
-  const startD = ev ? isoDay(ev.starts_at) : (preset.date || today());
+  const [startD, endD0] = ev ? evSpan(ev) : [preset.date || today(), preset.date || today()];
   const title = inp({ required: true, maxLength: 200, value: ev?.title || "" });
   const date = inp({ type: "date", required: true, value: startD });
+  const dateEnd = inp({ type: "date", value: endD0 });
+  date.addEventListener("change", () => { if (!dateEnd.value || dateEnd.value < date.value) dateEnd.value = date.value; });
   const allDay = h("input", { type: "checkbox", id: "e-all", checked: !!ev?.all_day });
   const st = inp({ type: "time", value: ev && !ev.all_day ? fmtTime(ev.starts_at) : "09:00" });
   const en = inp({ type: "time", value: ev?.ends_at && !ev.all_day ? fmtTime(ev.ends_at) : "" });
   const notes = ta(ev?.notes);
   const sw = Swatches("e-color", ev?.color);
-  const times = h("div", { class: "row2" }, F("Desde", st), F("Hasta (opcional)", en));
+  const times = h("div", { class: "row2" }, F("Hora de inicio", st), F("Hora de fin (opcional)", en));
   const sync = () => times.classList.toggle("hidden", allDay.checked);
   allDay.onchange = sync; sync();
   modal({
     title: ev ? "Editar evento" : "Nuevo evento",
-    body: [F("Título", title), F("Fecha", date),
+    body: [F("Título", title), h("div", { class: "row2" }, F("Fecha de inicio", date), F("Fecha de fin", dateEnd)),
       h("label", { style: "display:flex;gap:8px;align-items:center" }, allDay, "Todo el día"), times,
       F("Notas", notes), h("div", {}, h("label", { class: "field" }, "Color"), sw)],
     onDelete: ev ? () => Store.remove("events", ev.id) : null,
     onSubmit: async () => {
       const t = title.value.trim(); if (!t) throw new Error("Escribí el título del evento."); if (!date.value) throw new Error("Elegí una fecha.");
-      const all = allDay.checked;
+      const all = allDay.checked, endDay = dateEnd.value || date.value;
+      if (endDay < date.value) throw new Error("La fecha de fin no puede ser anterior a la de inicio.");
       const starts = new Date(`${date.value}T${all ? "00:00" : (st.value || "09:00")}`);
       let ends = null;
-      if (!all && en.value) { ends = new Date(`${date.value}T${en.value}`); if (ends < starts) throw new Error("La hora de fin no puede ser anterior a la de inicio."); }
+      if (all) { if (endDay > date.value) ends = new Date(`${endDay}T00:00`); }
+      else if (en.value || endDay > date.value) { ends = new Date(`${endDay}T${en.value || st.value || "09:00"}`); if (ends < starts) throw new Error("El fin no puede ser anterior al inicio."); }
       const p = { title: t, starts_at: starts.toISOString(), ends_at: ends ? ends.toISOString() : null, all_day: all, notes: notes.value.trim() || null, color: swatchValue(sw, "e-color") };
       if (ev) await Store.update("events", ev.id, p); else await Store.add("events", p);
       toast("Guardado");
@@ -2509,18 +2534,18 @@ function DayColumn(d, opts) {
     h("div", { class: "day-b" },
       evs.map(e => h("button", { class: "item ev", type: "button", onclick: () => EventDialog(e) },
         h("span", { class: "it-t" }, e.title),
-        h("span", { class: "it-m" }, h("span", { class: "dot", style: `--c:${e.color}` }), e.all_day ? "Todo el día" : fmtTime(e.starts_at)))),
+        h("span", { class: "it-m" }, h("span", { class: "dot", style: `--c:${e.color}` }), evLabel(e, d)))),
       cts.map(c => h("button", { class: "item ct", type: "button", onclick: () => ContentDialog(c) },
         h("span", { class: "it-t" }, c.title),
         h("span", { class: "it-m" }, Plat(c.platform), fmtTime(c.publish_at), StatusPill(c.status)))),
       tks.map(t => h("button", { class: "item tk", type: "button", onclick: () => TaskDialog(t) },
         h("span", { class: "it-t" }, t.title), h("span", { class: "it-m" }, "Tarea · " + PRI[t.priority]))),
-      Ext.team.filter(e => extDay(e) === d).sort(byStart).map(e => h("button", { class: "item team", type: "button", onclick: () => TeamEventDialog(e) },
-        h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, icon("team"), (e.all_day ? "Todo el día" : fmtTime(e.starts_at)) + " · " + (Ext.coNames[e.company_id] || "Equipo")))),
-      Ext.mac.filter(e => extDay(e) === d).sort(byStart).map(e => h("button", { class: "item ext mac", type: "button", style: `--mc:${e.color || "#9aa4ad"}`, onclick: () => ExtEventDialog(e) },
-        h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, e.all_day ? "Todo el día" : fmtTime(e.starts_at), " · ", e.cal))),
-      Ext.events.filter(e => extDay(e) === d).sort(byStart).map(e => h("button", { class: "item ext", type: "button", onclick: () => ExtEventDialog(e) },
-        h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, icon("phone"), e.all_day ? "Todo el día" : fmtTime(e.starts_at)))),
+      Ext.team.filter(e => evOnDay(e, d)).sort(byStart).map(e => h("button", { class: "item team", type: "button", onclick: () => TeamEventDialog(e) },
+        h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, icon("team"), evLabel(e, d) + " · " + (Ext.coNames[e.company_id] || "Equipo")))),
+      Ext.mac.filter(e => evOnDay(e, d)).sort(byStart).map(e => h("button", { class: "item ext mac", type: "button", style: `--mc:${e.color || "#9aa4ad"}`, onclick: () => ExtEventDialog(e) },
+        h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, evLabel(e, d), " · ", e.cal))),
+      Ext.events.filter(e => evOnDay(e, d)).sort(byStart).map(e => h("button", { class: "item ext", type: "button", onclick: () => ExtEventDialog(e) },
+        h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, icon("phone"), evLabel(e, d)))),
       h("button", { class: "add-day", type: "button", "aria-label": `Agregar evento el ${fmtShort(d)}`, onclick: () => EventDialog(null, { date: d }) }, "+")));
 }
 
@@ -2554,7 +2579,7 @@ async function extLoad(force) {
     Ext.coNames = Object.fromEntries((cos.data || []).map(c => [c.id, c.name]));
     if (Ext.cals.length) {
       const r = await sb.functions.invoke("cal-import", { body: { from, to } });
-      if (r.data?.ok) { Ext.events = r.data.events || []; Ext.errors = r.data.errors || []; }
+      if (r.data?.ok) { Ext.events = (r.data.events || []).map(e => ({ ...e, exclusiveEnd: !!e.all_day })); Ext.errors = r.data.errors || []; }
     } else { Ext.events = []; Ext.errors = []; }
     if (macCalOn() && macCalAvailable()) { const r = await macCalRead(); if (!r.ok && r.error === "denied") { macCalSet(false); Ext.mac = []; } }
     Ext.at = Date.now();
@@ -2578,29 +2603,33 @@ function ExtEventDialog(e) {
 }
 function TeamEventDialog(ev, preset = {}) {
   const cid = ev?.company_id || preset.company_id;
-  const startD = ev ? extDay(ev) : (preset.date || today());
+  const [startD, endD0] = ev ? evSpan(ev) : [preset.date || today(), preset.date || today()];
   const title = inp({ required: true, maxLength: 200, value: ev?.title || "", placeholder: "Ej: Reunión, entrega, viaje…" });
   const date = inp({ type: "date", required: true, value: startD });
+  const dateEnd = inp({ type: "date", value: endD0 });
+  date.addEventListener("change", () => { if (!dateEnd.value || dateEnd.value < date.value) dateEnd.value = date.value; });
   const allDay = h("input", { type: "checkbox", checked: !!ev?.all_day });
   const st = inp({ type: "time", value: ev && !ev.all_day ? fmtTime(ev.starts_at) : "10:00" });
   const en = inp({ type: "time", value: ev?.ends_at && !ev.all_day ? fmtTime(ev.ends_at) : "11:00" });
   const place = inp({ maxLength: 300, value: ev?.place || "", placeholder: "Oficina, Zoom, Meet…" });
   const notes = ta(ev?.notes);
-  const times = h("div", { class: "row2" }, F("Desde", st), F("Hasta", en));
+  const times = h("div", { class: "row2" }, F("Hora de inicio", st), F("Hora de fin", en));
   allDay.onchange = () => times.classList.toggle("hidden", allDay.checked); allDay.onchange();
   const mine = !ev || ev.created_by === state.user?.id || state.demo || Co.boss();
   modal({
     title: ev ? (mine ? "Editar evento" : ev.title) : "Nuevo evento del equipo",
     body: [h("p", { class: "hint" }, "La ve todo el equipo" + (Ext.coNames[cid] || Co.company()?.name ? " de " + (Ext.coNames[cid] || Co.company()?.name) : "") + ", también en su celular."),
-      F("Qué es", title), F("Fecha", date), h("label", { style: "display:flex;gap:8px;align-items:center" }, allDay, "Todo el día"), times, F("Dónde (opcional)", place), F("Notas (opcional)", notes)],
+      F("Qué es", title), h("div", { class: "row2" }, F("Fecha de inicio", date), F("Fecha de fin", dateEnd)), h("label", { style: "display:flex;gap:8px;align-items:center" }, allDay, "Todo el día"), times, F("Dónde (opcional)", place), F("Notas (opcional)", notes)],
     submit: mine ? "Guardar" : undefined, hideSubmit: !mine,
     onDelete: ev && mine ? async () => { if (!state.demo) { const { error } = await sb.from("company_events").delete().eq("id", ev.id); if (error) throw error; } Ext.team = Ext.team.filter(x => x.id !== ev.id); } : null,
     onSubmit: async () => {
       const t = title.value.trim(); if (!t) throw new Error("Escribí qué es."); if (!date.value) throw new Error("Elegí una fecha.");
-      const all = allDay.checked;
+      const all = allDay.checked, endDay = dateEnd.value || date.value;
+      if (endDay < date.value) throw new Error("La fecha de fin no puede ser anterior a la de inicio.");
       const starts = all ? new Date(`${date.value}T00:00:00Z`) : new Date(`${date.value}T${st.value || "10:00"}`);
       let ends = null;
-      if (!all && en.value) { ends = new Date(`${date.value}T${en.value}`); if (ends < starts) throw new Error("La hora de fin no puede ser anterior a la de inicio."); }
+      if (all) { if (endDay > date.value) ends = new Date(`${endDay}T00:00:00Z`); }
+      else if (en.value || endDay > date.value) { ends = new Date(`${endDay}T${en.value || st.value || "10:00"}`); if (ends < starts) throw new Error("El fin no puede ser anterior al inicio."); }
       const row = { title: t, starts_at: starts.toISOString(), ends_at: ends ? ends.toISOString() : null, all_day: all, place: place.value.trim() || null, notes: notes.value.trim() || null };
       if (state.demo) {
         if (ev) Object.assign(ev, row); else Ext.team.push({ id: "d" + Date.now(), company_id: cid, created_by: Co.uid(), ...row });
@@ -2629,8 +2658,8 @@ function CoCalendarTab() {
     h("div", { class: "week" }, weekDays(start).map(d => h("div", { class: "day" + (d === today() ? " today" : "") },
       h("div", { class: "day-h" }, h("span", {}, DOW[parseD(d).getDay()]), h("b", {}, String(parseD(d).getDate()))),
       h("div", { class: "day-b" },
-        evs.filter(e => extDay(e) === d).sort(byStart).map(e => h("button", { class: "item team", type: "button", onclick: () => TeamEventDialog(e) },
-          h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, (e.all_day ? "Todo el día" : fmtTime(e.starts_at)) + (e.place ? " · " + e.place : "")))),
+        evs.filter(e => evOnDay(e, d)).sort(byStart).map(e => h("button", { class: "item team", type: "button", onclick: () => TeamEventDialog(e) },
+          h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, evLabel(e, d) + (e.place ? " · " + e.place : "")))),
         h("button", { class: "add-day", type: "button", "aria-label": `Agregar evento el ${fmtShort(d)}`, onclick: () => TeamEventDialog(null, { company_id: cid, date: d }) }, "+"))))));
 }
 // Enlace privado (bajo el dominio de LIVET) para ver el calendario en iCloud, Google u Outlook.
