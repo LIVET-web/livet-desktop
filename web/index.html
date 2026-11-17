@@ -2712,7 +2712,9 @@ async function CalSyncDialog() {
         !macCalAvailable()
           ? (Ext.mac.length
               ? h("div", { class: "cs-cal" }, h("span", {}, icon("check"), ` Conectado desde tu Mac · ${Ext.mac.length} eventos`))
-              : h("p", { class: "hint" }, "Se conecta una vez desde la app LIVET Work para Mac, y después lo ves acá y en todos tus dispositivos. ", h("button", { class: "linkbtn", type: "button", onclick: () => { $("#dlg").close(); navTo("descargar"); } }, "Descargar la app")))
+              : mobileOS()
+                ? h("p", { class: "hint" }, "No tenés que hacer nada en el celular: abrí ", h("b", {}, "LIVET Work en tu Mac"), ", entrá a Calendario y tocá «Traer mi calendario». En un minuto aparece acá solo.")
+                : h("p", { class: "hint" }, "Se conecta una vez desde la app LIVET Work para Mac, y después lo ves acá y en todos tus dispositivos. ", h("button", { class: "linkbtn", type: "button", onclick: () => { $("#dlg").close(); navTo("descargar"); } }, "Descargar la app para Mac")))
           : macCalOn()
             ? h("div", { class: "cs-cal" }, h("span", {}, icon("check"), ` Conectado · ${Ext.mac.length} eventos`), h("button", { class: "linkbtn", type: "button", onclick: async () => { macCalSet(false); Ext.mac = []; await macCalPush(true); draw(); render(); } }, "Desconectar"))
             : h("button", { class: "btn big cal-btn", type: "button", onclick: async ev => {
