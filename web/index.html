@@ -520,6 +520,12 @@ dialog{border-radius:20px;border:1px solid var(--line-strong)}
 
 /* Equipo de agentes */
 .agent-list{display:grid;gap:12px}
+.agent-sec{margin-top:28px}.agent-sec-t{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.agent-grid{display:grid;grid-template-columns:repeat(var(--cols,3),minmax(0,1fr));gap:12px}
+@media (max-width:820px){.agent-grid{grid-template-columns:1fr 1fr}}@media (max-width:520px){.agent-grid{grid-template-columns:1fr}}
+.agent.mini{grid-template-columns:1fr}.agent.mini .agent-ic{width:40px;height:40px}
+.agent.mini{padding:16px;gap:12px;align-content:start}
+.agent.mini p{font-size:14px}
 .agent{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:16px;align-items:start;padding:18px;border:1px solid var(--line);border-radius:18px;background:var(--surface);transition:border-color .25s,transform .4s var(--spring)}
 .agent:hover{border-color:var(--accent);transform:translateY(-2px)}
 .agent-ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center}
@@ -3335,54 +3341,34 @@ Object.assign(ICON, {
 // Cada agente es un rol con un trabajo acotado. Lo que pide la persona se envía a la función `ai` (modo "agent").
 const AGENTS = [
   { id: "ideas", name: "Ideas", icon: "spark", tone: "hot",
-    line: "Convierte tu nicho y tus métricas en ideas para probar esta semana.",
-    makes: ["10 ideas con su ángulo y el motivo", "Qué repetir de lo que ya funcionó", "Qué descartar y por qué"],
+    line: "Qué publicar esta semana, según tu nicho y lo que ya funcionó.",
+    makes: ["Ideas para probar", "Qué repetir y qué descartar"],
     ph: "Ej: ideas para Reels de cocina rápida para la próxima semana" },
-  { id: "guiones", name: "Guiones", icon: "book", tone: "cy",
-    line: "Escribe el guion de una pieza, escena por escena, con tu voz.",
-    makes: ["Guion con tiempos por escena", "Texto en pantalla y llamada a la acción", "Una variante corta para probar"],
-    ph: "Ej: guion de 40 segundos sobre cómo organizo mi semana de contenido" },
   { id: "hooks", name: "Hooks", icon: "bolt", tone: "hot",
-    line: "Desarrolla el primer segundo: lo que se ve, el texto y lo que se dice.",
-    makes: ["8 hooks con las 3 capas", "El mecanismo de cada uno y su riesgo", "Cuál probar primero"],
+    line: "El primer segundo: lo que se ve, el texto y lo que se dice.",
+    makes: ["Hooks cortos", "Cuál probar primero"],
     ph: "Ej: hooks para un video sobre ahorrar en el súper" },
-  { id: "marketing", name: "Marketing", icon: "rocket", tone: "cy",
-    line: "Arma el posicionamiento, el embudo y el plan de lanzamiento de una oferta.",
-    makes: ["Propuesta de valor en una frase", "Plan de 2 semanas con llamadas a la acción", "Qué medir y cuándo decidir"],
-    ph: "Ej: lanzar una guía de 20 recetas en PDF a mi audiencia de Instagram" },
+  { id: "guiones", name: "Guiones", icon: "book", tone: "cy",
+    line: "El guion de una pieza, escena por escena, con tu voz.",
+    makes: ["Guion con tiempos", "Versión de 15 segundos"],
+    ph: "Ej: guion de 40 segundos sobre cómo organizo mi semana de contenido" },
   { id: "video", name: "Video", icon: "play", tone: "red", area: "video",
-    line: "Crea videos animados con el motor HyperFrames. Los ves armarse en vivo y los bajás en MP4.",
-    makes: ["Video con tu logo, colores y clips", "Vista previa en vivo con línea de tiempo", "Descarga en MP4 para Reels, TikTok y YouTube"],
+    line: "Videos animados con tu marca. Los ves armarse en vivo y los bajás en MP4.",
+    makes: ["Video en MP4", "Vista previa en vivo"],
     ph: "Ej: video vertical de 15 segundos con 3 consejos y subtítulos" },
-  { id: "graficos", name: "Gráficos", icon: "img", tone: "cy",
-    line: "Define portadas, láminas de carrusel y miniaturas: composición, texto y colores.",
-    makes: ["Brief gráfico lámina por lámina", "Texto sobre imagen con jerarquía", "Qué material tenés que aportar"],
-    ph: "Ej: carrusel de 7 láminas con 5 errores al ahorrar" },
-  { id: "analista", name: "Analista", icon: "chart", tone: "hot",
-    line: "Lee tus métricas y dice qué cambió, qué probar y qué todavía no se puede concluir.",
-    makes: ["Resumen honesto de las métricas", "Hipótesis a probar con una variable", "Datos que faltan para decidir"],
-    ph: "Ej: qué pasó con mis últimas 5 piezas y qué pruebo la semana que viene" },
-  { id: "comunidad", name: "Comunidad", icon: "chat", tone: "cy",
-    line: "Redacta respuestas a comentarios y mensajes con tu tono, sin pedir likes a cambio.",
-    makes: ["Respuestas listas para copiar", "Preguntas para abrir conversación", "Qué comentarios conviene no responder"],
-    ph: "Ej: respuestas a estos comentarios: «¿dónde compro eso?», «no me salió»" },
-  // Marketing para agencias, comercios e independientes
+  // Marketing para negocios, agencias e independientes
   { id: "campana", name: "Campañas", icon: "rocket", tone: "cy", area: "marketing",
-    line: "Arma el plan de una campaña: objetivo, público, mensajes, canales, calendario y métricas.",
-    makes: ["Resumen y objetivo medible", "Canales, calendario semanal y piezas", "Indicadores, presupuesto y riesgos"],
+    line: "El plan de una campaña: objetivo, mensajes, calendario y qué medir.",
+    makes: ["Plan con calendario", "Próximos 3 pasos"],
     ph: "Ej: lanzar una promo de día del padre para una panadería. Objetivo: 60 pedidos en 3 semanas. Presupuesto: $15.000" },
-  { id: "competencia", name: "Competencia", icon: "search", tone: "red", area: "marketing", web: true,
-    line: "Investiga competidores en la web y compara posicionamiento, mensajes y huecos libres.",
-    makes: ["Perfil de cada competidor con fuentes", "Matriz comparativa", "Oportunidades, amenazas y acciones"],
-    ph: "Ej: analizá a 3 panaderías artesanales de Montevideo frente a la mía (pan de masa madre, delivery)" },
   { id: "contenido", name: "Contenido", icon: "book", tone: "hot", area: "marketing",
-    line: "Redacta posts, newsletters, páginas de venta y comunicados con titulares alternativos.",
-    makes: ["Texto listo para copiar", "3 titulares alternativos", "Qué completar antes de publicar"],
+    line: "Posts, newsletters y textos de venta, listos para copiar.",
+    makes: ["Texto listo para copiar", "3 titulares alternativos"],
     ph: "Ej: newsletter de 150 palabras para clientes de mi estudio contable sobre el cierre de ejercicio" },
   { id: "email", name: "Email", icon: "chat", tone: "cy", area: "marketing",
-    line: "Te escribe el email listo para copiar y mandar. Lo que falte, marcado aparte.",
-    makes: ["Email listo para copiar", "Asunto corto y claro", "Qué completar antes de mandarlo"],
-    ph: "Ej: secuencia de 4 emails para dar la bienvenida a nuevos clientes de mi agencia" },
+    line: "El email listo para mandar. Lo que falte, marcado aparte.",
+    makes: ["Email listo para copiar", "Qué completar antes"],
+    ph: "Ej: email para avisarle a mis clientes que cambian los horarios en diciembre" },
 ];
 
 function AgentDialog(a) {
@@ -3408,8 +3394,7 @@ function AgentDialog(a) {
 
 const agentCard = a => h("article", { class: "agent", "data-tone": a.tone },
       h("div", { class: "agent-ic" }, icon(a.icon)),
-      h("div", { class: "agent-body" }, h("h3", {}, a.name), h("p", {}, a.line),
-        h("ul", {}, a.makes.map(m => h("li", {}, m)))),
+      h("div", { class: "agent-body" }, h("h3", {}, a.name), h("p", {}, a.line)),
       h("button", { class: "btn primary", type: "button", onclick: () => AgentDialog(a) }, "Pedir"));
 /* ------------------------- Video: estudio HyperFrames ------------------------- */
 // HyperFrames (HeyGen, Apache 2.0) convierte HTML + GSAP en MP4. El MP4 se renderiza con Chrome sin pantalla y FFmpeg
@@ -4349,18 +4334,14 @@ function AgentsView() {
       h("button", { class: "btn", type: "button", onclick: () => navTo("agentes") }, "Cómo funciona")),
     h("div", { class: "agent-list" }, AGENTS.filter(a => !a.area).map(a => h("article", { class: "agent", "data-tone": a.tone },
       h("div", { class: "agent-ic" }, icon(a.icon)),
-      h("div", { class: "agent-body" }, h("h3", {}, a.name), h("p", {}, a.line),
-        h("ul", {}, a.makes.map(m => h("li", {}, m)))),
-      h("button", { class: "btn primary", type: "button", onclick: () => AgentDialog(a) }, "Pedir")))));
+      h("div", { class: "agent-body" }, h("h3", {}, a.name), h("p", {}, a.line)),
+      h("button", { class: "btn primary", type: "button", onclick: () => (a.id === "video" ? go("video") : AgentDialog(a)) }, a.id === "video" ? "Abrir" : "Pedir")))));
 }
 VIEWS.agents = AgentsView;
 function MarketingView() {
-  const all = AGENTS.filter(a => a.area === "marketing"), more = !!state.mktMore;
   return h("div", {},
-    PageHead("Marketing", "Cuatro agentes. Cada uno te da un borrador."),
-    h("p", { class: "hint" }, "Son borradores: revisalos antes de usarlos."),
-    h("div", { class: "agent-list", style: "margin-top:12px" }, (more ? all : all.slice(0, 3)).map(agentCard)),
-    h("div", { class: "more-row" }, h("button", { class: "btn", type: "button", onclick: () => { state.mktMore = !more; render(); } }, more ? "Ver menos" : `Ver los otros ${all.length - 3} agentes`)));
+    PageHead("Marketing", "Tres agentes. Cada uno te da un borrador para revisar."),
+    h("div", { class: "agent-list", style: "margin-top:12px" }, AGENTS.filter(a => a.area === "marketing").map(agentCard)));
 }
 VIEWS.marketing = MarketingView;
 
@@ -5736,7 +5717,7 @@ function CasesPage() {
     ["Freelance", "Sabe cuánto gana antes de fin de mes", "Facturaba sin saber qué le quedaba.", "Tareas por cliente, ingresos y gastos cargados y el balance del mes siempre arriba.", ["Clientes", "Finanzas"]],
     ["Fotógrafa", "Convierte cada sesión en un Reel", "Las fotos quedaban en el disco.", "Sube sus fotos, elige un video de ejemplo con su logo y lo baja en MP4.", ["Video"]],
     ["Estudiante", "No abandona el gimnasio en marzo", "Arrancaba fuerte y a las dos semanas largaba.", "Una meta en hitos, el hábito marcado cada día y la racha a la vista.", ["Objetivos", "Hábitos"]],
-    ["Emprendedora", "Lanza su oferta en una tarde", "Pasaba semanas armando el lanzamiento.", "Marketing le arma el plan, Gráficos el carrusel y Video el anuncio animado.", ["Marketing", "Video"]],
+    ["Emprendedora", "Lanza su oferta en una tarde", "Pasaba semanas armando el lanzamiento.", "Campañas le arma el plan, Contenido los textos y Video el anuncio animado.", ["Marketing", "Video"]],
   ];
   const biz = [
     ["Pyme · Comercio", "Una panadería que no pierde más pedidos", "Los pedidos se perdían en WhatsApp.", "Cada pedido es una tarea con responsable y fecha. El dueño ve quién está atrasado.", ["Empresa", "Tareas", "Clientes"]],
@@ -5758,12 +5739,13 @@ function CasesPage() {
 }
 
 function AgentsPage() {
-  return h("div", { class: "doc wide" }, PageTitle("Agentes", "Un equipo de especialistas. Cada uno recibe tu perfil, tus memorias y tu contenido reciente, y devuelve un borrador para que lo revises."),
-    h("div", { class: "agent-list" }, AGENTS.map(a => h("article", { class: "agent", "data-tone": a.tone },
-      h("div", { class: "agent-ic" }, icon(a.icon)),
-      h("div", { class: "agent-body" }, h("h3", {}, a.name), h("p", {}, a.line), h("ul", {}, a.makes.map(m => h("li", {}, m))))))),
-    h("p", { class: "hint", style: "margin-top:16px" }, "Son borradores de IA: revisalos antes de usarlos."),
-    h("div", { class: "cta-row" }, h("button", { type: "button", class: "btn primary", onclick: () => (state.user ? (state.page = "", go("agents"), route()) : enterDemo()) }, state.user ? "Abrir el equipo" : "Ver el equipo en la demo")));
+  return h("div", { class: "doc wide" }, PageTitle("Agentes", "Siete especialistas. Le pedís algo y te devuelve un borrador para revisar."),
+    ...[["Para crear contenido", AGENTS.filter(a => a.area !== "marketing")], ["Para vender", AGENTS.filter(a => a.area === "marketing")]].map(([t, list]) => h("section", { class: "agent-sec" },
+      h("h2", { class: "agent-sec-t" }, t),
+      h("div", { class: "agent-grid", style: `--cols:${list.length}` }, list.map(a => h("article", { class: "agent mini", "data-tone": a.tone },
+        h("div", { class: "agent-ic" }, icon(a.icon)),
+        h("div", { class: "agent-body" }, h("h3", {}, a.name), h("p", {}, a.line))))))),
+    h("div", { class: "cta-row" }, h("button", { type: "button", class: "btn primary", onclick: () => (state.user ? (state.page = "", go("agents"), route()) : enterDemo()) }, state.user ? "Abrir el equipo" : "Probalos en la demo")));
 }
 
 function FaqPage() {
