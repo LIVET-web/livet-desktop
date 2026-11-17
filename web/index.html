@@ -930,6 +930,11 @@ dialog::backdrop{background:radial-gradient(circle at 50% 48%,rgba(14,116,144,.5
 /* Descargas */
 .dl-wrap{display:grid;gap:14px}
 .dl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.confirm-wait{display:grid;gap:12px;text-align:center;justify-items:center;padding:8px 0}
+.confirm-wait h3{font-size:22px}.confirm-wait p{color:var(--muted)}.confirm-wait b{color:var(--text)}
+.cw-ic{width:56px;height:56px;border-radius:16px;display:grid;place-items:center;background:rgba(255,102,0,.12);color:#ff6600}.cw-ic svg{width:26px;height:26px}
+.cw-status{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--text)!important}
+.cw-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .dl-hero{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;padding:24px;border-radius:18px;background:var(--surface);border:1px solid var(--line-strong);margin-bottom:16px}
 .dl-hero h2{font-size:26px;margin:8px 0 4px}.dl-hero p{color:var(--muted);max-width:520px}
 .btn.big{padding:14px 22px;font-size:16px}
@@ -5834,7 +5839,7 @@ function detectOS() {
   }
   return null;
 }
-Object.assign(ICON, { phone: "M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z|M11 18h2", monitor: "M3 4h18a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z|M8 21h8M12 17v4" });
+Object.assign(ICON, { mail: "M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z|M22 7l-10 7L2 7", phone: "M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z|M11 18h2", monitor: "M3 4h18a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z|M8 21h8M12 17v4" });
 /* App instalable (PWA): sin descargas ni avisos de seguridad, en computadora y celular. */
 let PWA_PROMPT = null;
 const isStandalone = () => { try { return matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; } catch { return false; } };
@@ -6148,15 +6153,64 @@ $("#auth-form").onsubmit = async e => {
     } else {
       if (!$("#c-age").checked || !$("#c-terms").checked || !$("#c-transfer").checked)
         return authMsg("Para crear la cuenta tenés que marcar las tres casillas: mayoría de edad, términos y privacidad, y almacenamiento en EE. UU.", "err");
-      const { data, error } = await sb.auth.signUp({ email, password, options: { data: {
+      const redirect = /^https:$/.test(location.protocol) ? { emailRedirectTo: location.origin + "/" } : {};
+      const { data, error } = await sb.auth.signUp({ email, password, options: { ...redirect, data: {
         full_name: $("#a-name").value.trim(), consent_version: LEGAL_VERSION, consent_terms: "true", consent_transfer: "true" } } });
       if (error) throw error;
-      if (!data.session) { setMode("login"); authMsg("Te enviamos un email para confirmar tu cuenta. Después volvé e ingresá.", "ok"); }
+      if (!data.session) ConfirmWait(email, password);
     }
   } catch (err) {
-    authMsg(/Invalid login/i.test(err.message) ? "Email o contraseña incorrectos." : err.message, "err");
+    if (/not confirmed/i.test(err.message || "")) return ConfirmWait(email, password, true);
+    authMsg(authErr(err), "err");
   } finally { btn.disabled = false; }
 };
+function authErr(err) {
+  const m = err?.message || "";
+  if (/Invalid login/i.test(m)) return "Email o contraseña incorrectos.";
+  if (/already registered|already been registered/i.test(m)) return "Ese email ya tiene cuenta. Tocá Ingresar.";
+  if (/rate limit|too many/i.test(m)) return "Muchos intentos seguidos. Esperá un minuto y probá de nuevo.";
+  if (/Password should/i.test(m)) return "La contraseña necesita al menos 8 caracteres.";
+  return m || "Algo salió mal. Probá de nuevo.";
+}
+// Después de crear la cuenta: pantalla de espera que entra sola apenas se confirma el email (en esta pestaña o en otra).
+let confirmTimer = null;
+function ConfirmWait(email, password, again) {
+  clearInterval(confirmTimer);
+  const form = $("#auth-form"), box = h("div", { class: "confirm-wait", id: "confirm-wait" });
+  const status = h("p", { class: "cw-status" }, h("span", { class: "live-dot" }), "Esperando la confirmación…");
+  const msg = h("p", { class: "hint", "aria-live": "polite" });
+  const domain = (email.split("@")[1] || "").toLowerCase();
+  const inbox = /gmail|googlemail/.test(domain) ? "https://mail.google.com/mail/u/0/#search/livet" : /outlook|hotmail|live\./.test(domain) ? "https://outlook.live.com/mail/" : /yahoo/.test(domain) ? "https://mail.yahoo.com/" : /icloud|me\.com/.test(domain) ? "https://www.icloud.com/mail" : "";
+  const resend = h("button", { type: "button", class: "btn" }, "Reenviar email");
+  resend.onclick = async () => {
+    resend.disabled = true;
+    const { error } = await sb.auth.resend({ type: "signup", email, ...(/^https:$/.test(location.protocol) ? { options: { emailRedirectTo: location.origin + "/" } } : {}) });
+    msg.textContent = error ? authErr(error) : "Listo, te lo mandamos de nuevo. Mirá también en Spam o Promociones.";
+    setTimeout(() => (resend.disabled = false), 30000);
+  };
+  const back = h("button", { type: "button", class: "linkbtn" }, "Usar otro email");
+  const tabs = document.querySelector("#auth-main .tabs"), head = [$("#auth-title"), $("#auth-sub")];
+  const stop = () => { clearInterval(confirmTimer); confirmTimer = null; box.remove(); form.classList.remove("hidden"); tabs?.classList.remove("hidden"); head.forEach(x => x.classList.remove("hidden")); };
+  back.onclick = () => { stop(); setMode("signup"); };
+  box.append(
+    h("div", { class: "cw-ic" }, icon("mail")),
+    h("h3", {}, again ? "Falta confirmar tu email" : "Revisá tu email"),
+    h("p", {}, "Te mandamos un enlace a ", h("b", {}, email), ". Tocalo y listo: esta pantalla entra sola."),
+    status,
+    h("div", { class: "cw-actions" }, inbox ? h("a", { class: "btn primary", href: inbox, target: "_blank", rel: "noopener" }, "Abrir mi correo") : null, resend),
+    h("p", { class: "hint" }, "¿No llega? Mirá en Spam o Promociones. Puede tardar un minuto."), msg, back);
+  $("#confirm-wait")?.remove(); authMsg(); form.classList.add("hidden"); tabs?.classList.add("hidden"); head.forEach(x => x.classList.add("hidden")); form.after(box);
+  let tries = 0;
+  const check = async () => {
+    if (state.user) return stop();
+    if (!sb) return;
+    if (++tries > 300) { clearInterval(confirmTimer); status.textContent = "Cuando confirmes, volvé y tocá Ingresar."; return; }
+    const { data } = await sb.auth.signInWithPassword({ email, password }).catch(() => ({}));
+    if (data?.session) { status.textContent = "¡Confirmado! Entrando…"; stop(); }
+  };
+  confirmTimer = setInterval(check, 4000);
+  addEventListener("focus", check, { once: true });
+}
 async function logout() { if (state.demo) return leaveDemo(); await sb.auth.signOut(); }
 $("#logout").append(icon("logout", 16));
 $("#logout").onclick = logout;
