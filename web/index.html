@@ -3547,7 +3547,7 @@ const HF_TPL = {
   promo: {
     name: "Oferta o producto", desc: "Tu foto o video de producto, precio, descuento y llamado a la acción.", dur: 10, fmt: "vertical",
     fields: [["media", "Foto o video del producto", "media", ""], ["name", "Producto o servicio", "text", "Plan Empresa"], ["offer", "Descuento (sello)", "text", "-20%"],
-      ["price", "Precio", "text", "US$ 23,99 / mes"], ["detail", "Detalle", "text", "Tareas, equipo y finanzas en un solo lugar"], ["cta", "Llamado a la acción", "text", "Empezá hoy"]],
+      ["oldprice", "Precio anterior (sale tachado)", "text", "US$ 29,99"], ["price", "Precio nuevo", "text", "US$ 23,99 / mes"], ["detail", "Detalle", "text", "Tareas, equipo y finanzas en un solo lugar"], ["cta", "Llamado a la acción", "text", "Empezá hoy"]],
     build(o, W, H) {
       const u = Math.min(W, H) / 1080, v = H > W;
       const box = v ? `left:${Math.round(70 * u)}px;right:${Math.round(70 * u)}px;top:${Math.round(260 * u)}px;height:${Math.round(H * 0.42)}px` : `left:${Math.round(70 * u)}px;top:${Math.round(70 * u)}px;bottom:${Math.round(70 * u)}px;width:${Math.round(W * 0.46)}px`;
@@ -3558,14 +3558,16 @@ const HF_TPL = {
   .txt{position:absolute;${txt}}
   .name{font-size:${Math.round(96 * u)}px;line-height:1.02;letter-spacing:-.02em}
   .detail{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-weight:500;font-size:${Math.round(44 * u)}px;line-height:1.3;opacity:.8;margin-top:${Math.round(22 * u)}px}
-  .price{font-size:${Math.round(78 * u)}px;color:${o.c1};margin-top:${Math.round(30 * u)}px}
+  .price{font-size:${Math.round(78 * u)}px;color:${o.c1};margin-top:${Math.round(8 * u)}px}
+  .old{position:relative;display:inline-block;margin-top:${Math.round(28 * u)}px;font-size:${Math.round(50 * u)}px;color:#ff3b47;opacity:.95}
+  .old i{position:absolute;left:-4%;right:-4%;top:52%;height:${Math.max(4, Math.round(7 * u))}px;background:#ff3b47;border-radius:99px;transform:rotate(-8deg);transform-origin:0 50%}
   .seal{position:absolute;${v ? `right:${Math.round(40 * u)}px;top:${Math.round(200 * u)}px` : `left:${Math.round(W * 0.46 - 40 * u)}px;top:${Math.round(40 * u)}px`};width:${Math.round(250 * u)}px;height:${Math.round(250 * u)}px;border-radius:50%;background:${o.c3};color:${o.c2};display:flex;align-items:center;justify-content:center;font-size:${Math.round(84 * u)}px;z-index:4;opacity:0}
   .end{background:${o.c1};color:${o.c2}}
   .end .cta{font-size:${Math.round(120 * u)}px;line-height:1}
   .end .pill{background:${o.c2};color:${o.c3}}`,
         body: `${hfLogoBar(o)}
   <div class="m pbox">${o.media ? hfMedia(o.media) : `<div class="ph">Subí tu foto o video del producto</div>`}</div>
-  <div class="txt"><div class="name">${hfEsc(o.name)}</div><div class="detail">${hfEsc(o.detail)}</div><div class="price">${hfEsc(o.price)}</div></div>
+  <div class="txt"><div class="name">${hfEsc(o.name)}</div><div class="detail">${hfEsc(o.detail)}</div>${o.oldprice ? `<div><span class="old">${hfEsc(o.oldprice)}<i></i></span></div>` : ""}<div class="price">${hfEsc(o.price)}</div></div>
   ${o.offer ? `<div class="seal">${hfEsc(o.offer)}</div>` : ""}
   <section id="end" class="clip center end" data-start="7.6" data-duration="2.4" data-track-index="0"><div class="cta">${hfEsc(o.cta)}</div><div class="pill">${hfEsc(o.url)}</div></section>
   <div class="bar"></div>`,
@@ -3573,7 +3575,9 @@ const HF_TPL = {
   tl.fromTo(".pbox .fill", { scale: 1.25 }, { scale: 1, duration: 7.5, ease: "power1.out" }, 0.1);
   tl.from(".name", { y: 80, opacity: 0, duration: 0.6, ease: "power3.out" }, 0.8);
   tl.from(".detail", { y: 40, opacity: 0, duration: 0.5, ease: "power3.out" }, 1.2);
-  tl.from(".price", { scale: 0.5, opacity: 0, duration: 0.6, ease: "back.out(2)" }, 2.6);
+  tl.from(".old", { y: 30, opacity: 0, duration: 0.4, ease: "power3.out" }, 1.9);
+  tl.fromTo(".old i", { scaleX: 0 }, { scaleX: 1, duration: 0.35, ease: "power2.in" }, 2.35);
+  tl.from(".price", { scale: 0.5, opacity: 0, duration: 0.6, ease: "back.out(2)" }, 2.75);
   tl.fromTo(".seal", { opacity: 0, scale: 0, rotation: -180 }, { opacity: 1, scale: 1, rotation: 12, duration: 0.8, ease: "back.out(1.8)" }, 3.4);
   tl.to(".seal", { rotation: -8, duration: 2.5, ease: "sine.inOut", yoyo: true, repeat: 1 }, 4.2);
   tl.fromTo("#end", { clipPath: "circle(0% at 50% 50%)", opacity: 1 }, { clipPath: "circle(75% at 50% 50%)", opacity: 1, duration: 0.8, ease: "power3.inOut" }, 7.6);
