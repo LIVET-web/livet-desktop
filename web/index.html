@@ -934,6 +934,7 @@ dialog::backdrop{background:radial-gradient(circle at 50% 48%,rgba(14,116,144,.5
 .nav-lock{margin-left:auto;display:inline-flex}.nav-lock svg{width:13px!important;height:13px!important}
 .agent.is-locked .agent-ic,.agent.is-locked .agent-body{opacity:.55}
 .cal-sync{display:grid;gap:16px}
+.cs-ios summary{cursor:pointer;color:var(--muted);font-size:13px;text-align:center}.cs-ios ol{margin-top:10px}
 .cs-hero{display:flex;gap:14px;align-items:center}.cs-hero p{color:var(--muted)}
 .cs-ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:rgba(255,102,0,.12);color:#ff6600;flex:none}.cs-ic svg{width:24px;height:24px}
 .cs-block{display:grid;gap:12px;padding:16px;border:1px solid var(--line);border-radius:14px}
@@ -2684,7 +2685,12 @@ async function CalSyncDialog() {
     body.replaceChildren(
       h("div", { class: "cs-hero" }, h("div", { class: "cs-ic" }, icon("cal")),
         h("p", {}, "Tus eventos, tareas, publicaciones y reuniones del equipo aparecen en el Calendario de tu iPhone y tu Mac, y se actualizan solos cada 5 minutos.")),
-      h("a", { class: "btn primary big cal-btn", href: webcal, onclick: () => setTimeout(() => toast("Confirmá «Suscribirse» en la ventana de Calendario y listo."), 600) }, icon("phone"), "Conectar con mi calendario"),
+      h("a", { class: "btn primary big cal-btn", href: webcal, onclick: e => { if (mobileOS() === "ios") { e.preventDefault(); location.href = webcal; } setTimeout(() => toast("Confirmá «Suscribirse» y listo."), 600); } }, icon("phone"), "Conectar con mi calendario"),
+      mobileOS() === "ios" ? h("details", { class: "cs-ios" }, h("summary", {}, "¿En el iPhone no se abrió nada?"),
+        h("ol", { class: "steps-n" },
+          h("li", {}, h("button", { class: "btn sm", type: "button", onclick: () => copyText(url) }, "Copiar conexión"), " (toca acá primero)."),
+          h("li", {}, "Abrí ", h("b", {}, "Ajustes → Calendario → Cuentas → Añadir cuenta → Otra"), "."),
+          h("li", {}, "Tocá ", h("b", {}, "Añadir calendario suscrito"), ", pegá y tocá ", h("b", {}, "Siguiente → Guardar"), "."))) : null,
       h("p", { class: "hint", style: "text-align:center" }, "Apple te pide confirmar una vez. ", h("a", { class: "linkbtn", href: "https://calendar.google.com/calendar/r?cid=" + encodeURIComponent(webcal), target: "_blank", rel: "noopener" }, "¿Usás Google Calendar?")),
       h("div", { class: "cs-block" },
         h("div", { class: "cs-h" }, h("div", {}, h("h3", {}, "Tu calendario dentro de LIVET"), h("p", { class: "muted" }, "Todo lo que tenés en el Calendario del iPhone y la Mac, adentro de LIVET."))),
