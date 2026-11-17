@@ -934,6 +934,9 @@ dialog::backdrop{background:radial-gradient(circle at 50% 48%,rgba(14,116,144,.5
 .nav-lock{margin-left:auto;display:inline-flex}.nav-lock svg{width:13px!important;height:13px!important}
 .agent.is-locked .agent-ic,.agent.is-locked .agent-body{opacity:.55}
 .cal-sync{display:grid;gap:16px}
+.pc-steps{list-style:none;padding:0;margin:12px 0;display:grid;gap:10px}
+.pc-step{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--muted);line-height:1.45}.pc-step b{color:var(--text)}
+.pc-n{width:22px;height:22px;border-radius:50%;background:rgba(255,102,0,.15);color:#ff6600;display:grid;place-items:center;font-weight:700;font-size:12px;flex:none;margin-top:1px}
 .pc-box .cs-ios summary{text-align:left;color:#ff6600;font-weight:600}.pc-box .cal-row{margin-top:10px}
 .cs-ios summary{cursor:pointer;color:var(--muted);font-size:13px;text-align:center}.cs-ios ol{margin-top:10px}
 .cs-hero{display:flex;gap:14px;align-items:center}.cs-hero p{color:var(--muted)}
@@ -2692,33 +2695,46 @@ async function calFeedUrl(renew) {
 }
 // Conectar el calendario desde el celular (sin Mac): se pega una vez el enlace del calendario y queda guardado en la cuenta.
 function PhoneCalConnect(done) {
-  const ios = mobileOS() === "ios" || !mobileOS();
+  const android = mobileOS() === "android";
   const box = h("div", { class: "pc-box" });
-  const field = inp({ placeholder: ios ? "Pegá acá el enlace de tu calendario" : "Pegá acá la dirección secreta en formato iCal", inputmode: "url", "aria-label": "Enlace del calendario" });
+  const field = inp({ placeholder: "Acá va el enlace que copiaste", inputmode: "url", "aria-label": "Enlace del calendario" });
   const msg = h("p", { class: "hint", "aria-live": "polite" });
-  const btn = h("button", { class: "btn primary", type: "button" }, "Conectar");
+  const btn = h("button", { class: "btn", type: "button" }, "Conectar");
   const go_ = async () => {
     const v = field.value.trim();
-    if (!/^(webcal|https):\/\//i.test(v)) { msg.textContent = "Pegá el enlace que copiaste (empieza con webcal:// o https://)."; return; }
-    btn.disabled = true; msg.textContent = "Conectando…";
+    if (!/^(webcal|https):\/\//i.test(v)) { msg.textContent = "Eso no parece el enlace del calendario. Volvé al paso 4 y copialo de nuevo."; return; }
+    btn.disabled = true; paste.disabled = true; msg.textContent = "Conectando…";
     try {
       const r = await sb.functions.invoke("cal-import", { body: { test_url: v } });
       const err = r.data?.errors?.[0]?.message; if (r.error || err) throw new Error(err || "No se pudo leer ese calendario.");
-      const { error } = await sb.from("external_calendars").insert({ name: ios ? "Calendario del iPhone" : "Google Calendar", url: v }); if (error) throw error;
-      await extLoad(true); toast(`Listo: ${r.data.events.length} eventos de tu calendario ya están en LIVET, en todos tus dispositivos.`); done && done(); render();
-    } catch (e) { msg.textContent = errMsg(e); } finally { btn.disabled = false; }
+      const n = Ext.cals.length;
+      const { error } = await sb.from("external_calendars").insert({ name: (android ? "Google Calendar" : "Calendario del iPhone") + (n ? " " + (n + 1) : ""), url: v }); if (error) throw error;
+      await extLoad(true); toast(`¡Listo! ${r.data.events.length} eventos de tu calendario ya están en LIVET.`); done && done(); render();
+    } catch (e) { msg.textContent = errMsg(e); } finally { btn.disabled = false; paste.disabled = false; }
   };
+  const paste = h("button", { class: "btn primary big cal-btn", type: "button", onclick: async () => {
+    try { const t = await navigator.clipboard.readText(); if (t) { field.value = t.trim(); return go_(); } } catch { /* sin permiso: se pega a mano */ }
+    field.focus(); msg.textContent = "Mantené apretado el cuadro de abajo y elegí «Pegar».";
+  } }, "Pegar el enlace y conectar");
   btn.onclick = go_; field.addEventListener("paste", () => setTimeout(go_, 60));
-  const steps = ios
-    ? [["En el iPhone abrí ", h("b", {}, "Calendario"), " y tocá ", h("b", {}, "Calendarios"), " (abajo)."],
-       ["Tocá la ", h("b", {}, "ⓘ"), " de tu calendario y activá ", h("b", {}, "Calendario público"), "."],
-       ["Tocá ", h("b", {}, "Compartir enlace → Copiar"), " y pegalo acá. Se conecta solo."]]
-    : [["En la compu, abrí ", h("b", {}, "Google Calendar → Configuración"), " y elegí tu calendario."],
-       ["Copiá la ", h("b", {}, "Dirección secreta en formato iCal"), "."],
-       ["Pegala acá. Se conecta sola."]];
-  box.append(h("details", { class: "cs-ios", open: !!mobileOS() }, h("summary", {}, mobileOS() ? "Conectarlo desde el celular" : "¿No tenés Mac? Conectalo desde el celular"),
-    h("ol", { class: "steps-n" }, steps.map(x => h("li", {}, ...x))), h("div", { class: "cal-row" }, field, btn), msg,
-    h("p", { class: "hint" }, "Se hace una sola vez y queda guardado en tu cuenta: lo ves en todos tus dispositivos.")));
+  const step = (n, ...txt) => h("li", { class: "pc-step" }, h("span", { class: "pc-n" }, String(n)), h("span", {}, ...txt));
+  const steps = android ? [
+    step(1, "En una computadora, entrá a ", h("b", {}, "calendar.google.com"), " con tu cuenta de Google."),
+    step(2, "Arriba a la derecha tocá la ", h("b", {}, "rueda ⚙︎ → Configuración"), "."),
+    step(3, "A la izquierda, abajo de «Configuración de mis calendarios», tocá ", h("b", {}, "tu nombre"), "."),
+    step(4, "Bajá hasta ", h("b", {}, "«Dirección secreta en formato iCal»"), " y tocá ", h("b", {}, "Copiar"), "."),
+    step(5, "Volvé acá y tocá ", h("b", {}, "Pegar el enlace y conectar"), ". ¡Listo!"),
+  ] : [
+    step(1, "Salí de LIVET y abrí la app ", h("b", {}, "Calendario"), " del iPhone (la del ícono con la fecha)."),
+    step(2, "Abajo en el medio, tocá ", h("b", {}, "Calendarios"), "."),
+    step(3, "Vas a ver tus calendarios con un tilde. Al lado de uno (por ejemplo «Calendario»), tocá la ", h("b", {}, "ⓘ"), " de la derecha."),
+    step(4, "Bajá hasta el final, activá ", h("b", {}, "Calendario público"), ", tocá ", h("b", {}, "Compartir enlace…"), " y elegí ", h("b", {}, "Copiar"), "."),
+    step(5, "Volvé a LIVET y tocá ", h("b", {}, "Pegar el enlace y conectar"), ". Si el iPhone pregunta, tocá ", h("b", {}, "Permitir pegar"), ". ¡Listo!"),
+  ];
+  box.append(h("details", { class: "cs-ios", open: !!mobileOS() }, h("summary", {}, mobileOS() ? "Conectarlo desde el celular (2 minutos)" : "¿No tenés Mac? Conectalo desde el celular"),
+    h("ol", { class: "pc-steps" }, steps), paste, h("div", { class: "cal-row" }, field, btn), msg,
+    h("p", { class: "hint" }, android ? "" : "¿Tenés varios calendarios (Trabajo, Casa…)? Repetí los pasos con cada uno. ",
+      "Se hace una sola vez y queda guardado en tu cuenta: lo ves en todos tus dispositivos. Ojo: con «Calendario público» activado, quien tenga ese enlace puede ver ese calendario. LIVET lo guarda en privado y no lo comparte; si un día lo desactivás en el iPhone, se desconecta.")));
   return box;
 }
 async function CalSyncDialog() {
@@ -2745,7 +2761,9 @@ async function CalSyncDialog() {
           ? (Ext.mac.length
               ? h("div", { class: "cs-cal" }, h("span", {}, icon("check"), ` Conectado desde tu Mac · ${Ext.mac.length} eventos`))
               : Ext.cals.length
-                ? h("div", { class: "cs-cal" }, h("span", {}, icon("check"), " Conectado desde tu celular"), h("button", { class: "linkbtn", type: "button", onclick: async () => { const { error } = await sb.from("external_calendars").delete().eq("id", Ext.cals[0].id); if (error) return toast(errMsg(error)); await extLoad(true); draw(); render(); } }, "Desconectar"))
+                ? h("div", {}, ...Ext.cals.map(c => h("div", { class: "cs-cal", style: "margin-bottom:6px" }, h("span", {}, icon("check"), " ", c.name, Ext.errors.find(x => x.id === c.id) ? h("small", { class: "bad" }, " · " + Ext.errors.find(x => x.id === c.id).message) : " · conectado"),
+                    h("button", { class: "linkbtn", type: "button", onclick: async () => { const { error } = await sb.from("external_calendars").delete().eq("id", c.id); if (error) return toast(errMsg(error)); await extLoad(true); draw(); render(); } }, "Quitar"))),
+                    PhoneCalConnect(() => draw()))
                 : PhoneCalConnect(() => draw()))
           : macCalOn()
             ? h("div", { class: "cs-cal" }, h("span", {}, icon("check"), ` Conectado · ${Ext.mac.length} eventos`), h("button", { class: "linkbtn", type: "button", onclick: async () => { macCalSet(false); Ext.mac = []; await macCalPush(true); draw(); render(); } }, "Desconectar"))
