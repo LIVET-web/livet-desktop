@@ -967,9 +967,9 @@ dialog::backdrop{background:radial-gradient(circle at 50% 48%,rgba(14,116,144,.5
 .cw-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .dl-hero{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;padding:24px;border-radius:18px;background:var(--surface);border:1px solid var(--line-strong);margin-bottom:16px}
 .dl-hero h2{font-size:26px;margin:8px 0 4px}.dl-hero p{color:var(--muted);max-width:520px}
-.dl-hero a.btn{text-decoration:none}.dl-alt{padding:18px 24px}.dl-alt h2{font-size:20px}
+.dl-hero a.btn,.dl-btn{text-decoration:none!important;justify-content:center}.dl-alt{padding:18px 24px}.dl-alt h2{font-size:20px}
 .btn.big{padding:14px 22px;font-size:16px}
-.dl-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.dl-grid{grid-template-columns:repeat(2,minmax(0,1fr))}@media (max-width:720px){.dl-grid{grid-template-columns:1fr}}.dl-card{min-width:0}.dl-btn{width:100%;white-space:normal}
 .dl-ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:rgba(255,102,0,.12);color:#ff6600;flex:none}.dl-ic svg{width:20px;height:20px;filter:none}
 .steps-n{margin:0;padding-left:20px;display:grid;gap:6px;color:var(--muted);font-size:14px}
 .dl-old{display:inline-block}.dl-old summary{cursor:pointer;text-decoration:underline}.dl-old-l{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px}
@@ -6124,6 +6124,11 @@ async function installApp() {
 function DownloadCards() {
   if (isDesktopApp()) return h("div", { class: "note" }, h("b", {}, "Ya estás usando la app de escritorio. "), "Se actualiza sola: cada mejora de LIVET aparece acá sin reinstalar.");
   if (isStandalone()) return h("div", { class: "note" }, h("b", {}, "Ya tenés LIVET Work instalada. "), "Se actualiza sola.");
+  const guide = (title, sub, ic, os, btn, steps) => { const d = os && DOWNLOADS.find(x => x.os === os); return h("article", { class: "dl-card" + (os && mine && os.startsWith(mine.slice(0, 3)) ? " mine" : "") },
+    h("header", {}, h("div", { class: "dl-ic" }, icon(ic)), h("div", {}, h("h3", {}, title), h("small", {}, sub))),
+    d ? h("a", { class: "btn primary dl-btn", href: DL(d.file), download: "", rel: "noopener" }, icon("download"), btn) : null,
+    h("ol", { class: "steps-n" }, steps.map(x => h("li", {}, ...(Array.isArray(x) ? x : [x]))))); };
+  const mine = detectOS() || "";
   const plat = (title, sub, ic, steps) => h("article", { class: "dl-card" },
     h("header", {}, h("div", { class: "dl-ic" }, icon(ic)), h("div", {}, h("h3", {}, title), h("small", {}, sub))),
     h("ol", { class: "steps-n" }, steps.map(x => h("li", {}, x))));
@@ -6131,22 +6136,34 @@ function DownloadCards() {
   const isMac = /^mac/.test(detectOS() || "") && !mobileOS();
   const macDl = DOWNLOADS.find(d => d.os === "mac-arm");
   return h("div", { class: "dl-wrap" },
-    isMac && macDl ? h("section", { class: "dl-hero" },
-      h("div", {}, h("span", { class: "plan-tag" }, "Para tu Mac"), h("h2", {}, "LIVET Work para Mac"),
-        h("p", {}, "La app completa: trae todo el Calendario de tu Mac y tu iPhone adentro de LIVET. La primera vez, si la Mac pregunta, elegí «Abrir igualmente» en Ajustes → Privacidad y seguridad.")),
-      h("a", { class: "btn primary big", href: DL(macDl.file), download: "", rel: "noopener" }, icon("download"), "Descargar para Mac")) : null,
-    h("section", { class: "dl-hero" + (isMac ? " dl-alt" : "") },
-      h("div", {}, isMac ? null : h("span", { class: "plan-tag" }, "Recomendado"), h("h2", {}, isMac ? "O desde el navegador" : "Instalala en un clic"),
+    h("section", { class: "dl-hero" },
+      h("div", {}, h("span", { class: "plan-tag" }, "Recomendado"), h("h2", {}, "Instalala en un clic"),
         h("p", {}, "Se instala desde el navegador, con su ícono y su ventana propia. Sin archivos, sin avisos de seguridad y siempre actualizada.")),
-      h("button", { type: "button", class: "btn big" + (isMac ? "" : " primary"), onclick: installApp }, icon("download"), mobileOS() ? "Instalar en el celular" : isMac ? "Instalar desde el navegador" : "Instalar LIVET Work")),
+      h("button", { type: "button", class: "btn primary big", onclick: installApp }, icon("download"), mobileOS() ? "Instalar en el celular" : "Instalar LIVET Work")),
+
+    h("h2", { class: "agent-sec-t", style: "margin:26px 0 12px" }, "Cómo instalarla en cada equipo"),
     h("div", { class: "dl-grid" },
-      plat("iPhone y iPad", "Desde Safari", "phone", INSTALL_STEPS.ios),
-      plat("Android", "Desde Chrome", "phone", INSTALL_STEPS.android),
-      plat("Mac", "Desde Safari o Chrome", "monitor", browserName() === "safari" ? INSTALL_STEPS.safari : INSTALL_STEPS.chrome),
-      plat("Windows", "Desde Chrome o Edge", "monitor", INSTALL_STEPS.chrome)),
-    h("p", { class: "hint" }, "Misma cuenta en todos lados. ",
-      h("details", { class: "dl-old" }, h("summary", {}, "¿Preferís el instalador clásico?"), h("div", { class: "dl-old-l" }, ...desk,
-        h("a", { class: "linkbtn", href: `${DESKTOP_REPO}/releases/latest`, target: "_blank", rel: "noopener noreferrer" }, "Todas las versiones")))));
+      guide("Mac", "Chip Apple (M1 o posterior)", "monitor", "mac-arm", "Descargar para Mac", [
+        "Abrí el archivo descargado y arrastrá LIVET Work a Aplicaciones.",
+        "Abrila. La primera vez la Mac muestra «No se abrió LIVET Work»: tocá Listo.",
+        ["Abrí ", h("b", {}, "Ajustes del Sistema → Privacidad y seguridad"), ", bajá hasta el final y tocá ", h("b", {}, "Abrir igualmente"), "."],
+        "Poné tu contraseña o Touch ID y tocá Abrir. Listo: desde ahí abre directo, para siempre."]),
+      guide("Windows", "Windows 10 y 11", "monitor", "win", "Descargar para Windows", [
+        "Abrí el instalador descargado (LIVET-Setup.exe).",
+        ["Si aparece «Windows protegió tu PC», tocá ", h("b", {}, "Más información → Ejecutar de todas formas"), "."],
+        "Seguí los pasos: Siguiente → Instalar.",
+        "Listo: queda en el escritorio y en el menú Inicio."]),
+      guide("iPhone y iPad", "Desde Safari", "phone", null, null, [
+        "Abrí app.livet.work en Safari.",
+        ["Tocá ", h("b", {}, "Compartir"), " (el cuadrado con la flecha hacia arriba)."],
+        ["Elegí ", h("b", {}, "Agregar a pantalla de inicio"), " y tocá Agregar."],
+        "Listo: queda como una app más, con su ícono."]),
+      guide("Android", "Desde Chrome", "phone", null, null, [
+        "Abrí app.livet.work en Chrome.",
+        ["Tocá el menú ", h("b", {}, "⋮"), " arriba a la derecha."],
+        ["Elegí ", h("b", {}, "Instalar app"), " y confirmá."],
+        "Listo: queda como una app más, con su ícono."])),
+    h("p", { class: "hint" }, "Misma cuenta en todos lados. Se actualiza sola."));
 }
 function DownloadPage() {
   return h("div", { class: "doc wide" }, PageTitle("Instalá LIVET Work", "En tu computadora y en tu celular. Un clic, sin descargas raras."), DownloadCards());
