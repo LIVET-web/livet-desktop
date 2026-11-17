@@ -2579,7 +2579,7 @@ function ExtEventDialog(e) {
 function TeamEventDialog(ev, preset = {}) {
   const cid = ev?.company_id || preset.company_id;
   const startD = ev ? extDay(ev) : (preset.date || today());
-  const title = inp({ required: true, maxLength: 200, value: ev?.title || "", placeholder: "Ej: Reunión de equipo" });
+  const title = inp({ required: true, maxLength: 200, value: ev?.title || "", placeholder: "Ej: Reunión, entrega, viaje…" });
   const date = inp({ type: "date", required: true, value: startD });
   const allDay = h("input", { type: "checkbox", checked: !!ev?.all_day });
   const st = inp({ type: "time", value: ev && !ev.all_day ? fmtTime(ev.starts_at) : "10:00" });
@@ -2590,7 +2590,7 @@ function TeamEventDialog(ev, preset = {}) {
   allDay.onchange = () => times.classList.toggle("hidden", allDay.checked); allDay.onchange();
   const mine = !ev || ev.created_by === state.user?.id || state.demo || Co.boss();
   modal({
-    title: ev ? (mine ? "Editar reunión" : ev.title) : "Nueva reunión del equipo",
+    title: ev ? (mine ? "Editar evento" : ev.title) : "Nuevo evento del equipo",
     body: [h("p", { class: "hint" }, "La ve todo el equipo" + (Ext.coNames[cid] || Co.company()?.name ? " de " + (Ext.coNames[cid] || Co.company()?.name) : "") + ", también en su celular."),
       F("Qué es", title), F("Fecha", date), h("label", { style: "display:flex;gap:8px;align-items:center" }, allDay, "Todo el día"), times, F("Dónde (opcional)", place), F("Notas (opcional)", notes)],
     submit: mine ? "Guardar" : undefined, hideSubmit: !mine,
@@ -2623,15 +2623,15 @@ function CoCalendarTab() {
   const evs = Ext.team.filter(e => e.company_id === cid);
   return h("div", {},
     h("div", { class: "co-tools" },
-      h("button", { class: "btn primary", type: "button", onclick: () => TeamEventDialog(null, { company_id: cid }) }, icon("plus"), "Nueva reunión"),
-      h("p", { class: "muted" }, "Reuniones y fechas del equipo. Todos las ven, también en el calendario de su celular.")),
+      h("button", { class: "btn primary", type: "button", onclick: () => TeamEventDialog(null, { company_id: cid }) }, icon("plus"), "Nuevo evento"),
+      h("p", { class: "muted" }, "Eventos del equipo. Todos los ven, también en el calendario de su celular.")),
     WeekNav("cocal", fmtRange(start)),
     h("div", { class: "week" }, weekDays(start).map(d => h("div", { class: "day" + (d === today() ? " today" : "") },
       h("div", { class: "day-h" }, h("span", {}, DOW[parseD(d).getDay()]), h("b", {}, String(parseD(d).getDate()))),
       h("div", { class: "day-b" },
         evs.filter(e => extDay(e) === d).sort(byStart).map(e => h("button", { class: "item team", type: "button", onclick: () => TeamEventDialog(e) },
           h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, (e.all_day ? "Todo el día" : fmtTime(e.starts_at)) + (e.place ? " · " + e.place : "")))),
-        h("button", { class: "add-day", type: "button", "aria-label": `Agregar reunión el ${fmtShort(d)}`, onclick: () => TeamEventDialog(null, { company_id: cid, date: d }) }, "+"))))));
+        h("button", { class: "add-day", type: "button", "aria-label": `Agregar evento el ${fmtShort(d)}`, onclick: () => TeamEventDialog(null, { company_id: cid, date: d }) }, "+"))))));
 }
 // Enlace privado (bajo el dominio de LIVET) para ver el calendario en iCloud, Google u Outlook.
 async function calFeedUrl(renew) {
@@ -2684,7 +2684,7 @@ function CalendarView() {
       h("button", { class: "btn primary", onclick: () => EventDialog(null, { date: today() }) }, icon("plus"), "Nuevo evento")),
     WeekNav("cal", fmtRange(start)),
     h("div", { class: "week" }, weekDays(start).map(d => DayColumn(d, { content: true }))),
-    h("div", { class: "hint" }, "Naranja: tus eventos · Amarillo: publicaciones · Punteado: tareas · Violeta: reuniones del equipo."));
+    h("div", { class: "hint" }, "Naranja: tus eventos · Amarillo: publicaciones · Punteado: tareas · Violeta: eventos del equipo."));
 }
 
 /* ------------------------- Hábitos ------------------------- */
