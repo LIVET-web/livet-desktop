@@ -942,6 +942,13 @@ dialog::backdrop{background:radial-gradient(circle at 50% 48%,rgba(14,116,144,.5
 .cal-row .input{flex:1;min-width:200px}
 .item.team{border-left:3px solid #8b5cf6;background:rgba(139,92,246,.10)}
 .item.ext{border-left:3px solid #9aa4ad;background:rgba(154,164,173,.10)}.cal-btn{justify-content:center;text-decoration:none!important}.cal-row{display:flex;gap:8px;flex-wrap:wrap}
+.agent-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.agent-tile{display:grid;gap:6px;align-content:start;text-align:left;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--text);cursor:pointer;transition:border-color .2s,transform .3s var(--spring)}
+.agent-tile:hover{border-color:#ff6600;transform:translateY(-2px)}
+.agent-tile .agent-ic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:rgba(255,102,0,.12);color:#ff6600}
+.agent-tile b{font-size:15px}.agent-tile span{color:var(--muted);font-size:13px;line-height:1.35}
+.agent-tile em{font-style:normal;font-weight:700;font-size:13px;color:#ff6600;margin-top:2px}
+.agent-tile.is-locked{opacity:.6}.agent-tile.is-locked em{color:var(--muted)}.agent-tile em svg{width:12px;height:12px;vertical-align:-1px}
 .locked-card{display:grid;gap:14px;justify-items:start;padding:28px;max-width:720px}
 .locked-card h2{font-size:24px}
 .lk-ic{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;background:rgba(255,102,0,.12);color:#ff6600}.lk-ic svg{width:24px;height:24px}
@@ -3583,33 +3590,34 @@ Object.assign(ICON, {
 });
 
 // Cada agente es un rol con un trabajo acotado. Lo que pide la persona se envía a la función `ai` (modo "agent").
+const AGENT_GROUPS = [["ideas", "Ideas y guiones"], ["video", "Hooks y video"], ["textos", "Textos y campañas"]];
 const AGENTS = [
-  { id: "ideas", name: "Ideas", icon: "spark", tone: "hot",
+  { id: "ideas", group: "ideas", name: "Ideas", icon: "spark", tone: "hot",
     line: "Qué publicar esta semana, según tu nicho y lo que ya funcionó.",
     makes: ["Ideas para probar", "Qué repetir y qué descartar"],
     ph: "Ej: ideas para Reels de cocina rápida para la próxima semana" },
-  { id: "hooks", name: "Hooks", icon: "bolt", tone: "hot",
+  { id: "hooks", group: "video", name: "Hooks", icon: "bolt", tone: "hot",
     line: "El primer segundo: lo que se ve, el texto y lo que se dice.",
     makes: ["Hooks cortos", "Cuál probar primero"],
     ph: "Ej: hooks para un video sobre ahorrar en el súper" },
-  { id: "guiones", name: "Guiones", icon: "book", tone: "cy",
+  { id: "guiones", group: "ideas", name: "Guiones", icon: "book", tone: "cy",
     line: "El guion de una pieza, escena por escena, con tu voz.",
     makes: ["Guion con tiempos", "Versión de 15 segundos"],
     ph: "Ej: guion de 40 segundos sobre cómo organizo mi semana de contenido" },
-  { id: "video", name: "Video", icon: "play", tone: "red", area: "video",
+  { id: "video", group: "video", name: "Video", icon: "play", tone: "red", area: "video",
     line: "Videos animados con tu marca. Los ves armarse en vivo y los bajás en MP4.",
     makes: ["Video en MP4", "Vista previa en vivo"],
     ph: "Ej: video vertical de 15 segundos con 3 consejos y subtítulos" },
   // Marketing para negocios, agencias e independientes
-  { id: "campana", name: "Campañas", icon: "rocket", tone: "cy", area: "marketing",
+  { id: "campana", group: "textos", name: "Campañas", icon: "rocket", tone: "cy", area: "marketing",
     line: "El plan de una campaña: objetivo, mensajes, calendario y qué medir.",
     makes: ["Plan con calendario", "Próximos 3 pasos"],
     ph: "Ej: lanzar una promo de día del padre para una panadería. Objetivo: 60 pedidos en 3 semanas. Presupuesto: $15.000" },
-  { id: "contenido", name: "Contenido", icon: "book", tone: "hot", area: "marketing",
+  { id: "contenido", group: "textos", name: "Contenido", icon: "book", tone: "hot", area: "marketing",
     line: "Posts, newsletters y textos de venta, listos para copiar.",
     makes: ["Texto listo para copiar", "3 titulares alternativos"],
     ph: "Ej: newsletter de 150 palabras para clientes de mi estudio contable sobre el cierre de ejercicio" },
-  { id: "email", name: "Email", icon: "chat", tone: "cy", area: "marketing",
+  { id: "email", group: "textos", name: "Email", icon: "chat", tone: "cy", area: "marketing",
     line: "El email listo para mandar. Lo que falte, marcado aparte.",
     makes: ["Email listo para copiar", "Qué completar antes"],
     ph: "Ej: email para avisarle a mis clientes que cambian los horarios en diciembre" },
@@ -4573,21 +4581,18 @@ function VideoView() {
 }
 VIEWS.video = VideoView;
 function AgentsView() {
-  const row = a => {
+  const card = a => {
     const ok = a.area === "marketing" ? canUse("marketing") : true;
-    return h("article", { class: "agent" + (ok ? "" : " is-locked"), "data-tone": a.tone },
+    const go_ = () => (!ok ? go("plans") : a.id === "video" ? go("video") : AgentDialog(a));
+    return h("button", { type: "button", class: "agent-tile" + (ok ? "" : " is-locked"), "data-tone": a.tone, onclick: go_ },
       h("div", { class: "agent-ic" }, icon(a.icon)),
-      h("div", { class: "agent-body" }, h("h3", {}, a.name), h("p", {}, a.line)),
-      ok ? h("button", { class: "btn primary", type: "button", onclick: () => (a.id === "video" ? go("video") : AgentDialog(a)) }, a.id === "video" ? "Abrir" : "Pedir")
-        : h("button", { class: "btn", type: "button", onclick: () => go("plans") }, icon("lock"), "Con " + plansFor("marketing").map(t => TIER_NAME[t]).join(" o ")));
+      h("b", {}, a.name), h("span", {}, a.line),
+      h("em", {}, ok ? (a.id === "video" ? "Abrir →" : "Pedir →") : h("span", {}, icon("lock"), " Con " + plansFor("marketing").map(t => TIER_NAME[t]).join(" o "))));
   };
   return h("div", {},
-    PageHead("Equipo", "Siete agentes. Le pedís algo y te devuelve un borrador.",
-      h("button", { class: "btn", type: "button", onclick: () => navTo("agentes") }, "Cómo funciona")),
-    h("h2", { class: "agent-sec-t", style: "margin-top:8px" }, "Para crear contenido"),
-    h("div", { class: "agent-list" }, AGENTS.filter(a => a.area !== "marketing").map(row)),
-    h("h2", { class: "agent-sec-t", style: "margin-top:24px" }, "Para vender"),
-    h("div", { class: "agent-list" }, AGENTS.filter(a => a.area === "marketing").map(row)));
+    PageHead("Equipo", "Elegí un agente y pedile algo.", h("button", { class: "btn", type: "button", onclick: () => navTo("agentes") }, "Cómo funciona")),
+    AGENT_GROUPS.map(([g, t]) => h("section", { class: "agent-sec" }, h("h2", { class: "agent-sec-t" }, t),
+      h("div", { class: "agent-tiles" }, AGENTS.filter(a => a.group === g).map(card)))));
 }
 VIEWS.agents = AgentsView;
 function MarketingView() {
@@ -5993,8 +5998,8 @@ function CasesPage() {
 }
 
 function AgentsPage() {
-  return h("div", { class: "doc wide" }, PageTitle("Agentes", "Siete especialistas. Le pedís algo y te devuelve un borrador para revisar."),
-    ...[["Para crear contenido", AGENTS.filter(a => a.area !== "marketing")], ["Para vender", AGENTS.filter(a => a.area === "marketing")]].map(([t, list]) => h("section", { class: "agent-sec" },
+  return h("div", { class: "doc wide" }, PageTitle("Agentes", "Siete agentes. Le pedís algo y te devuelve un borrador."),
+    ...AGENT_GROUPS.map(([g, t]) => [t, AGENTS.filter(a => a.group === g)]).map(([t, list]) => h("section", { class: "agent-sec" },
       h("h2", { class: "agent-sec-t" }, t),
       h("div", { class: "agent-grid", style: `--cols:${list.length}` }, list.map(a => h("article", { class: "agent mini", "data-tone": a.tone },
         h("div", { class: "agent-ic" }, icon(a.icon)),
