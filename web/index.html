@@ -934,6 +934,7 @@ dialog::backdrop{background:radial-gradient(circle at 50% 48%,rgba(14,116,144,.5
 .nav-lock{margin-left:auto;display:inline-flex}.nav-lock svg{width:13px!important;height:13px!important}
 .agent.is-locked .agent-ic,.agent.is-locked .agent-body{opacity:.55}
 .cal-sync{display:grid;gap:16px}
+.pc-box .cs-ios summary{text-align:left;color:#ff6600;font-weight:600}.pc-box .cal-row{margin-top:10px}
 .cs-ios summary{cursor:pointer;color:var(--muted);font-size:13px;text-align:center}.cs-ios ol{margin-top:10px}
 .cs-hero{display:flex;gap:14px;align-items:center}.cs-hero p{color:var(--muted)}
 .cs-ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:rgba(255,102,0,.12);color:#ff6600;flex:none}.cs-ic svg{width:24px;height:24px}
@@ -2689,6 +2690,37 @@ async function calFeedUrl(renew) {
   const origin = location.protocol === "https:" && /livet\.work$/.test(location.hostname) ? location.origin : "https://app.livet.work";
   return `${origin}/cal/${data.token}.ics`;
 }
+// Conectar el calendario desde el celular (sin Mac): se pega una vez el enlace del calendario y queda guardado en la cuenta.
+function PhoneCalConnect(done) {
+  const ios = mobileOS() === "ios" || !mobileOS();
+  const box = h("div", { class: "pc-box" });
+  const field = inp({ placeholder: ios ? "Pegá acá el enlace de tu calendario" : "Pegá acá la dirección secreta en formato iCal", inputmode: "url", "aria-label": "Enlace del calendario" });
+  const msg = h("p", { class: "hint", "aria-live": "polite" });
+  const btn = h("button", { class: "btn primary", type: "button" }, "Conectar");
+  const go_ = async () => {
+    const v = field.value.trim();
+    if (!/^(webcal|https):\/\//i.test(v)) { msg.textContent = "Pegá el enlace que copiaste (empieza con webcal:// o https://)."; return; }
+    btn.disabled = true; msg.textContent = "Conectando…";
+    try {
+      const r = await sb.functions.invoke("cal-import", { body: { test_url: v } });
+      const err = r.data?.errors?.[0]?.message; if (r.error || err) throw new Error(err || "No se pudo leer ese calendario.");
+      const { error } = await sb.from("external_calendars").insert({ name: ios ? "Calendario del iPhone" : "Google Calendar", url: v }); if (error) throw error;
+      await extLoad(true); toast(`Listo: ${r.data.events.length} eventos de tu calendario ya están en LIVET, en todos tus dispositivos.`); done && done(); render();
+    } catch (e) { msg.textContent = errMsg(e); } finally { btn.disabled = false; }
+  };
+  btn.onclick = go_; field.addEventListener("paste", () => setTimeout(go_, 60));
+  const steps = ios
+    ? [["En el iPhone abrí ", h("b", {}, "Calendario"), " y tocá ", h("b", {}, "Calendarios"), " (abajo)."],
+       ["Tocá la ", h("b", {}, "ⓘ"), " de tu calendario y activá ", h("b", {}, "Calendario público"), "."],
+       ["Tocá ", h("b", {}, "Compartir enlace → Copiar"), " y pegalo acá. Se conecta solo."]]
+    : [["En la compu, abrí ", h("b", {}, "Google Calendar → Configuración"), " y elegí tu calendario."],
+       ["Copiá la ", h("b", {}, "Dirección secreta en formato iCal"), "."],
+       ["Pegala acá. Se conecta sola."]];
+  box.append(h("details", { class: "cs-ios", open: !!mobileOS() }, h("summary", {}, mobileOS() ? "Conectarlo desde el celular" : "¿No tenés Mac? Conectalo desde el celular"),
+    h("ol", { class: "steps-n" }, steps.map(x => h("li", {}, ...x))), h("div", { class: "cal-row" }, field, btn), msg,
+    h("p", { class: "hint" }, "Se hace una sola vez y queda guardado en tu cuenta: lo ves en todos tus dispositivos.")));
+  return box;
+}
 async function CalSyncDialog() {
   if (state.demo) return modal({ title: "Conectar con tu celular", hideSubmit: true, body: h("p", { class: "muted" }, "Creá tu cuenta para conectar tu calendario. En la demo no hay datos reales.") });
   let url;
@@ -2712,9 +2744,9 @@ async function CalSyncDialog() {
         !macCalAvailable()
           ? (Ext.mac.length
               ? h("div", { class: "cs-cal" }, h("span", {}, icon("check"), ` Conectado desde tu Mac · ${Ext.mac.length} eventos`))
-              : mobileOS()
-                ? h("p", { class: "hint" }, "No tenés que hacer nada en el celular: abrí ", h("b", {}, "LIVET Work en tu Mac"), ", entrá a Calendario y tocá «Traer mi calendario». En un minuto aparece acá solo.")
-                : h("p", { class: "hint" }, "Se conecta una vez desde la app LIVET Work para Mac, y después lo ves acá y en todos tus dispositivos. ", h("button", { class: "linkbtn", type: "button", onclick: () => { $("#dlg").close(); navTo("descargar"); } }, "Descargar la app para Mac")))
+              : Ext.cals.length
+                ? h("div", { class: "cs-cal" }, h("span", {}, icon("check"), " Conectado desde tu celular"), h("button", { class: "linkbtn", type: "button", onclick: async () => { const { error } = await sb.from("external_calendars").delete().eq("id", Ext.cals[0].id); if (error) return toast(errMsg(error)); await extLoad(true); draw(); render(); } }, "Desconectar"))
+                : PhoneCalConnect(() => draw()))
           : macCalOn()
             ? h("div", { class: "cs-cal" }, h("span", {}, icon("check"), ` Conectado · ${Ext.mac.length} eventos`), h("button", { class: "linkbtn", type: "button", onclick: async () => { macCalSet(false); Ext.mac = []; await macCalPush(true); draw(); render(); } }, "Desconectar"))
             : h("button", { class: "btn big cal-btn", type: "button", onclick: async ev => {
@@ -2723,7 +2755,7 @@ async function CalSyncDialog() {
                 if (r.ok) { macCalSet(true); toast(`Listo: ${Ext.mac.length} eventos de tu calendario ya están en LIVET.`); draw(); render(); }
                 else { b.disabled = false; b.textContent = "Traer mi calendario"; toast(r.error === "denied" ? "La Mac no dio permiso. Activalo en Ajustes del Sistema → Privacidad y seguridad → Calendarios → LIVET Work." : "No se pudo leer el calendario. Actualizá la app LIVET Work."); }
               } }, icon("cal"), "Traer mi calendario")),
-      ...(Ext.cals.length ? [h("div", { class: "cs-list" }, Ext.cals.map(c => h("div", { class: "cs-cal" }, h("span", {}, icon("phone"), " ", c.name, " · se muestra en LIVET"),
+      ...(false ? [h("div", { class: "cs-list" }, Ext.cals.map(c => h("div", { class: "cs-cal" }, h("span", {}, icon("phone"), " ", c.name, " · se muestra en LIVET"),
         h("button", { class: "linkbtn", type: "button", onclick: async () => { const { error } = await sb.from("external_calendars").delete().eq("id", c.id); if (error) return toast(errMsg(error)); await extLoad(true); draw(); } }, "Quitar"))))] : []));
   };
   draw();
