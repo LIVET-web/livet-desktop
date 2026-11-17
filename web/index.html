@@ -930,6 +930,13 @@ dialog::backdrop{background:radial-gradient(circle at 50% 48%,rgba(14,116,144,.5
 /* Descargas */
 .dl-wrap{display:grid;gap:14px}
 .dl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.nav button.locked,.more-list button.locked{opacity:.55}.nav button.locked:hover{opacity:.85}
+.nav-lock{margin-left:auto;display:inline-flex}.nav-lock svg{width:13px!important;height:13px!important}
+.locked-card{display:grid;gap:14px;justify-items:start;padding:28px;max-width:720px}
+.locked-card h2{font-size:24px}
+.lk-ic{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;background:rgba(255,102,0,.12);color:#ff6600}.lk-ic svg{width:24px;height:24px}
+.lk-plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;width:100%}
+.lk-plan{display:grid;gap:4px;padding:14px;border:1px solid var(--line);border-radius:12px}.lk-plan span{color:var(--muted);font-size:13px}.lk-plan small{color:#ff6600;font-weight:600}
 .confirm-wait{display:grid;gap:12px;text-align:center;justify-items:center;padding:8px 0}
 .confirm-wait h3{font-size:22px}.confirm-wait p{color:var(--muted)}.confirm-wait b{color:var(--text)}
 .cw-ic{width:56px;height:56px;border-radius:16px;display:grid;place-items:center;background:rgba(255,102,0,.12);color:#ff6600}.cw-ic svg{width:26px;height:26px}
@@ -2111,7 +2118,7 @@ function HomeView() {
       h("div", { class: "card stat" }, h("span", {}, "Para hoy"), h("b", { class: "serif" }, String(dueToday)), h("small", {}, fmtLong())),
       h("div", { class: "card stat" }, h("span", {}, "Vencidas"), h("b", { class: "serif" + (late ? " bad" : "") }, String(late))),
       h("div", { class: "card stat" }, h("span", {}, "Pendientes"), h("b", { class: "serif" }, String(open.length))),
-      h("div", { class: "card stat fin-stat", onclick: () => go("money") }, h("span", {}, "Balance del mes"), h("b", { class: "serif" + (mo.balance < 0 ? " bad" : "") }, fmtMoney(mo.balance)), h("small", {}, "Ver finanzas"))),
+      canUse("money") && h("div", { class: "card stat fin-stat", onclick: () => go("money") }, h("span", {}, "Balance del mes"), h("b", { class: "serif" + (mo.balance < 0 ? " bad" : "") }, fmtMoney(mo.balance)), h("small", {}, "Ver finanzas"))),
     h("div", { class: "grid g-main" },
       h("div", { class: "grid", style: "align-content:start" },
         Card("Foco de hoy", h("span", { class: "muted", style: "font-size:12px" }, "Lo más importante ahora"),
@@ -2145,7 +2152,7 @@ function HomeView() {
           h("div", { class: "weekfoot" },
             h("div", { style: "display:flex;justify-content:space-between" }, h("span", { class: "muted" }, "Avance de la semana"), h("b", {}, wk.pct + "%")),
             Progress(wk.pct))) : null),
-        Card("Finanzas del mes", h("button", { class: "btn sm ghost", onclick: () => go("money") }, "Abrir"),
+        !canUse("money") ? null : Card("Finanzas del mes", h("button", { class: "btn sm ghost", onclick: () => go("money") }, "Abrir"),
           h("div", { class: "card-p", style: "display:grid;gap:10px" },
             h("div", { class: "fin-row" }, h("span", { class: "muted" }, "Ingresos"), h("b", { class: "tnum" }, fmtMoney(mo.income))),
             h("div", { class: "fin-row" }, h("span", { class: "muted" }, "Gastos"), h("b", { class: "tnum bad" }, fmtMoney(mo.expense))),
@@ -2226,13 +2233,63 @@ const NAV = [
 ];
 const ALL_NAV = NAV.flatMap(g => g.items);
 const VIEWS = {};
+
+/* ------------------------- Accesos por suscripción ------------------------- */
+// Qué secciones incluye cada plan. Sin suscripción (Gratis) quedan solo las básicas.
+const ACC_BASE = ["home", "profile", "plans", "admin", "tasks", "calendar", "habits"];
+const ACC_PERSONAL = [...ACC_BASE, "goals", "money", "clients", "assistant", "brand", "launches", "hooks"];
+const ACCESS = {
+  free: ACC_BASE,
+  personal: ACC_PERSONAL,
+  creators: [...ACC_PERSONAL, "marketing", "reviews", "learning", "agents", "video"],
+  empresa: [...ACC_PERSONAL, "company", "marketing"],
+};
+const TIER_NAME = { free: "Gratis", personal: "Personal", creators: "Creators", empresa: "Empresa" };
+const Access = { sub: null, member: false, loaded: false };
+async function accessLoad() {
+  Access.loaded = false; Access.sub = null; Access.member = false;
+  if (!sb || !state.user || state.demo) return;
+  const [s, m] = await Promise.all([
+    sb.from("subscriptions").select("tier,status").maybeSingle(),
+    sb.from("company_members").select("role").eq("user_id", state.user.id),
+  ]);
+  Access.sub = s.data || null;
+  Access.member = (m.data || []).some(x => x.role !== "owner"); // invitado al equipo de otra empresa
+  Access.loaded = true;
+}
+function myTier() {
+  if (state.demo || isAdmin()) return "admin";
+  const sub = Access.sub;
+  if (sub && sub.status !== "canceled" && ACCESS[sub.tier]) return sub.tier;
+  if (state.profile?.plan === "pro") return "personal";
+  return "free";
+}
+function canUse(id) {
+  const t = myTier();
+  if (t === "admin") return true;
+  if (id === "company" && Access.member) return true; // quien fue invitado a un equipo lo puede usar
+  return (ACCESS[t] || ACCESS.free).includes(id);
+}
+const plansFor = id => ["personal", "creators", "empresa"].filter(t => ACCESS[t].includes(id));
+function LockedView(id) {
+  const n = ALL_NAV.find(x => x.id === id) || { label: "Esta sección", icon: "star" };
+  const tiers = plansFor(id), names = tiers.map(t => TIER_NAME[t]);
+  const list = names.length > 1 ? names.slice(0, -1).join(", ") + " o " + names[names.length - 1] : names[0];
+  return h("div", {}, PageHead(n.label, ""),
+    h("section", { class: "card locked-card" },
+      h("div", { class: "lk-ic" }, icon("lock")),
+      h("h2", {}, "Disponible con ", tiers.length > 1 ? "los planes " : "el plan ", list),
+      h("p", { class: "muted" }, `Tu plan actual: ${TIER_NAME[myTier()] || "Gratis"}. Pasate a ${list} para usar ${n.label}.`),
+      h("div", { class: "lk-plans" }, tiers.map(t => { const p = PLANS.find(x => x.id === t); return p ? h("div", { class: "lk-plan" }, h("b", {}, p.name), h("span", {}, p.line), h("small", {}, usd(p.month) + " / mes")) : null; })),
+      h("button", { class: "btn primary", type: "button", onclick: () => go("plans") }, "Ver planes")));
+}
 function go(id) { state.view = id; render(); window.scrollTo(0, 0); }
 
 function renderNav() {
   $("#nav").replaceChildren(...enabledNav().map(g => h("div", {},
     g.group ? h("div", { class: "nav-label" }, g.group) : null,
-    h("div", { class: "nav" }, g.items.map(n => h("button", { type: "button", "aria-current": state.view === n.id ? "page" : null, onclick: () => go(n.id) },
-      icon(n.icon), n.label, n.id === "tasks" ? h("span", { class: "count" }, String(Logic.open().length)) : null))))));
+    h("div", { class: "nav" }, g.items.map(n => h("button", { type: "button", class: canUse(n.id) ? null : "locked", "aria-current": state.view === n.id ? "page" : null, onclick: () => go(n.id), title: canUse(n.id) ? null : "Disponible con " + plansFor(n.id).map(t => TIER_NAME[t]).join(" o ") },
+      icon(n.icon), n.label, n.id === "tasks" && canUse("tasks") ? h("span", { class: "count" }, String(Logic.open().length)) : null, canUse(n.id) ? null : h("span", { class: "nav-lock" }, icon("lock"))))))));
   const primary = ["home", "tasks", "money", "habits"].map(id => ALL_NAV.find(n => n.id === id));
   const inMore = !primary.some(n => n.id === state.view);
   $("#bottom-nav").replaceChildren(
@@ -2242,7 +2299,7 @@ function renderNav() {
 function MoreDialog() {
   modal({ title: "Menú", hideSubmit: true, body: enabledNav().map(g => h("div", {},
     g.group ? h("div", { class: "nav-label", style: "padding:0 8px 4px" }, g.group) : null,
-    h("div", { class: "more-list" }, g.items.map(n => h("button", { type: "button", onclick: () => { $("#dlg").close(); go(n.id); } }, icon(n.icon), n.label))))).concat(
+    h("div", { class: "more-list" }, g.items.map(n => h("button", { type: "button", class: canUse(n.id) ? null : "locked", onclick: () => { $("#dlg").close(); go(n.id); } }, icon(n.icon), n.label, canUse(n.id) ? null : h("span", { class: "nav-lock" }, icon("lock"))))))).concat(
     h("button", { class: "btn", type: "button", onclick: PersonalizeDialog }, "Personalizar"),
     h("button", { class: "btn", type: "button", onclick: MyDataDialog }, "Mis datos"),
     isDesktopApp() ? null : h("button", { class: "btn", type: "button", onclick: () => { $("#dlg").close(); navTo("descargar"); } }, icon("download"), "Descargar la app"),
@@ -2254,7 +2311,7 @@ function render() {
   if (!state.user) return;
   Co.stop();
   renderNav();
-  const view = (VIEWS[state.view] || HomeView)();
+  const view = canUse(state.view) ? (VIEWS[state.view] || HomeView)() : LockedView(state.view);
   const bar = state.demo ? h("div", { class: "demo-bar" },
     h("span", {}, h("b", {}, "Modo demo. "), "Probá lo que quieras: no se guarda nada."),
     window.LIFEOS_FORCE_DEMO ? null : h("button", { class: "btn", onclick: leaveDemo }, "Salir del demo")) : null;
@@ -5197,6 +5254,7 @@ async function plansLoad() {
     const { data } = await sb.from("plan_interest").select("tier,billing").maybeSingle();
     Plans.interest = data || null;
     const s = await sb.from("subscriptions").select("tier,billing,status,current_period_end").maybeSingle();
+    if (s.data) { Access.sub = s.data; renderNav(); }
     Plans.sub = s.data || null;
   } catch { /* sin pedido previo */ }
   refreshPlans();
@@ -5487,7 +5545,7 @@ function paletteItems() {
   const items = [{ k: "Sitio", l: "Inicio", run: () => navTo(SITE_HOME) },
     ...Object.entries(SITE_PAGES).map(([id, l]) => ({ k: "Sitio", l, run: () => navTo(id) })),
     ...Object.entries(LEGAL_DOCS).map(([id, d]) => ({ k: "Legal", l: d.title, run: () => openLegal(id) })),
-    ...AGENTS.map(a => ({ k: "Agente", l: `Agente de ${a.name}`, run: () => (state.user ? (a.id === "video" ? go("video") : AgentDialog(a)) : navTo("agentes")) }))];
+    ...AGENTS.map(a => ({ k: "Agente", l: `Agente de ${a.name}`, run: () => (state.user ? (a.id === "video" ? go("video") : !canUse(a.area === "marketing" ? "marketing" : "agents") ? go(a.area === "marketing" ? "marketing" : "agents") : AgentDialog(a)) : navTo("agentes")) }))];
   if (state.user) items.push(...ALL_NAV.map(n => ({ k: "App", l: n.label, run: () => { state.page = ""; go(n.id); route(); } })),
     { k: "App", l: "Mis datos", run: MyDataDialog });
   return items;
@@ -5839,7 +5897,7 @@ function detectOS() {
   }
   return null;
 }
-Object.assign(ICON, { mail: "M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z|M22 7l-10 7L2 7", phone: "M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z|M11 18h2", monitor: "M3 4h18a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z|M8 21h8M12 17v4" });
+Object.assign(ICON, { lock: "M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z|M8 11V7a4 4 0 0 1 8 0v4", mail: "M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z|M22 7l-10 7L2 7", phone: "M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z|M11 18h2", monitor: "M3 4h18a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z|M8 21h8M12 17v4" });
 /* App instalable (PWA): sin descargas ni avisos de seguridad, en computadora y celular. */
 let PWA_PROMPT = null;
 const isStandalone = () => { try { return matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; } catch { return false; } };
@@ -6211,7 +6269,13 @@ function ConfirmWait(email, password, again) {
   confirmTimer = setInterval(check, 4000);
   addEventListener("focus", check, { once: true });
 }
-async function logout() { if (state.demo) return leaveDemo(); await sb.auth.signOut(); }
+async function logout() {
+  if (state.demo) return leaveDemo();
+  // Cerrar sesión siempre: aunque el servidor no responda o otra pestaña tenga la sesión tomada.
+  try { await withTimeout(sb.auth.signOut({ scope: "local" }), 3000, "timeout"); } catch { /* seguimos igual */ }
+  try { Object.keys(localStorage).filter(k => /^sb-.*-auth-token/.test(k)).forEach(k => localStorage.removeItem(k)); } catch { /* sin almacenamiento */ }
+  if (state.user) { currentUid = null; Access.sub = null; Access.member = false; leave(); }
+}
 $("#logout").append(icon("logout", 16));
 $("#logout").onclick = logout;
 
@@ -6232,7 +6296,7 @@ async function enter(session) {
   state.demo = false; state.user = session.user;
   showScreen("boot");
   try {
-    await withTimeout(Promise.all([Store.load(), AI.refresh()]), 15000, "La conexión tardó demasiado. Revisá tu internet y volvé a intentar.");
+    await withTimeout(Promise.all([Store.load(), AI.refresh(), accessLoad().catch(() => {})]), 15000, "La conexión tardó demasiado. Revisá tu internet y volvé a intentar.");
     sb.rpc("log_access").then(() => {}, () => {}); // registro de ingreso (sin bloquear la entrada)
     const name = state.profile?.full_name || session.user.email;
     showApp(name, state.profile?.plan === "admin" ? "Admin" : state.profile?.plan === "pro" ? "Plan Pro" : "Plan gratuito");
