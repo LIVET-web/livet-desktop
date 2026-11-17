@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>LIVET</title>
+<title>LIVET Work</title>
 <meta name="description" content="Tu sistema operativo personal, con módulo para creadores de contenido.">
 <meta name="theme-color" content="#111315">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -1183,6 +1183,51 @@ body.ai-working::after{content:"";position:fixed;left:0;top:0;height:3px;width:1
 .plan-info-item.soon{border-style:dashed}
 .plan-info-tag{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted)}
 .plan-info-tag .plan-tag{font-size:11px;font-weight:800;text-transform:uppercase;background:var(--orange);color:var(--on-accent);border-radius:99px;padding:3px 9px}
+
+/* Planes animados */
+.plan{position:relative;overflow:hidden;transition:transform .45s var(--spring),border-color .3s,box-shadow .4s var(--ease)}
+.plan::before{content:"";position:absolute;inset:0;background:radial-gradient(500px 220px at var(--mx,50%) -10%,color-mix(in srgb,var(--orange) 22%,transparent),transparent 70%);opacity:0;transition:opacity .4s;pointer-events:none}
+.plan::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.07),transparent);transform:skewX(-18deg);pointer-events:none}
+.plan:hover{transform:translateY(-10px);border-color:var(--orange);box-shadow:0 30px 60px -30px color-mix(in srgb,var(--orange) 55%,transparent)}
+.plan:hover::before{opacity:1}
+.plan:hover::after{animation:plan-shine 1s var(--ease)}
+@keyframes plan-shine{to{left:130%}}
+.plan:hover .plan-price b{animation:price-pop .5s var(--spring)}
+@keyframes price-pop{40%{transform:scale(1.08);color:var(--orange)}}
+.plan:hover .plan-has li{animation:li-in .45s var(--ease) both}
+.plan:hover .plan-has li:nth-child(2){animation-delay:.04s}.plan:hover .plan-has li:nth-child(3){animation-delay:.08s}.plan:hover .plan-has li:nth-child(4){animation-delay:.12s}.plan:hover .plan-has li:nth-child(5){animation-delay:.16s}.plan:hover .plan-has li:nth-child(6){animation-delay:.2s}.plan:hover .plan-has li:nth-child(7){animation-delay:.24s}.plan:hover .plan-has li:nth-child(8){animation-delay:.28s}
+@keyframes li-in{from{transform:translateX(-6px);opacity:.5}to{transform:none;opacity:1}}
+.plan:hover .plan-tag{animation:tag-wig .6s var(--spring)}
+@keyframes tag-wig{30%{transform:rotate(-4deg) scale(1.06)}60%{transform:rotate(3deg)}}
+.plan-price b{font-size:clamp(30px,3vw,42px)!important;white-space:nowrap;display:inline-block;transform-origin:0 70%}
+.plan-cta{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.plan-cta-arrow{font-style:normal;display:inline-block;transition:transform .35s var(--spring)}
+.plan-cta:hover .plan-cta-arrow{transform:translateX(5px)}
+.plan .plan-cta:not(.primary){transition:background .3s,color .3s,border-color .3s}
+.plan:hover .plan-cta:not(.primary){background:var(--orange);color:var(--on-accent);border-color:var(--orange)}
+/* Vista previa de compra */
+.co{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;align-items:start}
+.co-card{border:1.5px solid var(--orange);border-radius:20px;padding:20px;background:linear-gradient(160deg,color-mix(in srgb,var(--orange) 14%,var(--surface-2)),var(--surface-2) 55%);animation:co-in .55s var(--spring) both}
+@keyframes co-in{from{transform:translateY(16px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+.co-top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center}
+.co-top .plan-tag{font-size:11px;font-weight:800;text-transform:uppercase;background:var(--orange);color:var(--on-accent);border-radius:99px;padding:3px 9px}
+.co-bill{font-size:12px;color:var(--muted);font-weight:700}
+.co-name{font-size:26px;margin:12px 0 4px}
+.co-price b{font-size:40px;font-family:var(--display);font-weight:850;letter-spacing:-.03em}
+.co-price span{color:var(--muted)}
+.co-eq{margin:2px 0 0;font-size:13px;color:var(--orange-2)}
+.co-list{list-style:none;padding:0;margin:14px 0 0;display:grid;gap:6px}
+.co-list li{position:relative;padding-left:22px;font-size:14px;animation:li-in .4s var(--ease) both;animation-delay:calc(.25s + var(--i) * .06s)}
+.co-list li::before{content:"✓";position:absolute;left:0;color:var(--orange);font-weight:800}
+.co-side{display:grid;gap:10px}
+.co-step{display:flex;align-items:center;gap:10px;font-weight:600;color:var(--muted)}
+.co-step i{font-style:normal;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;border:1.5px solid var(--line-strong);font-size:12px}
+.co-step.on{color:var(--text)}.co-step.on i{background:var(--orange);border-color:var(--orange);color:var(--on-accent)}
+.co-actions{display:flex;justify-content:flex-end;margin-top:14px}
+.co-go{animation:go-pulse 2s ease-in-out 1s infinite}
+@keyframes go-pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--orange) 50%,transparent)}60%{box-shadow:0 0 0 12px transparent}}
+@media (max-width:700px){.co{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.plan,.plan *,.co *{animation:none!important;transition:none!important}.plan:hover{transform:none}}
 @media (prefers-reduced-motion:reduce){.hf-tpl-art i{animation:none}body::before,.ticker-track,.s-cta::after,.live-dot{animation:none}.rv{opacity:1;transform:none;transition:none}}
 </style>
 </head>
@@ -1539,9 +1584,16 @@ const Store = {
     state.creator = res[names.length + 1].data;
     if (!state.db.categories.length && !Store._seeding) {
       Store._seeding = true;
-      const seed = [["Trabajo", "#0891b2"], ["Estudio", "#ca8a04"], ["Personal", "#dc2626"]].map(([name, color]) => ({ name, color }));
-      const r = await sb.from("categories").insert(seed).select();
-      if (!r.error) state.db.categories = r.data;
+      // Se vuelve a mirar justo antes de crear: si otra ventana ya las creó, no se duplican.
+      let lock = 0; try { lock = Number(localStorage.getItem("livet-cat-seed") || 0); } catch { /* sin almacenamiento */ }
+      if (Date.now() - lock > 15000) {
+        try { localStorage.setItem("livet-cat-seed", String(Date.now())); } catch { /* sin almacenamiento */ }
+        const { data: now } = await sb.from("categories").select("id,name,color");
+        const have = new Set((now || []).map(c => c.name.toLowerCase()));
+        const seed = [["Trabajo", "#ff6600"], ["Estudio", "#ffb066"], ["Personal", "#f5f2ed"]].filter(([n]) => !have.has(n.toLowerCase())).map(([name, color]) => ({ name, color }));
+        const r = seed.length ? await sb.from("categories").insert(seed).select() : { data: [] };
+        if (!r.error) state.db.categories = [...(now || []), ...(r.data || [])];
+      }
       Store._seeding = false;
     }
   },
@@ -5096,7 +5148,7 @@ const PLANS = [
       ["Marketing", "Agentes que te arman campañas, analizan a tu competencia y escriben contenido, emails e informes."]] },
   { id: "creators", name: "Creators", tag: "Para creadores de contenido", line: "Tus lanzamientos ordenados y un equipo de IA a tu lado.", month: 19.99, year: 191.9,
     who: "Para creadores, marcas personales e influencers.",
-    has: ["Todo lo del plan Personal", "Calendario de lanzamientos", "Equipo de IA: ideas, guiones y hooks", "Videos animados con tu marca, en MP4", "Reseña de cada pieza publicada", "Agentes de Marketing", "400 créditos de IA por mes", "Próximamente: publicación automática en redes"],
+    has: ["Todo lo del plan Personal", "Calendario de lanzamientos", "Equipo de IA: ideas, guiones y hooks", "Videos animados con tu marca, en MP4", "Reseña de cada pieza publicada", "Agentes de Marketing", "550 créditos de IA por mes", "Próximamente: publicación automática en redes"],
     more: [["Lanzamientos en orden", "Tu semana de contenido en un calendario: qué sale, cuándo, en qué red y con qué hook."],
       ["Un equipo de IA que trabaja con vos", "Agentes de ideas, guiones, hooks, gráficos y video que conocen tu marca y aprenden de lo que te funcionó."],
       ["Videos en minutos", "Elegís una plantilla o le pedís uno a la IA, le ponés tu logo y tus clips, ves cómo se crea en vivo y lo bajás en MP4."],
@@ -5106,7 +5158,7 @@ const PLANS = [
 ];
 const PLAN_ROWS = [
   ["Tareas, calendario, hábitos", [1, 1, 1]], ["Objetivos y finanzas", [1, 1, 1]], ["Clientes personales", [1, 1, 1]],
-  ["Créditos de IA por mes", [300, "680 en equipo", 400]],
+  ["Créditos de IA por mes", [300, "680 en equipo", 550]],
   ["Equipo, clientes de empresa y chat", [0, 1, 0]], ["Agentes de Marketing", [0, 1, 1]],
   ["Marca, lanzamientos y hooks", [1, 1, 1]], ["Aprendizaje y equipo creativo", [0, 0, 1]], ["Video", [0, 0, 1]],
 ];
@@ -5168,19 +5220,42 @@ async function cancelInterest() {
   refreshPlans();
 }
 
+// Vista previa antes de pagar: resumen del plan y un segundo clic para ir al pago.
+function planCheckout(p) {
+  if (!state.user) { requestPlan(p); return; }
+  const yearly = Plans.billing === "anual", total = yearly ? p.year : p.month;
+  const go = h("button", { class: "btn primary lg co-go", type: "button", onclick: async e => {
+    const b = e.currentTarget; b.disabled = true; b.replaceChildren(h("span", { class: "ai-dots" }, h("i"), h("i"), h("i")), "Abriendo el pago");
+    $("#dlg").close(); await requestPlan(p); } }, "Confirmar y pagar ", h("b", {}, usd(total)), " →");
+  modal({ title: "Revisá tu plan", hideSubmit: true, wide: true, body: [
+    h("div", { class: "co" },
+      h("div", { class: "co-card" },
+        h("div", { class: "co-top" }, h("span", { class: "plan-tag" }, p.tag), h("span", { class: "co-bill" }, yearly ? "Pago anual · 20% menos" : "Pago mensual")),
+        h("h3", { class: "co-name" }, `LIVET ${p.name}`),
+        h("div", { class: "co-price" }, h("b", { class: "tnum" }, usd(total)), h("span", {}, yearly ? " por año" : " por mes")),
+        yearly ? h("p", { class: "co-eq" }, `Equivale a ${usd(Math.round(p.year / 12 * 100) / 100)} por mes`) : null,
+        h("ul", { class: "co-list" }, p.has.filter(t => !/^Próximamente/.test(t)).slice(0, 6).map((t, i) => h("li", { style: `--i:${i}` }, t)))),
+      h("div", { class: "co-side" },
+        h("div", { class: "co-step on" }, h("i", {}, "1"), h("span", {}, "Revisás el plan")),
+        h("div", { class: "co-step" }, h("i", {}, "2"), h("span", {}, "Pagás seguro en Polar")),
+        h("div", { class: "co-step" }, h("i", {}, "3"), h("span", {}, "Se activa en tu cuenta")),
+        h("p", { class: "hint" }, `Se renueva ${yearly ? "cada año" : "cada mes"} hasta que lo canceles. Los impuestos se muestran antes de pagar. No es reembolsable, salvo lo que exija la ley de tu país.`))),
+    h("div", { class: "co-actions" }, go)] });
+}
 function planInfo(p) {
   modal({ title: `Plan ${p.name}`, hideSubmit: true, wide: true, body: [
     h("p", { class: "plan-info-tag" }, h("span", { class: "plan-tag" }, p.tag), " ", p.who),
     h("div", { class: "plan-info" }, p.more.map(([t, d]) => h("div", { class: "plan-info-item" + (/^Próximamente/.test(t) ? " soon" : "") }, h("b", {}, t), h("p", {}, d)))),
     h("p", { class: "hint" }, `${usd(p.month)} por mes o ${usd(p.year)} por año. Se renueva solo y cancelás cuando quieras.`)],
-    extraActions: h("button", { class: "btn primary", type: "button", onclick: () => { $("#dlg").close(); requestPlan(p); } }, state.user ? "Suscribirme" : "Crear cuenta y suscribirme") });
+    extraActions: h("button", { class: "btn primary", type: "button", onclick: () => { $("#dlg").close(); planCheckout(p); } }, state.user ? "Suscribirme" : "Crear cuenta y suscribirme") });
 }
 function PlanCard(p) {
   const yearly = Plans.billing === "anual";
   const per = yearly ? p.year / 12 : p.month;
   const subOn = Plans.sub && Plans.sub.status !== "canceled", subMine = subOn && Plans.sub.tier === p.id;
   const mine = !subOn && Plans.interest?.tier === p.id;
-  return h("article", { class: "plan" + (p.featured ? " featured" : "") + (mine ? " mine" : ""), "aria-label": "Plan " + p.name },
+  return h("article", { class: "plan" + (p.featured ? " featured" : "") + (mine ? " mine" : ""), "aria-label": "Plan " + p.name,
+    onmousemove: e => { const r = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty("--mx", ((e.clientX - r.left) / r.width * 100).toFixed(0) + "%"); } },
     h("header", {}, h("h3", { class: "serif" }, p.name), h("span", { class: "plan-tag" }, p.tag)),
     h("p", { class: "plan-line" }, p.line),
     h("div", { class: "plan-price" }, h("b", { class: "serif tnum" }, usd(Math.round(per * 100) / 100)), h("span", {}, " por mes")),
@@ -5192,7 +5267,7 @@ function PlanCard(p) {
         h("button", { class: "btn ghost sm", type: "button", onclick: openPortal }, "Administrar suscripción"))
     : mine ? h("div", { style: "display:grid;gap:6px" }, h("button", { class: "btn primary", type: "button", onclick: () => requestPlan(p) }, "Pagar y activar"),
         h("button", { class: "btn ghost sm", type: "button", onclick: cancelInterest }, "Retirar pedido"))
-      : h("button", { class: p.featured ? "btn primary" : "btn", type: "button", onclick: () => requestPlan(p) }, state.user ? (subOn ? "Cambiar a este plan" : "Suscribirme") : "Crear cuenta y suscribirme"),
+      : h("button", { class: (p.featured ? "btn primary" : "btn") + " plan-cta", type: "button", onclick: () => planCheckout(p) }, h("span", {}, state.user ? (subOn ? "Cambiar a este plan" : "Suscribirme") : "Crear cuenta y suscribirme"), h("i", { class: "plan-cta-arrow" }, "→")),
     subMine ? null : h("p", { class: "hint", style: "margin:0;text-align:center" }, yearly ? "Se renueva cada año. Cancelás cuando quieras." : "Se renueva cada mes. Cancelás cuando quieras."));
 }
 

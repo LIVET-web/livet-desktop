@@ -1,7 +1,7 @@
 {
   "name": "livet-desktop",
-  "productName": "LIVET",
-  "version": "1.0.3",
+  "productName": "LIVET Work",
+  "version": "1.0.4",
   "description": "LIVET para escritorio: agenda, finanzas, empresa y creadores en una sola app.",
   "main": "main.js",
   "author": "LIVET",
@@ -17,7 +17,7 @@
   },
   "build": {
     "appId": "work.livet.app",
-    "productName": "LIVET",
+    "productName": "LIVET Work",
     "copyright": "© LIVET",
     "files": [
       "main.js",

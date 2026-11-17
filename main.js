@@ -35,7 +35,7 @@ function createWindow() {
     height: 820,
     minWidth: 380,
     minHeight: 560,
-    title: "LIVET",
+    title: "LIVET Work",
     backgroundColor: "#111315",
     icon: path.join(__dirname, "build", "icon.png"),
     autoHideMenuBar: true,
@@ -74,15 +74,15 @@ function buildMenu() {
   const isMac = process.platform === "darwin";
   const template = [
     ...(isMac ? [{
-      label: "LIVET",
+      label: "LIVET Work",
       submenu: [
-        { role: "about", label: "Acerca de LIVET" },
+        { role: "about", label: "Acerca de LIVET Work" },
         { type: "separator" },
-        { role: "hide", label: "Ocultar LIVET" },
+        { role: "hide", label: "Ocultar LIVET Work" },
         { role: "hideOthers", label: "Ocultar otras" },
         { role: "unhide", label: "Mostrar todas" },
         { type: "separator" },
-        { role: "quit", label: "Salir de LIVET" },
+        { role: "quit", label: "Salir de LIVET Work" },
       ],
     }] : []),
     {
