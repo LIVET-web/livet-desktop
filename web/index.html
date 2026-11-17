@@ -951,11 +951,14 @@ dialog::backdrop{background:radial-gradient(circle at 50% 48%,rgba(14,116,144,.5
 .agent-tile b{font-size:15px}.agent-tile span{color:var(--muted);font-size:13px;line-height:1.35}
 .agent-tile em{font-style:normal;font-weight:700;font-size:13px;color:#ff6600;margin-top:2px}
 .agent-tile.is-locked{opacity:.6}.agent-tile.is-locked em{color:var(--muted)}.agent-tile em svg{width:12px;height:12px;vertical-align:-1px}
-.locked-card{display:grid;gap:14px;justify-items:start;padding:28px;max-width:720px}
-.locked-card h2{font-size:24px}
+.locked-wrap{position:relative;min-height:70vh}
+.locked-pv{filter:blur(1.2px) saturate(.7);opacity:.6;pointer-events:none;user-select:none;max-height:calc(100vh - 120px);overflow:hidden;-webkit-mask-image:linear-gradient(#000 70%,transparent);mask-image:linear-gradient(#000 70%,transparent)}
+.locked-over{position:absolute;inset:0;display:flex;justify-content:center;align-items:flex-start;padding:22vh 12px 0}
+.locked-card{display:grid;gap:12px;justify-items:center;text-align:center;padding:28px;max-width:440px;width:100%;box-shadow:0 30px 80px rgba(0,0,0,.55);border-color:rgba(255,102,0,.35)}
+.locked-card h2{font-size:21px}
 .lk-ic{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;background:rgba(255,102,0,.12);color:#ff6600}.lk-ic svg{width:24px;height:24px}
-.lk-plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;width:100%}
-.lk-plan{display:grid;gap:4px;padding:14px;border:1px solid var(--line);border-radius:12px}.lk-plan span{color:var(--muted);font-size:13px}.lk-plan small{color:#ff6600;font-weight:600}
+.lk-plans{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;width:100%}
+.lk-plan{display:grid;gap:2px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;min-width:120px}.lk-plan span{color:var(--muted);font-size:13px}.lk-plan small{color:#ff6600;font-weight:600}
 .confirm-wait{display:grid;gap:12px;text-align:center;justify-items:center;padding:8px 0}
 .confirm-wait h3{font-size:22px}.confirm-wait p{color:var(--muted)}.confirm-wait b{color:var(--text)}
 .cw-ic{width:56px;height:56px;border-radius:16px;display:grid;place-items:center;background:rgba(255,102,0,.12);color:#ff6600}.cw-ic svg{width:26px;height:26px}
@@ -2294,13 +2297,18 @@ function LockedView(id) {
   const n = ALL_NAV.find(x => x.id === id) || { label: "Esta sección", icon: "star" };
   const tiers = plansFor(id), names = tiers.map(t => TIER_NAME[t]);
   const list = names.length > 1 ? names.slice(0, -1).join(", ") + " o " + names[names.length - 1] : names[0];
-  return h("div", {}, PageHead(n.label, ""),
-    h("section", { class: "card locked-card" },
-      h("div", { class: "lk-ic" }, icon("lock")),
-      h("h2", {}, "Disponible con ", tiers.length > 1 ? "los planes " : "el plan ", list),
-      h("p", { class: "muted" }, `Tu plan actual: ${TIER_NAME[myTier()] || "Gratis"}. Pasate a ${list} para usar ${n.label}.`),
-      h("div", { class: "lk-plans" }, tiers.map(t => { const p = PLANS.find(x => x.id === t); return p ? h("div", { class: "lk-plan" }, h("b", {}, p.name), h("span", {}, p.line), h("small", {}, usd(p.month) + " / mes")) : null; })),
-      h("button", { class: "btn primary", type: "button", onclick: () => go("plans") }, "Ver planes")));
+  // Vista previa real de la sección, apagada y sin poder tocarse, con el candado encima.
+  let pv = null;
+  try { pv = (VIEWS[id] || HomeView)(); } catch (e) { console.warn("vista previa", e); }
+  const card = h("section", { class: "card locked-card" },
+    h("div", { class: "lk-ic" }, icon("lock")),
+    h("h2", {}, "No tenés esta sección en tu plan"),
+    h("p", { class: "muted" }, `${n.label} está disponible con ${tiers.length > 1 ? "los planes " : "el plan "}${list}. Tu plan: ${TIER_NAME[myTier()] || "Gratis"}.`),
+    h("div", { class: "lk-plans" }, tiers.map(t => { const p = PLANS.find(x => x.id === t); return p ? h("div", { class: "lk-plan" }, h("b", {}, p.name), h("small", {}, usd(p.month) + " / mes")) : null; })),
+    h("button", { class: "btn primary", type: "button", onclick: () => go("plans") }, "Ver planes"));
+  return h("div", { class: "locked-wrap" },
+    pv ? h("div", { class: "locked-pv", inert: "", "aria-hidden": "true" }, pv) : PageHead(n.label, ""),
+    h("div", { class: "locked-over" }, card));
 }
 function go(id) { state.view = id; render(); window.scrollTo(0, 0); }
 
@@ -4566,7 +4574,7 @@ function AgentsView() {
       h("em", {}, ok ? (a.id === "video" ? "Abrir →" : "Pedir →") : h("span", {}, icon("lock"), " Con " + plansFor("marketing").map(t => TIER_NAME[t]).join(" o "))));
   };
   return h("div", {},
-    PageHead("Equipo", "Elegí un agente y pedile algo.", h("button", { class: "btn", type: "button", onclick: () => navTo("agentes") }, "Cómo funciona")),
+    PageHead("Equipo", "Siete agentes de IA. Elegí uno y pedile algo."),
     AGENT_GROUPS.map(([g, t]) => h("section", { class: "agent-sec" }, h("h2", { class: "agent-sec-t" }, t),
       h("div", { class: "agent-tiles" }, AGENTS.filter(a => a.group === g).map(card)))));
 }
@@ -5635,7 +5643,7 @@ function AssistantView() {
 VIEWS.assistant = AssistantView;
 
 /* ------------------------- Sitio público, barra superior, buscador y tema ------------------------- */
-const SITE_PAGES = { descargar: "Descargar", guia: "Guía", casos: "Casos", agentes: "Agentes", precios: "Precios", faq: "FAQ", contacto: "Contacto", legal: "Legal", acerca: "Acerca de" };
+const SITE_PAGES = { descargar: "Descargar", guia: "Guía", casos: "Casos", agentes: "Equipo", precios: "Precios", faq: "FAQ", contacto: "Contacto", legal: "Legal", acerca: "Acerca de" };
 const SITE_HOME = "home";
 
 /* Pantallas: sitio público, ingreso, app y carga. Solo una visible a la vez. */
@@ -5645,6 +5653,8 @@ function showScreen(name) {
   renderTopbar();
 }
 function navTo(page) {
+  // "Equipo" es una sola sección: con sesión iniciada va directo al equipo de la app.
+  if (page === "agentes" && state.user) { state.page = ""; try { history.replaceState(null, "", location.pathname + location.search); } catch { /* nada */ } route(); go("agents"); return; }
   state.page = page || "";
   try { if (history.replaceState) history.replaceState(null, "", page ? "#" + page : location.pathname + location.search); } catch { /* sin historial */ }
   route(); window.scrollTo(0, 0);
@@ -5974,7 +5984,7 @@ function CasesPage() {
 }
 
 function AgentsPage() {
-  return h("div", { class: "doc wide" }, PageTitle("Agentes", "Siete agentes. Le pedís algo y te devuelve un borrador."),
+  return h("div", { class: "doc wide" }, PageTitle("Equipo", "Siete agentes de IA. Le pedís algo y te devuelve un borrador."),
     ...AGENT_GROUPS.map(([g, t]) => [t, AGENTS.filter(a => a.group === g)]).map(([t, list]) => h("section", { class: "agent-sec" },
       h("h2", { class: "agent-sec-t" }, t),
       h("div", { class: "agent-grid", style: `--cols:${list.length}` }, list.map(a => h("article", { class: "agent mini", "data-tone": a.tone },
