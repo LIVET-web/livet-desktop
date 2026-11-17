@@ -933,7 +933,15 @@ dialog::backdrop{background:radial-gradient(circle at 50% 48%,rgba(14,116,144,.5
 .nav button.locked,.more-list button.locked{opacity:.55}.nav button.locked:hover{opacity:.85}
 .nav-lock{margin-left:auto;display:inline-flex}.nav-lock svg{width:13px!important;height:13px!important}
 .agent.is-locked .agent-ic,.agent.is-locked .agent-body{opacity:.55}
-.cal-sync{display:grid;gap:14px}.cal-btn{justify-content:center}.cal-row{display:flex;gap:8px;flex-wrap:wrap}
+.cal-sync{display:grid;gap:16px}
+.cs-block{display:grid;gap:12px;padding:16px;border:1px solid var(--line);border-radius:14px}
+.cs-h{display:flex;gap:12px;align-items:flex-start}.cs-h h3{font-size:16px}.cs-h p{font-size:13px;margin-top:2px}
+.cs-n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#ff6600;color:#111;font-weight:700;flex:none;font-size:13px}
+.cs-cal{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:var(--surface-2)}
+.cs-cal svg,.item.ext svg,.item.team svg{width:12px;height:12px;vertical-align:-1px}
+.cal-row .input{flex:1;min-width:200px}
+.item.team{border-left:3px solid #8b5cf6;background:rgba(139,92,246,.10)}
+.item.ext{border-left:3px solid #9aa4ad;background:rgba(154,164,173,.10)}.cal-btn{justify-content:center;text-decoration:none!important}.cal-row{display:flex;gap:8px;flex-wrap:wrap}
 .locked-card{display:grid;gap:14px;justify-items:start;padding:28px;max-width:720px}
 .locked-card h2{font-size:24px}
 .lk-ic{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;background:rgba(255,102,0,.12);color:#ff6600}.lk-ic svg{width:24px;height:24px}
@@ -1594,7 +1602,7 @@ const state = {
   demo: false, user: null, profile: null, view: "home",
   db: {}, creator: null,
   filter: { status: "open", cat: "all" },
-  off: { launch: 0, cal: 0, learn: 0, money: 0 },
+  off: { launch: 0, cal: 0, learn: 0, money: 0, cocal: 0 },
   openGoal: null, hookDraft: null, chatBusy: false,
 };
 
@@ -2488,9 +2496,110 @@ function DayColumn(d, opts) {
         h("span", { class: "it-m" }, Plat(c.platform), fmtTime(c.publish_at), StatusPill(c.status)))),
       tks.map(t => h("button", { class: "item tk", type: "button", onclick: () => TaskDialog(t) },
         h("span", { class: "it-t" }, t.title), h("span", { class: "it-m" }, "Tarea · " + PRI[t.priority]))),
+      Ext.team.filter(e => extDay(e) === d).sort(byStart).map(e => h("button", { class: "item team", type: "button", onclick: () => TeamEventDialog(e) },
+        h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, icon("team"), (e.all_day ? "Todo el día" : fmtTime(e.starts_at)) + " · " + (Ext.coNames[e.company_id] || "Equipo")))),
+      Ext.events.filter(e => extDay(e) === d).sort(byStart).map(e => h("button", { class: "item ext", type: "button", onclick: () => ExtEventDialog(e) },
+        h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, icon("phone"), e.all_day ? "Todo el día" : fmtTime(e.starts_at)))),
       h("button", { class: "add-day", type: "button", "aria-label": `Agregar evento el ${fmtShort(d)}`, onclick: () => EventDialog(null, { date: d }) }, "+")));
 }
-// Enlace privado para ver el calendario de LIVET en iCloud (iPhone y Mac), Google u Outlook.
+
+/* ----- Calendarios conectados (iPhone / iCloud) y reuniones del equipo ----- */
+const Ext = { events: [], team: [], cals: [], coNames: {}, errors: [], at: 0, loading: false, timer: null };
+const extDay = e => (e.all_day ? String(e.starts_at).slice(0, 10) : isoDay(e.starts_at));
+const byStart = (a, b) => String(a.starts_at).localeCompare(String(b.starts_at));
+async function extLoad(force) {
+  if (state.demo || !sb || !state.user || Ext.loading) return;
+  if (!force && Date.now() - Ext.at < 60000) return;
+  Ext.loading = true;
+  try {
+    const from = new Date(Date.now() - 60 * 864e5).toISOString(), to = new Date(Date.now() + 240 * 864e5).toISOString();
+    const [cals, team, cos] = await Promise.all([
+      sb.from("external_calendars").select("id,name,url").order("created_at"),
+      sb.from("company_events").select("id,company_id,title,starts_at,ends_at,all_day,place,notes,created_by").gte("starts_at", from).lte("starts_at", to).limit(2000),
+      sb.from("companies").select("id,name"),
+    ]);
+    Ext.cals = cals.data || []; Ext.team = team.data || [];
+    Ext.coNames = Object.fromEntries((cos.data || []).map(c => [c.id, c.name]));
+    if (Ext.cals.length) {
+      const r = await sb.functions.invoke("cal-import", { body: { from, to } });
+      if (r.data?.ok) { Ext.events = r.data.events || []; Ext.errors = r.data.errors || []; }
+    } else { Ext.events = []; Ext.errors = []; }
+    Ext.at = Date.now();
+  } catch (e) { console.error("calendarios", e); }
+  finally { Ext.loading = false; }
+  if (["calendar", "home", "company"].includes(state.view) && !$("#dlg").open) render();
+}
+// Mientras el calendario está abierto, se actualiza solo cada minuto (y al volver a la pestaña).
+function extWatch() {
+  if (Ext.timer) return;
+  Ext.timer = setInterval(() => { if (["calendar", "company"].includes(state.view) && document.visibilityState === "visible") extLoad(true); }, 60000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && ["calendar", "company"].includes(state.view)) extLoad(); });
+}
+function ExtEventDialog(e) {
+  const cal = Ext.cals.find(c => c.id === e.cal);
+  modal({ title: e.title, hideSubmit: true, body: h("div", { class: "sec" },
+    h("p", {}, h("b", {}, fmtLong ? new Date(extDay(e) + "T12:00").toLocaleDateString("es-UY", { weekday: "long", day: "numeric", month: "long" }) : extDay(e)),
+      e.all_day ? " · Todo el día" : ` · ${fmtTime(e.starts_at)} a ${fmtTime(e.ends_at)}`),
+    h("p", { class: "hint" }, icon("phone"), ` Viene de ${cal?.name || "tu calendario"}. Para cambiarlo, editalo en el Calendario de tu iPhone.`)) });
+}
+function TeamEventDialog(ev, preset = {}) {
+  const cid = ev?.company_id || preset.company_id;
+  const startD = ev ? extDay(ev) : (preset.date || today());
+  const title = inp({ required: true, maxLength: 200, value: ev?.title || "", placeholder: "Ej: Reunión de equipo" });
+  const date = inp({ type: "date", required: true, value: startD });
+  const allDay = h("input", { type: "checkbox", checked: !!ev?.all_day });
+  const st = inp({ type: "time", value: ev && !ev.all_day ? fmtTime(ev.starts_at) : "10:00" });
+  const en = inp({ type: "time", value: ev?.ends_at && !ev.all_day ? fmtTime(ev.ends_at) : "11:00" });
+  const place = inp({ maxLength: 300, value: ev?.place || "", placeholder: "Oficina, Zoom, Meet…" });
+  const notes = ta(ev?.notes);
+  const times = h("div", { class: "row2" }, F("Desde", st), F("Hasta", en));
+  allDay.onchange = () => times.classList.toggle("hidden", allDay.checked); allDay.onchange();
+  const mine = !ev || ev.created_by === state.user?.id || state.demo || Co.boss();
+  modal({
+    title: ev ? (mine ? "Editar reunión" : ev.title) : "Nueva reunión del equipo",
+    body: [h("p", { class: "hint" }, "La ve todo el equipo" + (Ext.coNames[cid] || Co.company()?.name ? " de " + (Ext.coNames[cid] || Co.company()?.name) : "") + ", también en su celular."),
+      F("Qué es", title), F("Fecha", date), h("label", { style: "display:flex;gap:8px;align-items:center" }, allDay, "Todo el día"), times, F("Dónde (opcional)", place), F("Notas (opcional)", notes)],
+    submit: mine ? "Guardar" : undefined, hideSubmit: !mine,
+    onDelete: ev && mine ? async () => { if (!state.demo) { const { error } = await sb.from("company_events").delete().eq("id", ev.id); if (error) throw error; } Ext.team = Ext.team.filter(x => x.id !== ev.id); } : null,
+    onSubmit: async () => {
+      const t = title.value.trim(); if (!t) throw new Error("Escribí qué es."); if (!date.value) throw new Error("Elegí una fecha.");
+      const all = allDay.checked;
+      const starts = all ? new Date(`${date.value}T00:00:00Z`) : new Date(`${date.value}T${st.value || "10:00"}`);
+      let ends = null;
+      if (!all && en.value) { ends = new Date(`${date.value}T${en.value}`); if (ends < starts) throw new Error("La hora de fin no puede ser anterior a la de inicio."); }
+      const row = { title: t, starts_at: starts.toISOString(), ends_at: ends ? ends.toISOString() : null, all_day: all, place: place.value.trim() || null, notes: notes.value.trim() || null };
+      if (state.demo) {
+        if (ev) Object.assign(ev, row); else Ext.team.push({ id: "d" + Date.now(), company_id: cid, created_by: Co.uid(), ...row });
+      } else if (ev) {
+        const { data, error } = await sb.from("company_events").update(row).eq("id", ev.id).select().single(); if (error) throw error; Object.assign(ev, data);
+      } else {
+        const { data, error } = await sb.from("company_events").insert({ ...row, company_id: cid }).select().single(); if (error) throw error; Ext.team.push(data);
+      }
+      toast("Guardado. Ya lo ve todo el equipo.");
+    },
+  });
+}
+function CoCalendarTab() {
+  const start = curWeek("cocal"), cid = Co.cur;
+  if (state.demo && !Ext.demoSeeded) {
+    Ext.demoSeeded = true;
+    const mk = (d, hh, t, place) => ({ id: "dm" + d + hh, company_id: cid, title: t, place, all_day: false, created_by: Co.members[0]?.user_id, starts_at: new Date(`${addDays(mondayOf(today()), d)}T${hh}:00`).toISOString(), ends_at: new Date(`${addDays(mondayOf(today()), d)}T${String(+hh.slice(0, 2) + 1).padStart(2, "0")}${hh.slice(2)}:00`).toISOString() });
+    Ext.team.push(mk(0, "09:30", "Reunión semanal", "Oficina"), mk(2, "15:00", "Llamada con cliente Brisa", "Meet"), mk(4, "11:00", "Revisión de entregas", "Oficina"));
+  }
+  const evs = Ext.team.filter(e => e.company_id === cid);
+  return h("div", {},
+    h("div", { class: "co-tools" },
+      h("button", { class: "btn primary", type: "button", onclick: () => TeamEventDialog(null, { company_id: cid }) }, icon("plus"), "Nueva reunión"),
+      h("p", { class: "muted" }, "Reuniones y fechas del equipo. Todos las ven, también en el calendario de su celular.")),
+    WeekNav("cocal", fmtRange(start)),
+    h("div", { class: "week" }, weekDays(start).map(d => h("div", { class: "day" + (d === today() ? " today" : "") },
+      h("div", { class: "day-h" }, h("span", {}, DOW[parseD(d).getDay()]), h("b", {}, String(parseD(d).getDate()))),
+      h("div", { class: "day-b" },
+        evs.filter(e => extDay(e) === d).sort(byStart).map(e => h("button", { class: "item team", type: "button", onclick: () => TeamEventDialog(e) },
+          h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, (e.all_day ? "Todo el día" : fmtTime(e.starts_at)) + (e.place ? " · " + e.place : "")))),
+        h("button", { class: "add-day", type: "button", "aria-label": `Agregar reunión el ${fmtShort(d)}`, onclick: () => TeamEventDialog(null, { company_id: cid, date: d }) }, "+"))))));
+}
+// Enlace privado (bajo el dominio de LIVET) para ver el calendario en iCloud, Google u Outlook.
 async function calFeedUrl(renew) {
   let { data, error } = await sb.from("calendar_feeds").select("token").maybeSingle();
   if (error) throw error;
@@ -2498,40 +2607,64 @@ async function calFeedUrl(renew) {
   if (!data) ({ data, error } = await sb.from("calendar_feeds").insert({ user_id: state.user.id }).select("token").single());
   else if (renew) ({ data, error } = await sb.from("calendar_feeds").update({ token: fresh() }).eq("user_id", state.user.id).select("token").single());
   if (error) throw error;
-  return `${SUPABASE_URL}/functions/v1/cal?t=${data.token}`;
+  const origin = location.protocol === "https:" && /livet\.work$/.test(location.hostname) ? location.origin : "https://app.livet.work";
+  return `${origin}/cal/${data.token}.ics`;
 }
 async function CalSyncDialog() {
-  if (state.demo) return modal({ title: "Ver en mi celular", hideSubmit: true, body: h("p", { class: "muted" }, "Creá tu cuenta para conectar tu calendario. En la demo no hay datos reales.") });
+  if (state.demo) return modal({ title: "Conectar con tu celular", hideSubmit: true, body: h("p", { class: "muted" }, "Creá tu cuenta para conectar tu calendario. En la demo no hay datos reales.") });
   let url;
   try { url = await calFeedUrl(); } catch (e) { return toast(errMsg(e)); }
+  await extLoad(true);
   const body = h("div", { class: "sec cal-sync" });
   const draw = () => {
     const webcal = url.replace(/^https:/, "webcal:");
+    const pasteIn = inp({ placeholder: "Pegá acá el enlace de tu calendario", "aria-label": "Enlace de tu calendario de iPhone", inputmode: "url" });
+    const msg = h("p", { class: "hint", "aria-live": "polite" });
+    const connect = h("button", { class: "btn primary", type: "button" }, "Conectar");
+    const doConnect = async () => {
+      const v = pasteIn.value.trim();
+      if (!/^(webcal|https):\/\//i.test(v)) { msg.textContent = "Pegá el enlace que copiaste en el iPhone (empieza con webcal://)."; return; }
+      connect.disabled = true; msg.textContent = "Conectando…";
+      try {
+        const r = await sb.functions.invoke("cal-import", { body: { test_url: v } });
+        const err = r.data?.errors?.[0]?.message; if (r.error || err) throw new Error(err || "No se pudo leer ese calendario.");
+        const { error } = await sb.from("external_calendars").insert({ name: "Calendario del iPhone", url: v }); if (error) throw error;
+        await extLoad(true); toast(`Listo: ${r.data.events.length} eventos de tu iPhone ya están en LIVET.`); draw();
+      } catch (e) { msg.textContent = errMsg(e); } finally { connect.disabled = false; }
+    };
+    connect.onclick = doConnect;
+    pasteIn.addEventListener("paste", () => setTimeout(doConnect, 50));
     body.replaceChildren(
-      h("p", { class: "muted" }, "Tus eventos, tareas con fecha y publicaciones de LIVET aparecen en el calendario de tu celular y tu computadora. Se actualiza solo."),
-      h("a", { class: "btn primary big cal-btn", href: webcal }, icon("phone"), "Agregar al Calendario de iPhone y Mac"),
-      h("ol", { class: "steps-n" },
-        h("li", {}, "Tocá el botón de arriba en tu iPhone o tu Mac."),
-        h("li", {}, "Confirmá «Suscribirse». En la Mac, en «Ubicación» elegí iCloud: así aparece también en el iPhone."),
-        h("li", {}, "Listo. Los cambios que hagas en LIVET llegan solos.")),
-      h("div", { class: "cal-row" },
-        h("a", { class: "btn", href: "https://calendar.google.com/calendar/r?cid=" + encodeURIComponent(webcal), target: "_blank", rel: "noopener" }, "Agregar a Google Calendar"),
-        h("button", { class: "btn", type: "button", onclick: () => copyText(url) }, "Copiar enlace")),
-      h("p", { class: "hint" }, "Desde el celular podés verlo, pero los cambios se hacen en LIVET. El enlace es privado: no lo compartas. ",
-        h("button", { class: "linkbtn", type: "button", onclick: async () => { try { url = await calFeedUrl(true); draw(); toast("Enlace nuevo creado. El anterior dejó de funcionar."); } catch (e) { toast(errMsg(e)); } } }, "Crear un enlace nuevo")));
+      h("section", { class: "cs-block" },
+        h("div", { class: "cs-h" }, h("span", { class: "cs-n" }, "1"), h("div", {}, h("h3", {}, "LIVET en tu iPhone y tu Mac"), h("p", { class: "muted" }, "Tus eventos, tareas, publicaciones y reuniones del equipo, en el Calendario de Apple."))),
+        h("a", { class: "btn primary big cal-btn", href: webcal }, icon("phone"), "Conectar con Calendario de Apple"),
+        h("p", { class: "hint" }, "Tocás, confirmás «Suscribirse» y listo. En la Mac elegí «iCloud» y aparece también en el iPhone. ",
+          h("a", { class: "linkbtn", href: "https://calendar.google.com/calendar/r?cid=" + encodeURIComponent(webcal), target: "_blank", rel: "noopener" }, "¿Usás Google Calendar?"))),
+      h("section", { class: "cs-block" },
+        h("div", { class: "cs-h" }, h("span", { class: "cs-n" }, "2"), h("div", {}, h("h3", {}, "Tu iPhone dentro de LIVET"), h("p", { class: "muted" }, "Lo que agregás en el Calendario del iPhone aparece solo en LIVET."))),
+        Ext.cals.length
+          ? h("div", { class: "cs-list" }, Ext.cals.map(c => h("div", { class: "cs-cal" }, h("span", {}, icon("phone"), " ", c.name, " · conectado", Ext.errors.find(x => x.id === c.id) ? h("small", { class: "bad" }, " (" + Ext.errors.find(x => x.id === c.id).message + ")") : null),
+              h("button", { class: "linkbtn", type: "button", onclick: async () => { const { error } = await sb.from("external_calendars").delete().eq("id", c.id); if (error) return toast(errMsg(error)); await extLoad(true); draw(); } }, "Desconectar"))))
+          : [h("ol", { class: "steps-n" },
+              h("li", {}, "En el iPhone abrí ", h("b", {}, "Calendario"), " y tocá ", h("b", {}, "Calendarios"), " (abajo)."),
+              h("li", {}, "Tocá la ", h("b", {}, "ⓘ"), " de tu calendario y activá ", h("b", {}, "Calendario público"), "."),
+              h("li", {}, "Tocá ", h("b", {}, "Compartir enlace → Copiar"), " y pegalo acá abajo.")),
+            h("div", { class: "cal-row" }, pasteIn, connect), msg]),
+      h("p", { class: "hint" }, "Todo se actualiza solo. ", h("button", { class: "linkbtn", type: "button", onclick: async () => { try { url = await calFeedUrl(true); draw(); toast("Conexión renovada. Volvé a tocar «Conectar con Calendario de Apple»."); } catch (e) { toast(errMsg(e)); } } }, "Renovar conexión")));
   };
   draw();
-  modal({ title: "Ver LIVET en mi calendario", hideSubmit: true, body });
+  modal({ title: "Conectar con tu celular", hideSubmit: true, wide: true, body });
 }
 function CalendarView() {
   const start = curWeek("cal");
+  extLoad(); extWatch();
   return h("div", {},
     PageHead("Calendario", "Tu semana, de un vistazo.",
-      h("button", { class: "btn", type: "button", onclick: CalSyncDialog }, icon("phone"), "Ver en mi celular"),
+      h("button", { class: "btn", type: "button", onclick: CalSyncDialog }, icon("phone"), Ext.cals.length ? "Conectado con el iPhone" : "Conectar con mi celular"),
       h("button", { class: "btn primary", onclick: () => EventDialog(null, { date: today() }) }, icon("plus"), "Nuevo evento")),
     WeekNav("cal", fmtRange(start)),
     h("div", { class: "week" }, weekDays(start).map(d => DayColumn(d, { content: true }))),
-    h("div", { class: "hint" }, "Los eventos son cian, los lanzamientos de contenido amarillos y las tareas con fecha tienen borde punteado."));
+    h("div", { class: "hint" }, "Naranja: tus eventos · Amarillo: publicaciones · Punteado: tareas · Violeta: reuniones del equipo · Gris: tu iPhone."));
 }
 
 /* ------------------------- Hábitos ------------------------- */
@@ -4639,8 +4772,9 @@ function CompanyView() {
   acts.push(aiButton("Resumen del equipo con IA", teamSummaryAI));
   acts.push(h("button", { class: "btn", type: "button", onclick: () => modal({ title: "Otra empresa", hideSubmit: true, body: [CompanyStart()] }) }, "Crear o unirme a otra"));
 
-  const tabs = [["tareas", "Tareas"], ["clientes", "Clientes"], ["equipo", "Equipo"], ["chat", "Chat"]];
-  const pane = { tareas: TasksTab, clientes: ClientsTab, equipo: TeamTab, chat: ChatTab }[Co.tab]();
+  const tabs = [["tareas", "Tareas"], ["calendario", "Calendario"], ["clientes", "Clientes"], ["equipo", "Equipo"], ["chat", "Chat"]];
+  if (Co.tab === "calendario") { extLoad(); extWatch(); }
+  const pane = { tareas: TasksTab, calendario: CoCalendarTab, clientes: ClientsTab, equipo: TeamTab, chat: ChatTab }[Co.tab]();
   return h("div", {},
     PageHead(c.name, `${KIND_LBL[c.kind] || "Empresa"} · tu rol: ${ROLE_LBL[Co.me?.role] || "sin rol"}. Lo que cargás acá lo ve solo esta empresa.`, ...acts),
     CompanySetup(),
