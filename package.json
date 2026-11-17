@@ -1,7 +1,7 @@
 {
   "name": "livet-desktop",
   "productName": "LIVET Work",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "LIVET para escritorio: agenda, finanzas, empresa y creadores en una sola app.",
   "main": "main.js",
   "author": "LIVET",
@@ -57,7 +57,7 @@
         }
       ],
       "category": "public.app-category.productivity",
-      "identity": "-",
+      "identity": null,
       "artifactName": "LIVET-mac-${arch}.${ext}",
       "hardenedRuntime": false,
       "gatekeeperAssess": false
@@ -68,6 +68,7 @@
       ],
       "category": "Office",
       "artifactName": "LIVET-linux.${ext}"
-    }
+    },
+    "afterSign": "build/adhoc-sign.js"
   }
 }
