@@ -308,7 +308,7 @@ main{min-width:0;padding:32px clamp(16px,4vw,48px) 72px;max-width:1120px;width:1
 .demo-bar b{color:var(--text);font-weight:500}
 dialog{border:1px solid var(--line-strong);border-radius:14px;background:var(--surface);color:var(--text);padding:0;width:min(480px,calc(100vw - 24px));max-height:calc(100vh - 32px);box-shadow:0 24px 60px rgba(0,0,0,.28)}
 dialog.wide{width:min(720px,calc(100vw - 24px))}
-dialog::backdrop{background:rgba(3,12,16,.5);backdrop-filter:blur(2px)}
+
 dialog form{padding:20px;display:grid;gap:14px}
 dialog h3{font-size:24px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -810,22 +810,12 @@ h2{line-height:1.12}
 .path p{color:var(--muted);max-width:30ch}
 @media (max-width:760px){.path{grid-template-columns:1fr;gap:22px}.path::before{left:27px;right:auto;top:0;bottom:0;width:1px;height:auto}.path li{grid-template-columns:54px 1fr;align-items:start;gap:16px;padding-right:0}}
 
-/* ===== Ventanas: se atenúa la página y aparece un panel con brillo ===== */
-dialog{--surface:#0c2330;--surface-2:#12303f;--line:#1d4256;--line-strong:#2d6079;--text:#eaf7fb;--muted:#a3c2d0;--faint:#93b3c1;--control:#6b9ab0;--accent:#22d3ee;--accent-strong:#67e8f9;--accent-soft:#0f3b49;--on-accent:#03181d;--hot:#fde047;--hot-soft:#2b2608;--hot-ink:#fde047;--alert:#f87171;--alert-soft:#3a1a20;--alert-ink:#fca5a5;--ok:#34d399;color-scheme:dark;
-  background:radial-gradient(520px 300px at 50% 0%,rgba(34,211,238,.24),transparent 70%),radial-gradient(420px 260px at 50% 100%,rgba(34,211,238,.10),transparent 70%),#0c2330;
-  border:1px solid rgba(103,232,249,.45);border-radius:16px;
-  box-shadow:0 0 0 1px rgba(34,211,238,.18),0 0 70px -6px rgba(34,211,238,.45),0 40px 90px rgba(0,0,0,.55)}
-dialog[open]{animation:dlg-in .38s cubic-bezier(.2,.9,.3,1.1) both}
-dialog::backdrop{background:radial-gradient(circle at 50% 48%,rgba(34,211,238,.20),rgba(3,10,14,.66) 58%);backdrop-filter:blur(3px) saturate(.8)}
-dialog[open]::backdrop{animation:dlg-fade .35s ease both}
-@keyframes dlg-in{from{opacity:0;transform:translateY(16px) scale(.94)}to{opacity:1;transform:none}}
+/* Ventanas: panel limpio, sin brillo */
+dialog[open]{animation:dlg-in .28s var(--ease, cubic-bezier(.22,1,.36,1)) both}
+dialog[open]::backdrop{animation:dlg-fade .25s ease both}
+@keyframes dlg-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 @keyframes dlg-fade{from{opacity:0}to{opacity:1}}
-dialog .input,dialog select,dialog textarea{background:var(--surface-2);border-color:var(--line-strong)}
-dialog .input:focus{box-shadow:0 0 0 3px rgba(34,211,238,.28),0 0 22px -4px rgba(34,211,238,.6)}
-dialog .btn{border-color:var(--line-strong);background:transparent}
-dialog .btn.primary{background:var(--accent);border-color:var(--accent);box-shadow:0 0 22px -4px rgba(34,211,238,.7)}
-dialog .btn.primary:hover{background:var(--accent-strong)}
-dialog h3{font-size:28px}
+dialog h3{font-size:26px}
 @media (prefers-reduced-motion:reduce){dialog[open],dialog[open]::backdrop{animation:none}}
 .hero-stage{min-width:0}
 .emp{min-width:0}
@@ -946,7 +936,7 @@ dialog::backdrop{background:radial-gradient(circle at 50% 48%,rgba(14,116,144,.5
 
 /* Estudio HyperFrames */
 .hf-stage{position:relative;width:100%;max-height:70vh;margin:0 auto 14px;background:#000;border-radius:10px;overflow:hidden;display:grid;place-items:center}
-.hf-stage .empty{color:#a3c2d0}
+.hf-stage .empty{color:#a8a29a}
 .hf-stage hyperframes-player{width:100%;height:100%}
 .tlink,.search-btn,.search-btn kbd,.dl-top{white-space:nowrap}
 @media (max-width:1240px){.search-btn span,.search-btn kbd{display:none}.search-btn{width:36px;padding:0;justify-content:center}}
@@ -1092,7 +1082,7 @@ input[type=color].input{cursor:pointer}
 /* Ventanas con la marca: grafito, borde fino, sin brillo celeste */
 dialog{--surface:#181b1e;--surface-2:#1f2327;--line:#2a2e33;--line-strong:#3a3f45;--text:#f5f2ed;--muted:#a8a29a;--faint:#8f8981;--control:#4b5056;--accent:#ff6600;--accent-strong:#ff8a3d;--accent-soft:#2b1a0e;--on-accent:#120800;--hot:#ffb066;--hot-soft:#2a2016;--hot-ink:#ffc68f;
   background:var(--surface);border:1px solid var(--line-strong);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.6);color:var(--text)}
-dialog::backdrop{background:rgba(10,11,12,.72);backdrop-filter:blur(4px)}
+dialog::backdrop{background:rgba(8,9,10,.78)}
 dialog .input:focus{box-shadow:0 0 0 4px color-mix(in srgb,var(--orange) 22%,transparent)}
 dialog .btn.primary{background:var(--orange);border-color:var(--orange);color:var(--on-accent);box-shadow:none}
 dialog .btn.primary:hover{background:#fff;border-color:#fff;color:var(--graphite)}
@@ -1108,6 +1098,18 @@ dialog .btn.primary:hover{background:#fff;border-color:#fff;color:var(--graphite
 .md h2{font-size:22px;margin:16px 0 6px}
 .md h3{font-size:17px;margin:12px 0 4px}
 @media (max-width:440px){.logo-btn{width:116px}.logo{width:112px;height:20px}.tright{gap:4px}.tright .btn.primary{padding:0 12px;font-size:13px}.tright .icon-btn,.tright .search-btn{width:32px;height:32px}.tright .dl-top{display:none}}
+
+/* IA trabajando: barra fina arriba y botón con puntos, sin brillos */
+body.ai-working::after{content:"";position:fixed;left:0;top:0;height:3px;width:100%;z-index:200;background:linear-gradient(90deg,transparent,var(--orange),transparent);background-size:40% 100%;background-repeat:no-repeat;animation:ai-bar 1.1s ease-in-out infinite}
+@keyframes ai-bar{from{background-position:-40% 0}to{background-position:140% 0}}
+.btn.ai-busy,.btn.ai-busy:hover{background:var(--surface-2);border-color:var(--line-strong);color:var(--text);opacity:1;cursor:progress;gap:8px}
+.ai-secs{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:600}
+.ai-dots{display:inline-flex;gap:4px;align-items:center}
+.ai-dots i{width:6px;height:6px;border-radius:50%;background:var(--orange);animation:ai-dot 1s ease-in-out infinite}
+.ai-dots i:nth-child(2){animation-delay:.15s}.ai-dots i:nth-child(3){animation-delay:.3s}
+@keyframes ai-dot{0%,80%,100%{transform:scale(.5);opacity:.4}40%{transform:scale(1);opacity:1}}
+.ai-typing{padding:14px 16px}
+.md{line-height:1.55}.md p{margin:0 0 8px}.md ul{margin:4px 0 10px;padding-left:18px}.md li{margin:2px 0}
 @media (prefers-reduced-motion:reduce){.hf-tpl-art i{animation:none}body::before,.ticker-track,.s-cta::after,.live-dot{animation:none}.rv{opacity:1;transform:none;transition:none}}
 </style>
 </head>
@@ -1583,10 +1585,13 @@ function aiButton(label, run, { cls = "btn hot", ic = "spark" } = {}) {
   const b = h("button", { class: cls, type: "button" }, icon(ic), label);
   b.onclick = async () => {
     if (!AI.status?.configured) { return AI.explain(); }
-    b.disabled = true; b.replaceChildren(h("span", { class: "spin" }), " Pensando…");
+    const t0 = Date.now(), secs = h("span", { class: "ai-secs" }, "0 s");
+    b.disabled = true; b.classList.add("ai-busy"); b.replaceChildren(h("span", { class: "ai-dots" }, h("i"), h("i"), h("i")), "Trabajando", secs);
+    const tick = setInterval(() => { secs.textContent = Math.round((Date.now() - t0) / 1000) + " s"; }, 1000);
+    document.body.classList.add("ai-working");
     try { await run(); }
     catch (e) { if (e.code === "not_configured") AI.explain(); else toast(errMsg(e)); }
-    finally { b.disabled = false; b.replaceChildren(icon(ic), label); }
+    finally { clearInterval(tick); document.body.classList.remove("ai-working"); b.disabled = false; b.classList.remove("ai-busy"); b.replaceChildren(icon(ic), label); }
   };
   return b;
 }
@@ -2063,7 +2068,7 @@ function render() {
   renderNav();
   const view = (VIEWS[state.view] || HomeView)();
   const bar = state.demo ? h("div", { class: "demo-bar" },
-    h("span", {}, h("b", {}, "Modo demo. "), "Datos de ejemplo: podés agregar y probar cosas, pero nada se guarda, no hay IA y todo se formatea a la hora o al recargar."),
+    h("span", {}, h("b", {}, "Modo demo. "), "Probá lo que quieras: no se guarda nada."),
     window.LIFEOS_FORCE_DEMO ? null : h("button", { class: "btn", onclick: leaveDemo }, "Salir del demo")) : null;
   $("#main").replaceChildren(...(bar ? [bar, view] : [view]));
   const fresh = render.last !== state.view; render.last = state.view;
@@ -2181,7 +2186,7 @@ function GoalsView() {
   const list = DB().goals.filter(g => f === "todos" || g.status === f)
     .sort((a, b) => (a.target_date || "9999").localeCompare(b.target_date || "9999"));
   return h("div", {},
-    PageHead("Objetivos", "Convertí lo que querés lograr en hitos concretos y seguí tu avance.",
+    PageHead("Objetivos", "Metas en hitos concretos.",
       h("button", { class: "btn primary", onclick: () => GoalDialog() }, icon("plus"), "Nuevo objetivo")),
     h("div", { class: "filters" }, [["activo", "Activos"], ["logrado", "Logrados"], ["pausado", "Pausados"], ["todos", "Todos"]]
       .map(([k, l]) => Pill(l, f === k, () => { state.goalFilter = k; render(); }))),
@@ -2241,7 +2246,7 @@ function DayColumn(d, opts) {
 function CalendarView() {
   const start = curWeek("cal");
   return h("div", {},
-    PageHead("Calendario", "Tu semana completa: eventos, tareas con fecha y lanzamientos de contenido.",
+    PageHead("Calendario", "Tu semana, de un vistazo.",
       h("button", { class: "btn primary", onclick: () => EventDialog(null, { date: today() }) }, icon("plus"), "Nuevo evento")),
     WeekNav("cal", fmtRange(start)),
     h("div", { class: "week" }, weekDays(start).map(d => DayColumn(d, { content: true }))),
@@ -2280,7 +2285,7 @@ function HabitsView() {
   const pct = weekTotal ? Math.round(weekDone / weekTotal * 100) : 0;
   const archived = DB().habits.filter(x => x.archived);
   return h("div", {},
-    PageHead("Hábitos", "Lo que repetís define tus resultados. Marcá cada día de la semana, también los que todavía no llegaron si querés planificarlos.",
+    PageHead("Hábitos", "Marcá cada día que cumplís.",
       aiButton("Revisar con IA", habitsReviewAI),
       h("button", { class: "btn primary", onclick: () => HabitDialog() }, icon("plus"), "Nuevo hábito")),
     h("div", { class: "grid g-2", style: "margin-bottom:16px" },
@@ -2394,7 +2399,7 @@ function MoneyView() {
   const stat = (label, value, note, cls = "", tone = "") => h("div", { class: "card stat" + (tone ? " tone-" + tone : "") }, h("span", {}, label), h("b", { class: "serif " + cls }, value), note ? h("small", {}, note) : null);
   const cur = sel(CURRENCIES, curCode(), { "aria-label": "Moneda", onchange: async e => { try { await saveProfile({ currency: e.target.value }); toast("Moneda cambiada. Los montos no se convierten."); } catch (err) { toast(errMsg(err)); } render(); } });
   return h("div", {},
-    PageHead("Finanzas", "Lo que entra, lo que sale y lo que te queda cada mes.", cur,
+    PageHead("Finanzas", "Lo que entra, sale y queda.", cur,
       aiButton("Analizar mi plata con IA", moneyReviewAI),
       h("button", { class: "btn primary", onclick: () => TxDialog() }, icon("plus"), "Nuevo movimiento")),
     WeekNav("money", `${MONTHS_L[mm - 1][0].toUpperCase()}${MONTHS_L[mm - 1].slice(1)} ${yy}`),
@@ -2791,7 +2796,7 @@ function BrandView() {
   };
   const mems = DB().creator_memories;
   return h("div", {},
-    PageHead("Mi marca", "Contale a LIVET a qué te dedicás. Esta información y tu memoria se usan en cada recomendación de contenido."),
+    PageHead("Mi marca", "A qué te dedicás. La IA lo usa en cada idea."),
     h("div", { class: "grid g-main" },
       h("form", { class: "card card-p", onsubmit: save, style: "display:grid;gap:14px;align-content:start" },
         F("Nicho", niche), F("A qué te dedicás", desc), F("Tu audiencia", aud),
@@ -2887,7 +2892,7 @@ function LaunchesView() {
   const ideas = DB().content_items.filter(c => !c.publish_at && c.status !== "publicado");
   const plan = state.weekPlan && state.weekPlan.week === start ? state.weekPlan : null;
   return h("div", {},
-    PageHead("Lanzamientos", "Tu calendario semanal de contenido: qué sale, cuándo y con qué hook.",
+    PageHead("Lanzamientos", "Qué sale, cuándo y con qué hook.",
       aiButton("Planificar semana con IA", planWeekWithAI),
       h("button", { class: "btn primary", onclick: () => ContentDialog() }, icon("plus"), "Nueva pieza")),
     !creatorReady() ? h("div", { class: "note" }, h("b", {}, "Completá tu perfil. "), "Con tu nicho y plataformas, la IA puede planificar la semana. ",
@@ -2979,7 +2984,7 @@ function HooksView() {
   test.addEventListener("input", evalNow);
   const bank = DB().hooks.filter(x => !state.bankFav || x.favorite);
   return h("div", {},
-    PageHead("Hooks", "Los primeros segundos deciden si te miran o te pasan. Armá, evaluá y guardá tus aperturas."),
+    PageHead("Hooks", "Los primeros segundos deciden todo."),
     h("div", { class: "grid g-2" },
       h("div", { class: "grid", style: "align-content:start" },
         Card("Constructor", null, h("div", { class: "card-p", style: "display:grid;gap:12px" },
@@ -3063,7 +3068,7 @@ function ReviewsView() {
   const done = pub.filter(c => Logic.hasMetrics(c));
   const maxV = Math.max(1, ...done.slice(0, 8).map(c => c.views));
   return h("div", {},
-    PageHead("Reseñas", "Cargá cómo le fue a cada pieza. Con datos reales, los calendarios y hooks se ajustan solos.",
+    PageHead("Reseñas", "Cómo le fue a cada pieza.",
       h("button", { class: "btn primary", onclick: () => ContentDialog(null, { date: today() }) }, icon("plus"), "Nueva pieza")),
     h("div", { class: "grid stats" },
       h("div", { class: "card stat" }, h("span", {}, "Piezas con datos (28 días)"), h("b", { class: "serif" }, String(st.items.length))),
@@ -3134,7 +3139,7 @@ function LearningView() {
   const pct = items.length ? Math.round(items.filter(i => i.status === "hecho").length / items.length * 100) : 0;
   const focus = state.learnFocus && state.learnFocus.week === start ? state.learnFocus : null;
   return h("div", {},
-    PageHead("Aprendizaje", "Una semana de conocimiento pensada para mejorar tu contenido.",
+    PageHead("Aprendizaje", "Qué aprender esta semana.",
       aiButton("Armar mi semana con IA", learningWithAI), h("button", { class: "btn primary", onclick: () => LearningDialog(null, start) }, icon("plus"), "Nuevo tema")),
     WeekNav("learn", fmtRange(start)),
     focus ? h("div", { class: "note" }, h("b", {}, "Foco de la semana. "), focus.text) : null,
@@ -3848,7 +3853,7 @@ function hfExportDialog(item) {
       txt.after(h("video", { src: href, controls: true, playsinline: true, style: "width:100%;max-height:50vh;border-radius:12px;background:#000;margin-top:8px" }));
     } catch (e) { if (!done) txt.replaceChildren(h("b", {}, "No se pudo exportar. "), errMsg(e)); }
   };
-  modal({ title: "Exportar a MP4", hideSubmit: true, body: [h("p", { class: "hint" }, "Se crea en tu navegador, sin subir nada. No cierres esta ventana mientras avanza. Si el video tiene clips propios tarda un poco más. El MP4 sale sin sonido: la música agregala en Instagram, TikTok o CapCut."), bar, txt] });
+  modal({ title: "Exportar a MP4", hideSubmit: true, body: [h("p", { class: "hint" }, "No cierres esta ventana. Sale sin sonido."), bar, txt] });
   $("#dlg").addEventListener("close", () => { if (!done) ctrl.abort(); }, { once: true });
   go();
 }
@@ -3940,7 +3945,7 @@ function HfCustomize(item) {
       h("div", { class: "row3" }, color("c1", "Acento"), color("c2", "Fondo"), color("c3", "Texto")),
       ...fields,
       F("Web o usuario", (() => { const i = inp({ value: o.url, maxLength: 60 }); i.addEventListener("input", () => { o.url = i.value; apply(); }); return i; })()),
-      h("p", { class: "hint", style: "margin:0" }, "Los cambios se ven solos en la vista previa.")));
+      null));
 }
 function hfLayerDialog(item, assetId) {
   const L = { asset: assetId || HF.brand.logo || "livet", pos: "tr", size: "s", start: 0, end: 0 };
@@ -3950,7 +3955,7 @@ function hfLayerDialog(item, assetId) {
   const pos = sel(HF_POS, L.pos), size = sel(HF_SIZE, L.size);
   const st = inp({ type: "number", min: 0, max: dur, step: 0.5, value: 0 }), en = inp({ type: "number", min: 0.5, max: dur, step: 0.5, value: dur });
   modal({ title: "Agregar encima del video", submit: "Agregar", body: [
-    h("p", { class: "hint" }, "Ideal para tu logo como marca de agua, un sello, una foto o un clip tuyo en una esquina."),
+    h("p", { class: "hint" }, "Tu logo, una foto o un clip encima del video."),
     F("Qué", pick), h("div", { class: "row2" }, F("Dónde", pos), F("Tamaño", size)),
     h("div", { class: "row2" }, F("Desde (segundos)", st), F("Hasta (segundos)", en)),
     HFM.list.length ? null : h("p", { class: "hint" }, "Para usar algo propio, primero subilo en \"Mis recursos\".")],
@@ -3985,7 +3990,7 @@ function VideoView() {
   })) : h("p", { class: "hint", style: "margin:0" }, "Subí imágenes o clips en \"Mis recursos\" y elegilos acá para que la IA los use.");
   const cur = HF.cur;
   return h("div", { class: "hf-studio" },
-    PageHead("Video", "Elegí un video de ejemplo, ponele tu logo, tus fotos y tus clips, y descargalo en MP4. O pedile uno nuevo a la IA.",
+    PageHead("Video", "Elegí un ejemplo, ponele tu marca y bajalo en MP4.",
       HfUploadButton("Subir recursos", "btn"),
       cur ? h("button", { class: "btn primary", type: "button", onclick: () => hfExportDialog(cur) }, icon("play"), "Exportar MP4") : null),
     h("div", { class: "grid g-main" },
@@ -4011,7 +4016,7 @@ function VideoView() {
           F("¿De qué trata?", idea), h("div", { class: "row2" }, F("Formato", fmt), F("Duración", secs)), F("Estilo", style),
           h("div", {}, h("div", { class: "field" }, "Usar mis recursos"), useAssets),
           aiButton("Generar video", hfGenerate, { cls: "btn primary", ic: "spark" }),
-          h("p", { class: "hint", style: "margin:0" }, "Usa 2 créditos de IA. Usa tu logo y colores de marca. Es un borrador: revisá textos y tiempos antes de publicar."))),
+          h("p", { class: "hint", style: "margin:0" }, "2 créditos. Usa tu logo y tus colores."))),
         Card("Mis videos", null,
           h("div", { class: "card-b" }, HF.list.length ? HF.list.map(it => h("div", { class: "task" + (HF.cur === it ? " on" : ""), style: "grid-template-columns:1fr auto" },
             h("div", { class: "t-main", onclick: () => { hfOpen(it); render(); } }, h("div", { class: "t-title" }, (HF.cur === it ? "▶ " : "") + it.title),
@@ -4026,7 +4031,7 @@ function VideoView() {
 VIEWS.video = VideoView;
 function AgentsView() {
   return h("div", {},
-    PageHead("Equipo", "Siete agentes con un trabajo cada uno. Elegí a quién pedirle y revisá lo que devuelve antes de usarlo. Video tiene su propia pestaña.",
+    PageHead("Equipo", "Un agente para cada trabajo.",
       h("button", { class: "btn", type: "button", onclick: () => navTo("agentes") }, "Cómo funciona")),
     h("div", { class: "agent-list" }, AGENTS.filter(a => !a.area).map(a => h("article", { class: "agent", "data-tone": a.tone },
       h("div", { class: "agent-ic" }, icon(a.icon)),
@@ -4038,8 +4043,8 @@ VIEWS.agents = AgentsView;
 function MarketingView() {
   const all = AGENTS.filter(a => a.area === "marketing"), more = !!state.mktMore;
   return h("div", {},
-    PageHead("Marketing", "Siete agentes para agencias, comercios e independientes. Cada uno entrega un borrador: lo revisás vos antes de usarlo."),
-    h("p", { class: "hint" }, "Los agentes no publican ni rastrean sitios: usan lo que escribas y, el de Competencia, búsquedas web. Lo que proponen son hipótesis a medir."),
+    PageHead("Marketing", "Siete agentes. Cada uno te da un borrador."),
+    h("p", { class: "hint" }, "Son borradores: revisalos antes de usarlos."),
     h("div", { class: "agent-list", style: "margin-top:12px" }, (more ? all : all.slice(0, 3)).map(agentCard)),
     h("div", { class: "more-row" }, h("button", { class: "btn", type: "button", onclick: () => { state.mktMore = !more; render(); } }, more ? "Ver menos" : `Ver los otros ${all.length - 3} agentes`)));
 }
@@ -4211,7 +4216,7 @@ function CompanyView() {
   }
   if (Co.err) return h("div", {}, PageHead("Empresa"), Empty("No pudimos cargar la empresa", Co.err, h("button", { class: "btn", type: "button", onclick: () => { Co.loaded = false; Co.err = ""; render(); } }, "Reintentar")));
   const c = Co.company();
-  if (!c) return h("div", {}, PageHead("Empresa", "Tareas, clientes y chat con tu equipo, separados por empresa."), CompanyStart());
+  if (!c) return h("div", {}, PageHead("Empresa", "Tareas, clientes y chat del equipo."), CompanyStart());
 
   const acts = [];
   if (state.demo) acts.push(h("label", { class: "demo-as" }, "Ver como ", sel(Co.members.map(m => [m.user_id, `${m.display_name} (${ROLE_LBL[m.role]})`]), Co.demoUser,
@@ -4347,7 +4352,7 @@ function TaskDetail(t0) {
       h("h4", {}, "Documentos"), filesEl,
       h("div", { class: "actions-row" }, fileIn,
         h("button", { class: "btn", type: "button", onclick: () => fileIn.click() }, icon("clip"), "Subir documento")),
-      h("p", { class: "hint" }, "Hasta 10 MB: PDF, Word, Excel, PowerPoint, imagen, TXT o CSV. Para corregir un documento, subí la versión nueva y dejá un comentario. No se edita dentro de la app."),
+      h("p", { class: "hint" }, "Hasta 10 MB: PDF, Office, imagen, TXT o CSV."),
       h("h4", {}, "Comentarios"), comments,
       F("Nuevo comentario", note),
       h("div", { class: "actions-row" }, h("button", { class: "btn", type: "button", onclick: guard(async () => {
@@ -4465,7 +4470,7 @@ function TeamTab() {
     h("p", { class: "hint" }, "Eliminar la empresa borra sus tareas, clientes, documentos y chats para todos. No se puede deshacer."),
     h("div", {}, h("button", { class: "btn danger", type: "button", onclick: DeleteCompanyDialog }, "Eliminar empresa")))));
   return h("div", { class: "grid", style: "gap:16px" }, ...blocks,
-    h("p", { class: "hint" }, "El dueño decide quién es jefe: puede haber uno, varios o ninguno. Los jefes crean tareas, clientes y corrigen; los empleados ven sus tareas y las marcan como hechas."));
+    h("p", { class: "hint" }, "Jefes: crean tareas y corrigen. Empleados: ven y marcan las suyas."));
 }
 function DeleteCompanyDialog() {
   const c = Co.company(), conf = inp({ placeholder: c.name, autocomplete: "off", "aria-label": "Escribí el nombre de la empresa" });
@@ -4522,7 +4527,7 @@ function ChatTab() {
   }
   setTimeout(() => paint(true), 0);
   return h("div", { class: "grid", style: "gap:12px" }, peers, h("div", { class: "card chat" }, log, form),
-    h("p", { class: "hint" }, "Los mensajes los ven quienes participan de la conversación. No están cifrados de extremo a extremo. Evitá compartir contraseñas o datos sensibles."));
+    h("p", { class: "hint" }, "No están cifrados de extremo a extremo: no compartas contraseñas."));
 }
 
 VIEWS.company = CompanyView;
@@ -4609,7 +4614,7 @@ function ProfileView() {
   const c = Co.loaded ? Co.company() : null;
   const pct = profileDone();
   return h("div", {},
-    PageHead("Mi perfil", "Quién sos y a qué te dedicás. Con esto LIVET se adapta a tu caso y la IA te responde mejor."),
+    PageHead("Mi perfil", "Con esto LIVET se adapta a vos."),
     h("section", { class: "card card-p", style: "display:grid;gap:8px;margin-bottom:16px" },
       h("div", { style: "display:flex;justify-content:space-between;gap:12px" }, h("b", {}, "Tu perfil está al " + pct + "%"), h("span", { class: "muted" }, pct < 100 ? "Completalo para respuestas más útiles" : "Completo")), Progress(pct, "", "Perfil completo")),
     h("form", { class: "profile-grid", onsubmit: save },
@@ -4617,7 +4622,7 @@ function ProfileView() {
         F("Nombre", name), F("Ciudad o país", city), F("Email", inp({ value: state.user?.email || "", disabled: true }), "Es tu usuario de acceso."))),
       Card("Sobre mi trabajo", null, h("div", { class: "card-b", style: "display:grid;gap:12px" },
         F("Nombre", biz), F("A qué te dedicás", about),
-        h("p", { class: "hint" }, "Lo que escribas acá se envía a la IA solo cuando la usás, y con tu permiso. No cargues datos sensibles."))),
+        h("p", { class: "hint" }, "Solo se envía a la IA cuando la usás. No cargues datos sensibles."))),
       h("div", { style: "grid-column:1/-1" }, h("button", { class: "btn primary", type: "submit" }, "Guardar perfil"))),
     h("div", { class: "profile-grid", style: "margin-top:16px" },
       Card("Cómo uso LIVET", h("button", { class: "btn sm", type: "button", onclick: PersonalizeDialog }, "Cambiar"), h("div", { class: "card-b", style: "display:grid;gap:8px" },
@@ -4694,7 +4699,7 @@ function LedgerCard() {
         h("tbody", {}, Ledger.rows.map(r => h("tr", {}, ...[dDay(r.entry_date), LEDGER_KIND[r.kind], r.label, (r.kind === "ingreso" ? "+ " : "− ") + f(Number(r.amount)).replace("US$ ", "US$ ")].map(t => h("td", { style: "padding:8px;border-top:1px solid var(--line)" }, t)),
           h("td", { style: "padding:8px;border-top:1px solid var(--line);text-align:right" }, h("button", { class: "btn sm ghost", type: "button", "aria-label": "Borrar movimiento " + r.label, onclick: () => ledgerDelete(r) }, "Borrar")))))))
         : h("p", { class: "muted" }, "Este mes no cargaste movimientos."),
-      h("p", { class: "hint", style: "margin-top:8px" }, "Todavía no hay cobro conectado, así que los ingresos los cargás vos. El costo de IA sale solo de lo que gastó cada consulta. Falta descontar impuestos y comisiones del medio de pago: cargalas como «Otro gasto». Solo lo ves vos.")));
+      h("p", { class: "hint", style: "margin-top:8px" }, "Ingresos fuera de Polar: cargalos a mano. Impuestos y comisiones, como «Otro gasto».")));
 }
 // ---- Cobro: IDs de producto de Polar ----
 const Billing = { map: {} };
@@ -4792,7 +4797,7 @@ function AdminView() {
   const week = days.slice(-7).reduce((a, x) => a + Number(x.visits), 0);
   const stat = (label, value, small) => h("div", { class: "card stat" }, h("span", {}, label), h("b", { class: "serif tnum" }, String(value)), small ? h("small", {}, small) : null);
   return h("div", {},
-    PageHead("Administración", "Usuarios, ingresos, planes y uso de IA de todo LIVET. Solo lo ves vos.",
+    PageHead("Administración", "Usuarios, ingresos y uso de IA.",
       h("button", { class: "btn", type: "button", onclick: adminLoad }, Admin.loading ? "Actualizando…" : "Actualizar")),
     Admin.error ? h("div", { class: "note" }, h("b", {}, "No se pudo cargar. "), Admin.error) : null,
     d ? h("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px" },
@@ -4803,7 +4808,7 @@ function AdminView() {
       stat("Usos de IA hoy", users.reduce((a, u) => a + Number(u.ai_today || 0), 0)),
       stat("Costo de IA, 30 días", "US$ " + Number(d.ai_cost_30d || 0).toFixed(2), `${d.ai_calls_30d || 0} consultas`)) : null,
     d ? Card("Ingresos por día", null, h("div", { class: "card-b" }, VisitsChart(days),
-      h("p", { class: "hint", style: "margin-top:8px" }, "Cuenta cada vez que alguien con cuenta entra a la app (máximo uno cada 30 minutos por persona). Empieza a contar desde que se activó este registro. No incluye visitas de gente sin cuenta."))) : null,
+      h("p", { class: "hint", style: "margin-top:8px" }, "Entradas de usuarios con cuenta (una cada 30 min como máximo)."))) : null,
     h("div", { style: "height:16px" }),
     d ? LedgerCard() : null,
     h("div", { style: "height:16px" }),
@@ -4829,7 +4834,7 @@ function AdminView() {
             td(me || isAdm ? h("span", { class: "muted", style: "font-size:12px" }, "—")
               : h("button", { class: "btn danger sm", type: "button", onclick: () => adminDeleteDialog(u) }, "Borrar")));
         }))) : Empty(Admin.loading ? "Cargando…" : "Sin usuarios", "Cuando alguien cree una cuenta aparece acá."))),
-    h("p", { class: "hint", style: "margin-top:10px" }, "Ves nombre, email, plan, ingresos y usos de IA; tocá un usuario para ver cuánto usa cada sección (cantidades y fechas, no el contenido). No se puede borrar ni cambiar el plan de tu propia cuenta, ni borrar a otro admin: para eso primero bajale el plan."));
+    h("p", { class: "hint", style: "margin-top:10px" }, "Tocá un usuario para ver su uso (cantidades, no contenido)."));
 }
 VIEWS.admin = AdminView;
 
@@ -4977,7 +4982,7 @@ function CreditsCard() {
 }
 function PlansView() {
   plansLoad();
-  return h("div", {}, PageHead("Suscripción", "Elegí el plan que se parece a cómo trabajás. Cada plan incluye al anterior en lo personal."), CreditsCard(), h("div", { style: "height:16px" }), PlansBody());
+  return h("div", {}, PageHead("Suscripción", "Elegí tu plan."), CreditsCard(), h("div", { style: "height:16px" }), PlansBody());
 }
 VIEWS.plans = PlansView;
 function PricingPage() {
@@ -5028,7 +5033,7 @@ function AssistantView() {
   const form = h("form", { class: "chat-in", onsubmit: e => { e.preventDefault(); const v = input.value.trim(); if (v) sendChat(v); else { toast("Escribí tu mensaje."); input.focus(); } } },
     input, h("button", { class: "btn primary", type: "submit", disabled: !on || state.chatBusy }, state.chatBusy ? h("span", { class: "spin" }) : "Enviar"));
   return h("div", {},
-    PageHead("Asistente", "Ordena tus tareas, convierte objetivos en planes y responde con tu contexto."),
+    PageHead("Asistente", "Preguntale lo que quieras sobre tus tareas."),
     !on ? h("div", { class: "card card-p setup", style: "margin-bottom:16px" },
       h("b", {}, s.demo ? "Esto es una demo: la IA no está conectada." : s.unreachable ? "No pude comunicarme con el servidor del asistente." : "El asistente todavía no está activado."),
       s.demo ? h("p", { class: "muted", style: "margin-top:6px" }, "Creá una cuenta o ingresá para usarlo cuando esté activado.")
@@ -5047,7 +5052,7 @@ function AssistantView() {
         try { await Promise.all(msgs.map(m => Store.remove("ai_messages", m.id))); render(); } catch (e) { toast(errMsg(e)); } } }, "Borrar conversación") : null,
       h("div", { class: "chat", id: "chat-box" }, msgs.length ? msgs.map(m => h("div", { class: "bub " + (m.role === "user" ? "u" : "a") }, m.content))
         : h("span", { class: "muted" }, on ? "Escribí tu primera pregunta." : "Cuando el asistente esté activado, la conversación aparece acá y queda guardada en tu cuenta."),
-        state.chatBusy ? h("div", { class: "bub a" }, h("span", { class: "spin" }), " Pensando…") : null),
+        state.chatBusy ? h("div", { class: "bub a ai-typing" }, h("span", { class: "ai-dots" }, h("i"), h("i"), h("i"))) : null),
       form));
 }
 VIEWS.assistant = AssistantView;
@@ -5276,7 +5281,7 @@ function HookLab() {
   paint();
   return h("div", { class: "lab" },
     h("div", { class: "lab-in" }, field("tema", "Tema"), field("audiencia", "Para quién"), field("resultado", "Resultado, con un verbo")),
-    out, h("p", { class: "hint" }, "Plantillas con una lista de control de seis reglas. No es IA: es oficio de hooks, gratis y sin cuenta."));
+    out, h("p", { class: "hint" }, "Gratis y sin cuenta."));
 }
 
 function FinancePanel() {
@@ -5329,7 +5334,7 @@ function HomePage() {
         h("div", { class: "cta-row" },
           h("button", { type: "button", class: "btn primary lg", onclick: () => enterDemo() }, "Probar la demo"),
           h("button", { type: "button", class: "btn lg", onclick: () => { setMode("signup"); navTo("entrar"); } }, "Crear cuenta")),
-        h("p", { class: "hint" }, "La demo usa datos de ejemplo, no guarda nada y se formatea a la hora.")),
+        h("p", { class: "hint" }, "Datos de ejemplo. No se guarda nada.")),
       HeroStage(setCopy)),
     Ticker(["Planificá", "Grabá", "Publicá", "Cobrá", "Ordená tu plata", "Hacé crecer tu negocio"]),
     Sec("¿Para quién es?", "Elegí tu caso y mirá qué te toca.", WhoPicker()),
@@ -5381,7 +5386,7 @@ function AgentsPage() {
     h("div", { class: "agent-list" }, AGENTS.map(a => h("article", { class: "agent", "data-tone": a.tone },
       h("div", { class: "agent-ic" }, icon(a.icon)),
       h("div", { class: "agent-body" }, h("h3", {}, a.name), h("p", {}, a.line), h("ul", {}, a.makes.map(m => h("li", {}, m))))))),
-    h("p", { class: "hint", style: "margin-top:16px" }, "Los agentes usan IA: necesitan tu cuenta, tu permiso y el servicio activado. Lo que devuelven son borradores, no garantías de resultado. El agente de Hyperframes escribe el archivo HTML; el video lo renderizás vos con HyperFrames (Node 22 y FFmpeg)."),
+    h("p", { class: "hint", style: "margin-top:16px" }, "Son borradores de IA: revisalos antes de usarlos."),
     h("div", { class: "cta-row" }, h("button", { type: "button", class: "btn primary", onclick: () => (state.user ? (state.page = "", go("agents"), route()) : enterDemo()) }, state.user ? "Abrir el equipo" : "Ver el equipo en la demo")));
 }
 
@@ -5397,7 +5402,7 @@ function FaqPage() {
     ["¿Cómo funciona Empresa?", "Creás tu empresa y obtenés códigos de invitación para tu equipo. Vos elegís quién es jefe. Los jefes cargan clientes, asignan tareas y revisan; los empleados ven solo sus tareas y las marcan como hechas. Todo queda separado por empresa."],
     ["¿Mis empleados y clientes ven los datos de otras empresas?", "No. Cada empresa está aislada con reglas de seguridad en la base de datos. Dentro de la empresa, un empleado ve sus propias tareas, los clientes cargados y los chats en los que participa."],
     ["¿Los agentes graban o editan video?", "No. El video tiene su propia pestaña en la app. Escriben el guion, el plan de grabación o el archivo HTML de HyperFrames. Grabar y renderizar lo hacés vos."],
-    ["¿Qué es el modo demo?", "Una cuenta de ejemplo con datos ficticios, para mirar la app sin registrarte. Podés agregar cosas para probar, pero no guarda nada, no tiene IA y se formatea a la hora."],
+    ["¿Qué es el modo demo?", "Datos de ejemplo, sin registrarte. No se guarda nada."],
   ];
   return h("div", { class: "doc" }, PageTitle("Preguntas frecuentes", "Lo que más se pregunta antes de empezar."),
     h("div", { class: "faq" }, qs.map(([q, a]) => h("details", {}, h("summary", {}, q), h("p", {}, a)))));
@@ -5478,7 +5483,7 @@ function DownloadCards() {
         h("header", {}, h("div", {}, h("h3", {}, "En el navegador"), h("small", {}, "Sin instalar nada · celular y computadora"))),
         h("button", { type: "button", class: "btn", onclick: () => { if (state.user) { state.page = ""; route(); } else navTo("entrar"); } }, icon("globe"), state.user ? "Abrir la app" : "Entrar desde la web"),
         h("p", { class: "hint", style: "margin:0" }, "En el celular: abrí app.livet.work y elegí \"Agregar a pantalla de inicio\"."))),
-    h("p", { class: "hint" }, "Es la misma LIVET y tu cuenta es la misma en todos lados: lo que cargás en la compu aparece en el celular. La app de escritorio se actualiza sola. ",
+    h("p", { class: "hint" }, "Misma cuenta en todos lados. Se actualiza sola. ",
       h("a", { href: `${DESKTOP_REPO}/releases/latest`, target: "_blank", rel: "noopener noreferrer" }, "Ver todas las versiones")));
 }
 function DownloadPage() {
@@ -5514,7 +5519,7 @@ const aiList = (title, items, ordered) => {
   return xs.length ? h("div", {}, h("div", { class: "sec-t" }, title), h(ordered ? "ol" : "ul", { style: "padding-left:20px;display:grid;gap:6px;margin-top:6px" }, xs.map(t => h("li", {}, t)))) : null;
 };
 const aiNote = s => (cleanText(s, 800) ? h("div", { class: "note" }, cleanText(s, 800)) : null);
-const AI_FOOT = h => h("p", { class: "hint" }, "Es una sugerencia generada por IA a partir de tus datos: revisala antes de decidir.");
+const AI_FOOT = h => h("p", { class: "hint" }, "Sugerencia de IA: revisala antes de decidir.");
 
 async function moneyReviewAI() {
   const r = await AI.call("money_review"), d = r.data || {};
