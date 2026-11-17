@@ -1168,6 +1168,21 @@ body.ai-working::after{content:"";position:fixed;left:0;top:0;height:3px;width:1
 .case-ba b{color:var(--text)}
 .case-ba b.acc{color:var(--orange)}
 .case-grid.three .case-card{background:linear-gradient(160deg,color-mix(in srgb,var(--orange) 9%,var(--surface)),var(--surface) 60%)}
+
+/* Planes: etiqueta y más info */
+.plan header{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.plan .plan-tag{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;background:var(--accent-soft);color:var(--orange);border:1px solid color-mix(in srgb,var(--orange) 40%,transparent);border-radius:99px;padding:3px 9px}
+.plan.featured .plan-tag{background:var(--orange);color:var(--on-accent);border-color:var(--orange)}
+.plan-has li.soon{color:var(--muted);font-style:italic}
+.plan .plan-more{align-self:flex-start;color:var(--orange);border:1.5px solid color-mix(in srgb,var(--orange) 45%,transparent);padding:0 14px}
+.plan .plan-more:hover{background:var(--orange);color:var(--on-accent);border-color:var(--orange)}
+.plan-info{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin:6px 0 10px}
+.plan-info-item{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--surface-2)}
+.plan-info-item b{display:block;margin-bottom:4px}
+.plan-info-item p{margin:0;font-size:13.5px;color:var(--muted);line-height:1.45}
+.plan-info-item.soon{border-style:dashed}
+.plan-info-tag{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted)}
+.plan-info-tag .plan-tag{font-size:11px;font-weight:800;text-transform:uppercase;background:var(--orange);color:var(--on-accent);border-radius:99px;padding:3px 9px}
 @media (prefers-reduced-motion:reduce){.hf-tpl-art i{animation:none}body::before,.ticker-track,.s-cta::after,.live-dot{animation:none}.rv{opacity:1;transform:none;transition:none}}
 </style>
 </head>
@@ -5063,15 +5078,31 @@ VIEWS.admin = AdminView;
 // Precios en USD. Si el cobro está activado, el botón abre el pago en Polar; si no, registra el pedido de acceso.
 // Base del análisis: precios públicos de la competencia (octubre 2026), ver docs del proyecto.
 const PLANS = [
-  { id: "personal", name: "Personal", line: "Tu día, tu plata y tus hábitos en un solo lugar.", month: 14.99, year: 143.9,
-    who: "Para una persona que se organiza o trabaja por su cuenta.",
-    has: ["Tareas, calendario y agenda del día", "Objetivos con hitos", "Hábitos con racha", "Finanzas: ingresos, gastos y metas de ahorro", "Clientes personales con sus tareas", "Mi marca, lanzamientos y laboratorio de hooks", "Asistente de IA: 300 créditos por mes"] },
-  { id: "empresa", name: "Empresa", line: "Un equipo que se reparte el trabajo sin perder el hilo.", month: 23.99, year: 230.3, featured: true,
-    who: "Para un negocio con equipo y clientes. Incluye hasta 4 personas.",
-    has: ["Todo lo del plan Personal", "Equipo con roles: dueño, jefe y empleado", "Clientes y tareas derivadas con revisión", "Documentos y chat del equipo", "Agentes de Marketing: campañas, competencia, contenido, email, SEO e informes", "680 créditos de IA por mes para el equipo", "Hasta 4 personas en el equipo"] },
-  { id: "creators", name: "Creators", line: "Planificá lo que publicás y aprendé de lo que rinde.", month: 19.99, year: 191.9,
-    who: "Para creadores de contenido y marcas personales.",
-    has: ["Todo lo del plan Personal", "Mi marca, lanzamientos y calendario de publicaciones", "Laboratorio de hooks y reseñas de cada pieza", "Plan de aprendizaje semanal", "Equipo creativo de IA: ideas, guiones, gráficos y video", "Agentes de Marketing: campañas, competencia y contenido", "No publica por vos: planifica y escribe"] },
+  { id: "personal", name: "Personal", tag: "Para vos", line: "Tu plata, tus tareas y tus hábitos en orden.", month: 14.99, year: 143.9,
+    who: "Para ordenar tu vida y tu trabajo, en una sola app.",
+    has: ["Finanzas: lo que entra, lo que sale y lo que ahorrás", "Tareas del día con prioridad y fecha", "Clientes, si trabajás por tu cuenta", "Hábitos diarios con racha", "Objetivos divididos en pasos", "Marca, lanzamientos y hooks", "300 créditos de IA por mes"],
+    more: [["Orden financiero", "Cargás ingresos y gastos en segundos y ves cuánto te queda, en qué se te va la plata y cuánto ahorrás cada mes. La IA te marca qué ajustar."],
+      ["Orden de tareas", "Lo de hoy arriba, lo urgente marcado y lo vencido a la vista. El asistente te dice qué hacer primero."],
+      ["Clientes", "Si trabajás por tu cuenta: cada cliente con sus tareas, sus cobros y lo que falta entregar."],
+      ["Hábitos y objetivos", "Marcás tus hábitos cada día y ves la racha. Tus metas grandes se dividen en pasos chicos que sí podés cumplir."],
+      ["Y más", "Calendario, marca y hooks para tus redes, y un asistente de IA que conoce tus datos."]] },
+  { id: "empresa", name: "Empresa", tag: "Para equipos y negocios", line: "Tu empresa, tus clientes y tu equipo en orden.", month: 23.99, year: 230.3, featured: true,
+    who: "Para pymes, agencias y equipos. Hasta 4 personas.",
+    has: ["Todo lo del plan Personal", "Clientes y clientes potenciales", "Lo que viene por delante, con fechas", "Equipo con roles: derivás tareas", "El equipo adjunta y muestra lo que hizo", "IA para cada cliente: preguntas y tareas", "Agentes de Marketing", "680 créditos de IA por mes"],
+    more: [["Orden de la empresa", "Clientes actuales y potenciales, el trabajo que viene por delante y quién está con qué, todo en un mismo lugar."],
+      ["Equipo y tareas", "Invitás a tu equipo con un código, elegís quién es jefe y derivás tareas con fecha. Nadie pierde el hilo."],
+      ["Entregas con prueba", "Cada persona adjunta lo que hizo (archivos, fotos, documentos) y lo marca como hecho. Vos revisás y aprobás o pedís cambios."],
+      ["IA para cada cliente", "Le preguntás a la IA cómo seguir con un cliente y te propone los próximos pasos, las tareas y hasta el mensaje para mandarle."],
+      ["Marketing", "Agentes que te arman campañas, analizan a tu competencia y escriben contenido, emails e informes."]] },
+  { id: "creators", name: "Creators", tag: "Para creadores de contenido", line: "Tus lanzamientos ordenados y un equipo de IA a tu lado.", month: 19.99, year: 191.9,
+    who: "Para creadores, marcas personales e influencers.",
+    has: ["Todo lo del plan Personal", "Calendario de lanzamientos", "Equipo de IA: ideas, guiones y hooks", "Videos animados con tu marca, en MP4", "Reseña de cada pieza publicada", "Agentes de Marketing", "400 créditos de IA por mes", "Próximamente: publicación automática en redes"],
+    more: [["Lanzamientos en orden", "Tu semana de contenido en un calendario: qué sale, cuándo, en qué red y con qué hook."],
+      ["Un equipo de IA que trabaja con vos", "Agentes de ideas, guiones, hooks, gráficos y video que conocen tu marca y aprenden de lo que te funcionó."],
+      ["Videos en minutos", "Elegís una plantilla o le pedís uno a la IA, le ponés tu logo y tus clips, ves cómo se crea en vivo y lo bajás en MP4."],
+      ["Hooks que retienen", "Hooks cortos para el primer segundo, con lo que se ve, lo que se dice y el texto en pantalla."],
+      ["Aprendé de tus números", "Cargás cómo le fue a cada pieza y la IA te dice qué repetir y qué probar distinto."],
+      ["Próximamente", "Publicación automática en tus redes, directo desde LIVET."]] },
 ];
 const PLAN_ROWS = [
   ["Tareas, calendario, hábitos", [1, 1, 1]], ["Objetivos y finanzas", [1, 1, 1]], ["Clientes personales", [1, 1, 1]],
@@ -5137,18 +5168,26 @@ async function cancelInterest() {
   refreshPlans();
 }
 
+function planInfo(p) {
+  modal({ title: `Plan ${p.name}`, hideSubmit: true, wide: true, body: [
+    h("p", { class: "plan-info-tag" }, h("span", { class: "plan-tag" }, p.tag), " ", p.who),
+    h("div", { class: "plan-info" }, p.more.map(([t, d]) => h("div", { class: "plan-info-item" + (/^Próximamente/.test(t) ? " soon" : "") }, h("b", {}, t), h("p", {}, d)))),
+    h("p", { class: "hint" }, `${usd(p.month)} por mes o ${usd(p.year)} por año. Se renueva solo y cancelás cuando quieras.`)],
+    extraActions: h("button", { class: "btn primary", type: "button", onclick: () => { $("#dlg").close(); requestPlan(p); } }, state.user ? "Suscribirme" : "Crear cuenta y suscribirme") });
+}
 function PlanCard(p) {
   const yearly = Plans.billing === "anual";
   const per = yearly ? p.year / 12 : p.month;
   const subOn = Plans.sub && Plans.sub.status !== "canceled", subMine = subOn && Plans.sub.tier === p.id;
   const mine = !subOn && Plans.interest?.tier === p.id;
   return h("article", { class: "plan" + (p.featured ? " featured" : "") + (mine ? " mine" : ""), "aria-label": "Plan " + p.name },
-    h("header", {}, h("h3", { class: "serif" }, p.name), p.featured ? h("span", { class: "plan-tag" }, "Para equipos") : null),
+    h("header", {}, h("h3", { class: "serif" }, p.name), h("span", { class: "plan-tag" }, p.tag)),
     h("p", { class: "plan-line" }, p.line),
     h("div", { class: "plan-price" }, h("b", { class: "serif tnum" }, usd(Math.round(per * 100) / 100)), h("span", {}, " por mes")),
     h("p", { class: "plan-sub" }, yearly ? `Se paga ${usd(p.year)} una vez por año (20% menos).` : `Pagando mes a mes. Por año: ${usd(p.year)}.`),
     h("p", { class: "muted", style: "font-size:13px" }, p.who),
-    h("ul", { class: "plan-has" }, p.has.map(t => h("li", {}, t))),
+    h("ul", { class: "plan-has" }, p.has.map(t => h("li", { class: /^Próximamente/.test(t) ? "soon" : "" }, t))),
+    h("button", { class: "btn ghost sm plan-more", type: "button", onclick: () => planInfo(p) }, "Más info →"),
     subMine ? h("div", { style: "display:grid;gap:6px" }, h("div", { class: "plan-ok" }, Plans.sub.status === "canceling" ? "Plan activo, se cancela al final del período" : "Tu plan actual"),
         h("button", { class: "btn ghost sm", type: "button", onclick: openPortal }, "Administrar suscripción"))
     : mine ? h("div", { style: "display:grid;gap:6px" }, h("button", { class: "btn primary", type: "button", onclick: () => requestPlan(p) }, "Pagar y activar"),
