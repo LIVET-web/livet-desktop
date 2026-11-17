@@ -2521,8 +2521,8 @@ const BUSINESS = {
   urcdp: "",          // Nº de inscripción de la base de datos en la URCDP (si corresponde)
   jurisdiction: "Montevideo, Uruguay",
 };
-const LEGAL_VERSION = "2026-11-16";
-const LEGAL_DATE = "16 de noviembre de 2026";
+const LEGAL_VERSION = "2026-11-17";
+const LEGAL_DATE = "17 de noviembre de 2026";
 
 const B = key => BUSINESS[key] ? BUSINESS[key] : h("span", { class: "todo" }, `[COMPLETAR: ${{
   legalName: "razón social o nombre del titular", entityType: "tipo de entidad", taxId: "RUT", address: "domicilio legal",
@@ -2539,9 +2539,8 @@ const LEGAL_DOCS = {
     body: () => [
       h("p", { class: "muted" }, `Versión ${LEGAL_VERSION} · ${LEGAL_DATE}`),
       sec("1. Quién es responsable de tus datos",
-        ["Responsable: ", B("legalName"), " (", B("entityType"), "), RUT ", B("taxId"), ", domicilio ", B("address"), ", ", BUSINESS.country, "."],
-        ["Contacto para temas de privacidad: ", B("email"), "."],
-        ["Base de datos inscripta en la URCDP: ", B("urcdp"), "."]),
+        ["Responsable: LIVET, servicio operado desde ", BUSINESS.country, "."],
+        ["Contacto para temas de privacidad y para ejercer tus derechos: ", B("email"), ". Respondemos desde ese email y, si una autoridad competente lo requiere, informamos los datos del titular."]),
       sec("2. Qué datos tratamos",
         [["Cuenta: ", "tu email, tu nombre (opcional) y tu contraseña, que se guarda cifrada (hash) por el servicio de autenticación; nosotros no la vemos."],
          ["Lo que vos cargás: ", "tareas, objetivos e hitos, eventos, hábitos, movimientos y metas de ahorro, perfil de creador, memorias, contenido y sus métricas, hooks, plan de aprendizaje y mensajes con el asistente."],
@@ -2590,7 +2589,7 @@ const LEGAL_DOCS = {
     body: () => [
       h("p", { class: "muted" }, `Versión ${LEGAL_VERSION} · ${LEGAL_DATE}`),
       sec("1. Quiénes somos y qué es LIVET",
-        ["LIVET es un servicio web de organización personal (tareas, objetivos, calendario, hábitos, finanzas personales) con un módulo para creadores de contenido, operado por ", B("legalName"), " (", B("entityType"), "), RUT ", B("taxId"), ", ", B("address"), ". Contacto: ", B("email"), "."]),
+        ["LIVET es un servicio web de organización personal (tareas, objetivos, calendario, hábitos, finanzas personales) con un módulo para creadores de contenido, operado desde ", BUSINESS.country, " bajo la marca LIVET. Contacto: ", B("email"), "."]),
       sec("2. Tu cuenta",
         "Tenés que ser mayor de 18 años y darnos un email válido. Sos responsable de mantener tu contraseña en secreto y de lo que pase en tu cuenta. Avisanos si creés que alguien accedió sin permiso."),
       sec("3. Uso aceptable",
@@ -5673,7 +5672,7 @@ function AboutPage() {
     Sec("Qué es", null, h("p", {}, "LIVET reúne tareas, objetivos, calendario, hábitos y finanzas personales, más un módulo para creadores con memoria de marca, calendario de lanzamientos, laboratorio de hooks, reseñas y un equipo de agentes.")),
     Sec("Qué no es", null, h("ul", { class: "plain" },
       h("li", {}, "No garantiza resultados en redes."), h("li", {}, "No da asesoramiento financiero, legal ni médico."), h("li", {}, "No publica por vos todavía."))),
-    Sec("Quién está detrás", null, h("p", {}, "Responsable: ", B("legalName"), " (", B("entityType"), "), ", B("address"), ".")),
+    Sec("Quién está detrás", null, h("p", {}, "Un equipo chico en ", BUSINESS.country, ". Escribinos a ", B("email"), ".")),
     Sec("Créditos", null, h("ul", { class: "plain" },
       h("li", {}, "Criterios para Instagram adaptados de ", h("a", { href: "https://github.com/sergebulaev/instagram-skills", target: "_blank", rel: "noopener noreferrer" }, "instagram-skills"), " (Sergey Bulaev, licencia MIT)."),
       h("li", {}, "Base de datos y autenticación: Supabase. IA: Anthropic."),
