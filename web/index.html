@@ -957,8 +957,9 @@ dialog::backdrop{background:radial-gradient(circle at 50% 48%,rgba(14,116,144,.5
 .agent-tile b{font-size:15px}.agent-tile span{color:var(--muted);font-size:13px;line-height:1.35}
 .agent-tile em{font-style:normal;font-weight:700;font-size:13px;color:#ff6600;margin-top:2px}
 .agent-tile.is-locked{opacity:.6}.agent-tile.is-locked em{color:var(--muted)}.agent-tile em svg{width:12px;height:12px;vertical-align:-1px}
+.lk-note{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}.lk-note svg{width:16px;height:16px;color:#ff6600}.lk-note span{flex:1;min-width:200px}
 .locked-wrap{position:relative;min-height:70vh}
-.locked-pv{filter:blur(1.2px) saturate(.7);opacity:.6;pointer-events:none;user-select:none;max-height:calc(100vh - 120px);overflow:hidden;-webkit-mask-image:linear-gradient(#000 70%,transparent);mask-image:linear-gradient(#000 70%,transparent)}
+.locked-pv{filter:blur(.6px) saturate(.8);opacity:.7;pointer-events:none;user-select:none;max-height:calc(100vh - 120px);overflow:hidden;-webkit-mask-image:linear-gradient(#000 70%,transparent);mask-image:linear-gradient(#000 70%,transparent)}
 .locked-over{position:absolute;inset:0;display:flex;justify-content:center;align-items:flex-start;padding:22vh 12px 0}
 .locked-card{display:grid;gap:12px;justify-items:center;text-align:center;padding:28px;max-width:440px;width:100%;box-shadow:0 30px 80px rgba(0,0,0,.55);border-color:rgba(255,102,0,.35)}
 .locked-card h2{font-size:21px}
@@ -2286,13 +2287,13 @@ const VIEWS = {};
 
 /* ------------------------- Accesos por suscripción ------------------------- */
 // Qué secciones incluye cada plan. Sin suscripción (Gratis) quedan solo las básicas.
-const ACC_BASE = ["home", "profile", "plans", "admin", "tasks", "calendar", "habits"];
+const ACC_BASE = ["home", "profile", "plans", "admin", "tasks", "calendar", "habits", "company"];
 const ACC_PERSONAL = [...ACC_BASE, "goals", "money", "clients", "assistant", "brand", "launches", "hooks"];
 const ACCESS = {
   free: ACC_BASE,
   personal: ACC_PERSONAL,
   creators: [...ACC_PERSONAL, "marketing", "reviews", "learning", "agents", "video"],
-  empresa: [...ACC_PERSONAL, "company", "marketing"],
+  empresa: [...ACC_PERSONAL, "marketing"],
 };
 const TIER_NAME = { free: "Gratis", personal: "Personal", creators: "Creators", empresa: "Empresa" };
 const Access = { sub: null, member: false, loaded: false };
@@ -2321,6 +2322,15 @@ function canUse(id) {
   return (ACCESS[t] || ACCESS.free).includes(id);
 }
 const plansFor = id => ["personal", "creators", "empresa"].filter(t => ACCESS[t].includes(id));
+const canCreateCompany = () => ["empresa", "admin"].includes(myTier());
+// Demo desde una sección bloqueada: al salir, vuelve a tu cuenta.
+function tryDemo(view) { state.demoFromAccount = !!state.user && !state.demo; enterDemo(); if (view) go(view); }
+function PlanLock(title, text, tiers, view) {
+  return modal({ title, hideSubmit: true, body: h("div", { class: "sec", style: "display:grid;gap:12px" },
+    h("p", { class: "muted" }, text),
+    h("div", { class: "cal-row" }, h("button", { class: "btn primary", type: "button", onclick: () => { $("#dlg").close(); go("plans"); } }, "Ver planes"),
+      h("button", { class: "btn", type: "button", onclick: () => { $("#dlg").close(); tryDemo(view); } }, "Probar en la demo"))) });
+}
 function LockedView(id) {
   const n = ALL_NAV.find(x => x.id === id) || { label: "Esta sección", icon: "star" };
   const tiers = plansFor(id), names = tiers.map(t => TIER_NAME[t]);
@@ -2333,7 +2343,9 @@ function LockedView(id) {
     h("h2", {}, "No tenés esta sección en tu plan"),
     h("p", { class: "muted" }, `${n.label} está disponible con ${tiers.length > 1 ? "los planes " : "el plan "}${list}. Tu plan: ${TIER_NAME[myTier()] || "Gratis"}.`),
     h("div", { class: "lk-plans" }, tiers.map(t => { const p = PLANS.find(x => x.id === t); return p ? h("div", { class: "lk-plan" }, h("b", {}, p.name), h("small", {}, usd(p.month) + " / mes")) : null; })),
-    h("button", { class: "btn primary", type: "button", onclick: () => go("plans") }, "Ver planes"));
+    h("div", { class: "cal-row", style: "justify-content:center" },
+      h("button", { class: "btn primary", type: "button", onclick: () => go("plans") }, "Ver planes"),
+      h("button", { class: "btn", type: "button", onclick: () => tryDemo(id) }, "Probar demo")));
   return h("div", { class: "locked-wrap" },
     pv ? h("div", { class: "locked-pv", inert: "", "aria-hidden": "true" }, pv) : PageHead(n.label, ""),
     h("div", { class: "locked-over" }, card));
@@ -2366,7 +2378,7 @@ function render() {
   if (!state.user) return;
   Co.stop();
   renderNav();
-  const view = canUse(state.view) ? (VIEWS[state.view] || HomeView)() : LockedView(state.view);
+  const view = canUse(state.view) ? (VIEWS[state.view] || HomeView)() : state.view === "agents" ? AgentsView(true) : LockedView(state.view);
   const bar = state.demo ? h("div", { class: "demo-bar" },
     h("span", {}, h("b", {}, "Modo demo. "), "Probá lo que quieras: no se guarda nada."),
     window.LIFEOS_FORCE_DEMO ? null : h("button", { class: "btn", onclick: leaveDemo }, "Salir del demo")) : null;
@@ -4693,17 +4705,19 @@ function VideoView() {
     );
 }
 VIEWS.video = VideoView;
-function AgentsView() {
+function AgentsView(locked) {
   const card = a => {
-    const ok = a.area === "marketing" ? canUse("marketing") : true;
-    const go_ = () => (!ok ? go("plans") : a.id === "video" ? go("video") : AgentDialog(a));
+    const ok = !locked && (a.area === "marketing" ? canUse("marketing") : a.id === "video" ? canUse("video") : canUse("agents"));
+    const go_ = () => (!ok ? PlanLock(a.name, `El agente de ${a.name} está disponible con ${plansFor(a.area === "marketing" ? "marketing" : a.id === "video" ? "video" : "agents").map(t => TIER_NAME[t]).join(" o ")}. Podés probarlo gratis en la demo.`, [], "agents") : a.id === "video" ? go("video") : AgentDialog(a));
     return h("button", { type: "button", class: "agent-tile" + (ok ? "" : " is-locked"), "data-tone": a.tone, onclick: go_ },
       h("div", { class: "agent-ic" }, icon(a.icon)),
       h("b", {}, a.name), h("span", {}, a.line),
-      h("em", {}, ok ? (a.id === "video" ? "Abrir →" : "Pedir →") : h("span", {}, icon("lock"), " Con " + plansFor("marketing").map(t => TIER_NAME[t]).join(" o "))));
+      h("em", {}, ok ? (a.id === "video" ? "Abrir →" : "Pedir →") : h("span", {}, icon("lock"), " Con " + plansFor(a.area === "marketing" ? "marketing" : a.id === "video" ? "video" : "agents").map(t => TIER_NAME[t]).join(" o "))));
   };
   return h("div", {},
     PageHead("Equipo", "Siete agentes de IA. Elegí uno y pedile algo."),
+    locked ? h("div", { class: "note lk-note" }, icon("lock"), h("span", {}, h("b", {}, "Podés verlos, pero para usarlos necesitás el plan Creators. ")),
+      h("button", { class: "btn sm primary", type: "button", onclick: () => go("plans") }, "Ver planes"), h("button", { class: "btn sm", type: "button", onclick: () => tryDemo("agents") }, "Probar demo")) : null,
     AGENT_GROUPS.map(([g, t]) => h("section", { class: "agent-sec" }, h("h2", { class: "agent-sec-t" }, t),
       h("div", { class: "agent-tiles" }, AGENTS.filter(a => a.group === g).map(card)))));
 }
@@ -4835,9 +4849,9 @@ function CompanyStart() {
   return h("div", { class: "grid", style: "grid-template-columns:repeat(auto-fit,minmax(280px,1fr))" },
     Card("Crear mi empresa", null, h("div", { class: "card-p", style: "display:grid;gap:12px" },
       h("p", { class: "muted" }, "Vos sos la persona dueña. Después invitás a tu equipo con un código y elegís quién es jefe y quién empleado."),
-      h("div", {}, h("button", { class: "btn primary", type: "button", onclick: CreateCompanyDialog }, icon("plus"), "Crear empresa")))),
+      h("div", {}, h("button", { class: "btn primary", type: "button", onclick: () => (canCreateCompany() || state.demo ? CreateCompanyDialog() : PlanLock("Crear una empresa", "Crear tu empresa está disponible con el plan Empresa. Si te invitaron a una, unite gratis con el código.", ["empresa"], "company")) }, canCreateCompany() || state.demo ? icon("plus") : icon("lock"), "Crear empresa")))),
     Card("Unirme con un código", null, h("div", { class: "card-p", style: "display:grid;gap:12px" },
-      h("p", { class: "muted" }, "Si tu jefe te pasó un código de invitación, ingresalo acá para sumarte a su empresa."),
+      h("p", { class: "muted" }, "Si tu jefe te pasó un código de invitación, ingresalo acá para sumarte a su empresa. Es gratis."),
       h("div", {}, h("button", { class: "btn", type: "button", onclick: JoinCompanyDialog }, "Tengo un código")))));
 }
 
@@ -6654,7 +6668,7 @@ function enterDemo(useType, fresh) {
   seedDemo(); AI.status = { configured: false, demo: true };
   showApp("Camila", "Modo demo");
 }
-function leaveDemo() { clearInterval(demoTimer); state.demo = false; leave(); }
+function leaveDemo() { clearInterval(demoTimer); if (state.demoFromAccount) { location.reload(); return; } state.demo = false; leave(); }
 $("#demo-btn").onclick = () => enterDemo();
 $(".user .who").onclick = () => go("profile");
 $("#avatar").onclick = () => go("profile");
