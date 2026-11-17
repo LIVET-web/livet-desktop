@@ -5065,19 +5065,19 @@ VIEWS.admin = AdminView;
 const PLANS = [
   { id: "personal", name: "Personal", line: "Tu día, tu plata y tus hábitos en un solo lugar.", month: 14.99, year: 143.9,
     who: "Para una persona que se organiza o trabaja por su cuenta.",
-    has: ["Tareas, calendario y agenda del día", "Objetivos con hitos", "Hábitos con racha", "Finanzas: ingresos, gastos y metas de ahorro", "Clientes personales con sus tareas", "Asistente de IA: 300 créditos por mes"] },
+    has: ["Tareas, calendario y agenda del día", "Objetivos con hitos", "Hábitos con racha", "Finanzas: ingresos, gastos y metas de ahorro", "Clientes personales con sus tareas", "Mi marca, lanzamientos y laboratorio de hooks", "Asistente de IA: 300 créditos por mes"] },
   { id: "empresa", name: "Empresa", line: "Un equipo que se reparte el trabajo sin perder el hilo.", month: 23.99, year: 230.3, featured: true,
     who: "Para un negocio con equipo y clientes. Incluye hasta 4 personas.",
-    has: ["Todo lo del plan Personal", "Equipo con roles: dueño, jefe y empleado", "Clientes y tareas derivadas con revisión", "Documentos y chat del equipo", "Agentes de Marketing: campañas, competencia, contenido, email, SEO e informes", "Hasta 4 personas en el equipo"] },
+    has: ["Todo lo del plan Personal", "Equipo con roles: dueño, jefe y empleado", "Clientes y tareas derivadas con revisión", "Documentos y chat del equipo", "Agentes de Marketing: campañas, competencia, contenido, email, SEO e informes", "680 créditos de IA por mes para el equipo", "Hasta 4 personas en el equipo"] },
   { id: "creators", name: "Creators", line: "Planificá lo que publicás y aprendé de lo que rinde.", month: 19.99, year: 191.9,
     who: "Para creadores de contenido y marcas personales.",
-    has: ["Todo lo del plan Personal", "Mi marca, lanzamientos y calendario de publicaciones", "Laboratorio de hooks y reseñas de cada pieza", "Plan de aprendizaje semanal", "Equipo creativo de IA: ideas, guiones, gráficos y video", "No publica por vos: planifica y escribe"] },
+    has: ["Todo lo del plan Personal", "Mi marca, lanzamientos y calendario de publicaciones", "Laboratorio de hooks y reseñas de cada pieza", "Plan de aprendizaje semanal", "Equipo creativo de IA: ideas, guiones, gráficos y video", "Agentes de Marketing: campañas, competencia y contenido", "No publica por vos: planifica y escribe"] },
 ];
 const PLAN_ROWS = [
   ["Tareas, calendario, hábitos", [1, 1, 1]], ["Objetivos y finanzas", [1, 1, 1]], ["Clientes personales", [1, 1, 1]],
-  ["Créditos de IA por mes", [300, "480 en equipo", 400]],
-  ["Equipo, clientes de empresa y chat", [0, 1, 0]], ["Agentes de Marketing", [0, 1, 0]],
-  ["Marca, lanzamientos y hooks", [0, 0, 1]], ["Aprendizaje y equipo creativo", [0, 0, 1]], ["Video", [0, 0, 1]],
+  ["Créditos de IA por mes", [300, "680 en equipo", 400]],
+  ["Equipo, clientes de empresa y chat", [0, 1, 0]], ["Agentes de Marketing", [0, 1, 1]],
+  ["Marca, lanzamientos y hooks", [1, 1, 1]], ["Aprendizaje y equipo creativo", [0, 0, 1]], ["Video", [0, 0, 1]],
 ];
 const Plans = { interest: null, sub: null, loaded: false, billing: "anual", busy: false };
 const usd = n => "US$ " + n.toLocaleString("es-UY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
