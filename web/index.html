@@ -932,6 +932,8 @@ dialog::backdrop{background:radial-gradient(circle at 50% 48%,rgba(14,116,144,.5
 .dl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
 .nav button.locked,.more-list button.locked{opacity:.55}.nav button.locked:hover{opacity:.85}
 .nav-lock{margin-left:auto;display:inline-flex}.nav-lock svg{width:13px!important;height:13px!important}
+.agent.is-locked .agent-ic,.agent.is-locked .agent-body{opacity:.55}
+.cal-sync{display:grid;gap:14px}.cal-btn{justify-content:center}.cal-row{display:flex;gap:8px;flex-wrap:wrap}
 .locked-card{display:grid;gap:14px;justify-items:start;padding:28px;max-width:720px}
 .locked-card h2{font-size:24px}
 .lk-ic{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;background:rgba(255,102,0,.12);color:#ff6600}.lk-ic svg{width:24px;height:24px}
@@ -2488,10 +2490,44 @@ function DayColumn(d, opts) {
         h("span", { class: "it-t" }, t.title), h("span", { class: "it-m" }, "Tarea · " + PRI[t.priority]))),
       h("button", { class: "add-day", type: "button", "aria-label": `Agregar evento el ${fmtShort(d)}`, onclick: () => EventDialog(null, { date: d }) }, "+")));
 }
+// Enlace privado para ver el calendario de LIVET en iCloud (iPhone y Mac), Google u Outlook.
+async function calFeedUrl(renew) {
+  let { data, error } = await sb.from("calendar_feeds").select("token").maybeSingle();
+  if (error) throw error;
+  const fresh = () => [...crypto.getRandomValues(new Uint8Array(24))].map(b => b.toString(16).padStart(2, "0")).join("");
+  if (!data) ({ data, error } = await sb.from("calendar_feeds").insert({ user_id: state.user.id }).select("token").single());
+  else if (renew) ({ data, error } = await sb.from("calendar_feeds").update({ token: fresh() }).eq("user_id", state.user.id).select("token").single());
+  if (error) throw error;
+  return `${SUPABASE_URL}/functions/v1/cal?t=${data.token}`;
+}
+async function CalSyncDialog() {
+  if (state.demo) return modal({ title: "Ver en mi celular", hideSubmit: true, body: h("p", { class: "muted" }, "Creá tu cuenta para conectar tu calendario. En la demo no hay datos reales.") });
+  let url;
+  try { url = await calFeedUrl(); } catch (e) { return toast(errMsg(e)); }
+  const body = h("div", { class: "sec cal-sync" });
+  const draw = () => {
+    const webcal = url.replace(/^https:/, "webcal:");
+    body.replaceChildren(
+      h("p", { class: "muted" }, "Tus eventos, tareas con fecha y publicaciones de LIVET aparecen en el calendario de tu celular y tu computadora. Se actualiza solo."),
+      h("a", { class: "btn primary big cal-btn", href: webcal }, icon("phone"), "Agregar al Calendario de iPhone y Mac"),
+      h("ol", { class: "steps-n" },
+        h("li", {}, "Tocá el botón de arriba en tu iPhone o tu Mac."),
+        h("li", {}, "Confirmá «Suscribirse». En la Mac, en «Ubicación» elegí iCloud: así aparece también en el iPhone."),
+        h("li", {}, "Listo. Los cambios que hagas en LIVET llegan solos.")),
+      h("div", { class: "cal-row" },
+        h("a", { class: "btn", href: "https://calendar.google.com/calendar/r?cid=" + encodeURIComponent(webcal), target: "_blank", rel: "noopener" }, "Agregar a Google Calendar"),
+        h("button", { class: "btn", type: "button", onclick: () => copyText(url) }, "Copiar enlace")),
+      h("p", { class: "hint" }, "Desde el celular podés verlo, pero los cambios se hacen en LIVET. El enlace es privado: no lo compartas. ",
+        h("button", { class: "linkbtn", type: "button", onclick: async () => { try { url = await calFeedUrl(true); draw(); toast("Enlace nuevo creado. El anterior dejó de funcionar."); } catch (e) { toast(errMsg(e)); } } }, "Crear un enlace nuevo")));
+  };
+  draw();
+  modal({ title: "Ver LIVET en mi calendario", hideSubmit: true, body });
+}
 function CalendarView() {
   const start = curWeek("cal");
   return h("div", {},
     PageHead("Calendario", "Tu semana, de un vistazo.",
+      h("button", { class: "btn", type: "button", onclick: CalSyncDialog }, icon("phone"), "Ver en mi celular"),
       h("button", { class: "btn primary", onclick: () => EventDialog(null, { date: today() }) }, icon("plus"), "Nuevo evento")),
     WeekNav("cal", fmtRange(start)),
     h("div", { class: "week" }, weekDays(start).map(d => DayColumn(d, { content: true }))),
@@ -4404,13 +4440,21 @@ function VideoView() {
 }
 VIEWS.video = VideoView;
 function AgentsView() {
-  return h("div", {},
-    PageHead("Equipo", "Un agente para cada trabajo.",
-      h("button", { class: "btn", type: "button", onclick: () => navTo("agentes") }, "Cómo funciona")),
-    h("div", { class: "agent-list" }, AGENTS.filter(a => !a.area).map(a => h("article", { class: "agent", "data-tone": a.tone },
+  const row = a => {
+    const ok = a.area === "marketing" ? canUse("marketing") : true;
+    return h("article", { class: "agent" + (ok ? "" : " is-locked"), "data-tone": a.tone },
       h("div", { class: "agent-ic" }, icon(a.icon)),
       h("div", { class: "agent-body" }, h("h3", {}, a.name), h("p", {}, a.line)),
-      h("button", { class: "btn primary", type: "button", onclick: () => (a.id === "video" ? go("video") : AgentDialog(a)) }, a.id === "video" ? "Abrir" : "Pedir")))));
+      ok ? h("button", { class: "btn primary", type: "button", onclick: () => (a.id === "video" ? go("video") : AgentDialog(a)) }, a.id === "video" ? "Abrir" : "Pedir")
+        : h("button", { class: "btn", type: "button", onclick: () => go("plans") }, icon("lock"), "Con " + plansFor("marketing").map(t => TIER_NAME[t]).join(" o ")));
+  };
+  return h("div", {},
+    PageHead("Equipo", "Siete agentes. Le pedís algo y te devuelve un borrador.",
+      h("button", { class: "btn", type: "button", onclick: () => navTo("agentes") }, "Cómo funciona")),
+    h("h2", { class: "agent-sec-t", style: "margin-top:8px" }, "Para crear contenido"),
+    h("div", { class: "agent-list" }, AGENTS.filter(a => a.area !== "marketing").map(row)),
+    h("h2", { class: "agent-sec-t", style: "margin-top:24px" }, "Para vender"),
+    h("div", { class: "agent-list" }, AGENTS.filter(a => a.area === "marketing").map(row)));
 }
 VIEWS.agents = AgentsView;
 function MarketingView() {
