@@ -1228,6 +1228,19 @@ body.ai-working::after{content:"";position:fixed;left:0;top:0;height:3px;width:1
 @keyframes go-pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--orange) 50%,transparent)}60%{box-shadow:0 0 0 12px transparent}}
 @media (max-width:700px){.co{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.plan,.plan *,.co *{animation:none!important;transition:none!important}.plan:hover{transform:none}}
+
+/* Respuestas de IA: listo para copiar y para revisar */
+.ready{border:1.5px solid color-mix(in srgb,var(--orange) 55%,var(--line));border-radius:16px;background:var(--surface-2);margin:10px 0 14px;overflow:hidden}
+.ready-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--orange)}
+.ready-h .btn{text-transform:none;letter-spacing:0}
+.ready-subj{padding:12px 16px 0;font-size:15px}
+.ready-subj b{color:var(--muted);font-weight:700;margin-right:4px}
+.ready-body{padding:10px 16px 16px;font-size:15px;line-height:1.55}
+.ready-body p{margin:0}.ready-body p.gap{height:10px}
+.md .ph,.ready .ph{display:inline;border:1.5px dashed var(--orange);background:color-mix(in srgb,var(--orange) 12%,transparent);color:var(--orange-2);border-radius:6px;padding:0 5px;font-weight:600;font-size:.92em}
+.md-review{border-left:3px solid var(--hot);background:var(--hot-soft);border-radius:0 12px 12px 0;padding:10px 14px;margin:10px 0}
+.md-review-h{font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--hot-ink);margin-bottom:4px}
+.md-review ul,.md-review ol{margin:0}.md-review p{margin:2px 0;color:var(--muted)}
 @media (prefers-reduced-motion:reduce){.hf-tpl-art i{animation:none}body::before,.ticker-track,.s-cta::after,.live-dot{animation:none}.rv{opacity:1;transform:none;transition:none}}
 </style>
 </head>
@@ -1477,28 +1490,52 @@ function modal({ title, body, submit = "Guardar", onSubmit, onDelete, wide, hide
 
 /* Markdown mínimo y seguro (solo DOM, sin innerHTML) */
 function inline(text) {
-  const out = []; const re = /(\*\*[^*]+\*\*|\[[^\]]+\]\(https?:\/\/[^)\s]+\))/g;
+  const out = []; const re = /(\*\*[^*]+\*\*|\[[^\]]+\]\(https?:\/\/[^)\s]+\)|\[[^\]\n]{1,80}\](?!\())/g;
   let last = 0, m;
   while ((m = re.exec(text))) {
     if (m.index > last) out.push(text.slice(last, m.index));
     const t = m[0];
     if (t.startsWith("**")) out.push(h("b", {}, t.slice(2, -2)));
+    else if (!/\]\(/.test(t)) out.push(h("span", { class: "ph", title: "Completá esto antes de usarlo" }, t.slice(1, -1).replace(/^completar:\s*/i, "")));
     else { const [, label, url] = /\[([^\]]+)\]\((.+)\)/.exec(t); out.push(h("a", { href: url, target: "_blank", rel: "noopener noreferrer" }, label)); }
     last = m.index + t.length;
   }
   if (last < text.length) out.push(text.slice(last));
   return out;
 }
+const READY_LABEL = { email: "Email listo para copiar", texto: "Listo para copiar", mensaje: "Mensaje listo para copiar", post: "Publicación lista para copiar" };
+function ReadyCard(lang, text) {
+  const lines = text.replace(/\s+$/, "").split("\n");
+  let subject = null;
+  if (/^asunto\s*:/i.test(lines[0] || "")) { subject = lines.shift().replace(/^asunto\s*:\s*/i, ""); while (lines.length && !lines[0].trim()) lines.shift(); }
+  const copy = h("button", { class: "btn sm", type: "button", onclick: () => copyText(text.trim()) }, icon("copy"), "Copiar");
+  return h("div", { class: "ready" },
+    h("div", { class: "ready-h" }, h("span", {}, h("i", { class: "live-dot" }), READY_LABEL[lang] || "Listo para copiar"), copy),
+    subject != null ? h("div", { class: "ready-subj" }, h("b", {}, "Asunto "), ...inline(subject)) : null,
+    h("div", { class: "ready-body" }, lines.map(l => (l.trim() ? h("p", {}, ...inline(l.replace(/^\s*[-*•]\s+/, "• "))) : h("p", { class: "gap" })))));
+}
 function markdown(src) {
-  const root = h("div", { class: "md" }); let list = null, tbl = null;
+  const root = h("div", { class: "md" }); let list = null, tbl = null, out = root, fence = null;
   const cells = l => l.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map(c => c.trim());
   for (const raw of String(src || "").split("\n")) {
     const line = raw.trimEnd();
+    const fm = /^\s*```\s*([\w-]*)\s*$/.exec(line);
+    if (fm) {
+      if (fence) { root.append(ReadyCard(fence.lang, fence.text)); fence = null; }
+      else { fence = { lang: (fm[1] || "texto").toLowerCase(), text: "" }; list = null; tbl = null; }
+      continue;
+    }
+    if (fence) { fence.text += raw + "\n"; continue; }
+    if (/^#{1,4}\s+(para revisar|falta|faltan|a completar|antes de (mandar|enviar|publicar))/i.test(line)) {
+      out = h("div", { class: "md-review" }, h("div", { class: "md-review-h" }, "⚠ " + line.replace(/^#{1,4}\s+/, "")));
+      root.append(out); list = null; tbl = null; continue;
+    }
+    if (/^#{1,4}\s+/.test(line)) out = root;
     if (/^\s*\|.*\|\s*$/.test(line)) {
       list = null;
       if (/^\s*\|?\s*:?-{2,}/.test(line)) continue;
       const cs = cells(line);
-      if (!tbl) { const body = h("tbody"); tbl = { body, t: h("table", {}, h("thead", {}, h("tr", {}, cs.map(c => h("th", {}, inline(c))))), body) }; root.append(h("div", { class: "tbl" }, tbl.t)); }
+      if (!tbl) { const body = h("tbody"); tbl = { body, t: h("table", {}, h("thead", {}, h("tr", {}, cs.map(c => h("th", {}, inline(c))))), body) }; out.append(h("div", { class: "tbl" }, tbl.t)); }
       else tbl.body.append(h("tr", {}, cs.map(c => h("td", {}, inline(c)))));
       continue;
     }
@@ -1506,15 +1543,16 @@ function markdown(src) {
     const ol = /^\s*\d+[.)]\s+/.test(line), ul = /^\s*[-*•]\s+/.test(line);
     if (ol || ul) {
       const tag = ol ? "OL" : "UL";
-      if (!list || list.tagName !== tag) { list = h(tag.toLowerCase()); root.append(list); }
+      if (!list || list.tagName !== tag) { list = h(tag.toLowerCase()); out.append(list); }
       list.append(h("li", {}, inline(line.replace(/^\s*(\d+[.)]|[-*•])\s+/, "")))); continue;
     }
     list = null;
     if (/^#{3,4}\s+/.test(line)) root.append(h("h3", {}, inline(line.replace(/^#{1,4}\s+/, ""))));
     else if (/^#{1,2}\s+/.test(line)) root.append(h("h2", {}, inline(line.replace(/^#{1,4}\s+/, ""))));
-    else if (/^\s*\*[^*].*\*\s*$/.test(line)) root.append(h("p", { class: "hint" }, inline(line.trim().replace(/^\*|\*$/g, ""))));
-    else if (line.trim()) root.append(h("p", {}, inline(line)));
+    else if (/^\s*\*[^*].*\*\s*$/.test(line)) out.append(h("p", { class: "hint" }, inline(line.trim().replace(/^\*|\*$/g, ""))));
+    else if (line.trim()) out.append(h("p", {}, inline(line)));
   }
+  if (fence && fence.text.trim()) root.append(ReadyCard(fence.lang, fence.text));
   return root;
 }
 
@@ -3339,24 +3377,12 @@ const AGENTS = [
     ph: "Ej: analizá a 3 panaderías artesanales de Montevideo frente a la mía (pan de masa madre, delivery)" },
   { id: "contenido", name: "Contenido", icon: "book", tone: "hot", area: "marketing",
     line: "Redacta posts, newsletters, páginas de venta y comunicados con titulares alternativos.",
-    makes: ["Texto listo para el canal elegido", "3 titulares y llamadas a la acción", "Notas de SEO básico"],
+    makes: ["Texto listo para copiar", "3 titulares alternativos", "Qué completar antes de publicar"],
     ph: "Ej: newsletter de 150 palabras para clientes de mi estudio contable sobre el cierre de ejercicio" },
   { id: "email", name: "Email", icon: "chat", tone: "cy", area: "marketing",
-    line: "Diseña secuencias de emails con asuntos, textos, tiempos, condiciones y pruebas A/B.",
-    makes: ["Tabla de la secuencia", "Cada email redactado", "Lógica de ramas y métricas"],
+    line: "Te escribe el email listo para copiar y mandar. Lo que falte, marcado aparte.",
+    makes: ["Email listo para copiar", "Asunto corto y claro", "Qué completar antes de mandarlo"],
     ph: "Ej: secuencia de 4 emails para dar la bienvenida a nuevos clientes de mi agencia" },
-  { id: "seo", name: "SEO", icon: "search", tone: "hot", area: "marketing",
-    line: "Propone palabras clave, mejoras de página y un plan por prioridad. No rastrea tu sitio.",
-    makes: ["Palabras clave candidatas por intención", "Mejoras de títulos y estructura", "Checklist técnico y plan"],
-    ph: "Ej: pegá el texto de tu página principal y contá a qué ciudad y público le vendés" },
-  { id: "informe", name: "Informe", icon: "chart", tone: "cy", area: "marketing",
-    line: "Convierte las métricas que pegues en un informe claro, con qué mejorar y qué hacer después.",
-    makes: ["Resumen ejecutivo", "Qué funcionó y qué no", "Recomendaciones ordenadas"],
-    ph: "Ej: pegá alcance, clics y ventas de este mes y del anterior para mi cliente" },
-  { id: "marca", name: "Marca y legales", icon: "star", tone: "red", area: "marketing",
-    line: "Revisa un texto contra tu tono de marca y avisa de afirmaciones riesgosas. No reemplaza a un abogado.",
-    makes: ["Hallazgos por gravedad con antes y después", "Banderas legales", "Versión revisada"],
-    ph: "Ej: pegá tu guía de tono (si tenés) y el texto del anuncio a revisar" },
 ];
 
 function AgentDialog(a) {
@@ -4331,7 +4357,7 @@ VIEWS.agents = AgentsView;
 function MarketingView() {
   const all = AGENTS.filter(a => a.area === "marketing"), more = !!state.mktMore;
   return h("div", {},
-    PageHead("Marketing", "Siete agentes. Cada uno te da un borrador."),
+    PageHead("Marketing", "Cuatro agentes. Cada uno te da un borrador."),
     h("p", { class: "hint" }, "Son borradores: revisalos antes de usarlos."),
     h("div", { class: "agent-list", style: "margin-top:12px" }, (more ? all : all.slice(0, 3)).map(agentCard)),
     h("div", { class: "more-row" }, h("button", { class: "btn", type: "button", onclick: () => { state.mktMore = !more; render(); } }, more ? "Ver menos" : `Ver los otros ${all.length - 3} agentes`)));
@@ -5145,7 +5171,7 @@ const PLANS = [
       ["Equipo y tareas", "Invitás a tu equipo con un código, elegís quién es jefe y derivás tareas con fecha. Nadie pierde el hilo."],
       ["Entregas con prueba", "Cada persona adjunta lo que hizo (archivos, fotos, documentos) y lo marca como hecho. Vos revisás y aprobás o pedís cambios."],
       ["IA para cada cliente", "Le preguntás a la IA cómo seguir con un cliente y te propone los próximos pasos, las tareas y hasta el mensaje para mandarle."],
-      ["Marketing", "Agentes que te arman campañas, analizan a tu competencia y escriben contenido, emails e informes."]] },
+      ["Marketing", "Agentes que te arman campañas, analizan a tu competencia y escriben contenido y emails listos para mandar."]] },
   { id: "creators", name: "Creators", tag: "Para creadores de contenido", line: "Tus lanzamientos ordenados y un equipo de IA a tu lado.", month: 19.99, year: 191.9,
     who: "Para creadores, marcas personales e influencers.",
     has: ["Todo lo del plan Personal", "Calendario de lanzamientos", "Equipo de IA: ideas, guiones y hooks", "Videos animados con tu marca, en MP4", "Reseña de cada pieza publicada", "Agentes de Marketing", "550 créditos de IA por mes", "Próximamente: publicación automática en redes"],
@@ -5578,10 +5604,10 @@ function HeroStage(onScene) {
 
 const WHO_EX = {
   persona: ["Tareas y hábitos del día, con rachas", "Gastos, ingresos y metas de ahorro", "Objetivos con hitos y calendario"],
-  independiente: ["Tus clientes y tus cobros en un solo lugar", "Tareas con fecha de entrega", "Marketing propio: campaña, contenido y SEO"],
+  independiente: ["Tus clientes y tus cobros en un solo lugar", "Tareas con fecha de entrega", "Marketing propio: campaña, contenido y email"],
   creador: ["Calendario semanal de lanzamientos", "Laboratorio de hooks y reseñas", "Agentes de contenido y de video"],
   empresa: ["Equipo con roles: dueño, jefe y empleado", "Clientes derivados a cada persona", "Tareas con revisión, documentos y chat interno"],
-  agencia: ["Cartera de clientes con responsable", "Campañas, competencia, SEO y email", "Informes y revisión de marca"],
+  agencia: ["Cartera de clientes con responsable", "Campañas, competencia, contenido y email", "IA para cada cliente"],
 };
 function WhoPicker() {
   const keys = Object.keys(USE_TYPES); let cur = "empresa";
@@ -5678,7 +5704,7 @@ function HomePage() {
       h("div", { style: "display:grid;gap:8px" },
         fold("Orden financiero", FinancePanel()),
         fold("Equipo, clientes y tareas con revisión", CompanyPanel()),
-        fold("Marketing para agencias y empresas", h("p", { class: "muted" }, "Plan de campaña, análisis de competencia con búsqueda web, contenido, email, SEO, informes y revisión de marca. Son borradores para que revises; la IA es opcional y pide tu permiso."), h("div", { class: "cta-row" }, h("button", { type: "button", class: "btn primary", onclick: () => enterDemo("agencia") }, "Ver como agencia"))),
+        fold("Marketing para agencias y empresas", h("p", { class: "muted" }, "Plan de campaña, análisis de competencia con búsqueda web, contenido y email. Son borradores para que revises; la IA es opcional y pide tu permiso."), h("div", { class: "cta-row" }, h("button", { type: "button", class: "btn primary", onclick: () => enterDemo("agencia") }, "Ver como agencia"))),
         fold("Para creadores: laboratorio de hooks", HookLab()))),
     h("section", { class: "s-sec", id: "descargar" }, h("div", { class: "s-head" }, h("h2", { class: "serif" }, "Llevala con vos"), h("p", { class: "lead" }, "Usala en el navegador o descargala para tu computadora: Mac, Windows o Linux.")), DownloadCards()),
     h("section", { class: "s-cta" }, h("h2", { class: "serif" }, "Empezá cuando quieras."),
