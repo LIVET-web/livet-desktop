@@ -5,6 +5,8 @@ const path = require("path");
 exports.default = async (ctx) => {
   if (ctx.electronPlatformName !== "darwin") return;
   const app = path.join(ctx.appOutDir, `${ctx.packager.appInfo.productFilename}.app`);
+  const helper = path.join(app, "Contents", "MacOS", "calread");
+  if (require("fs").existsSync(helper)) execSync(`codesign --force --sign - "${helper}"`, { stdio: "inherit" });
   execSync(`codesign --force --deep --sign - "${app}"`, { stdio: "inherit" });
   execSync(`codesign --verify --deep --strict "${app}"`, { stdio: "inherit" });
 };

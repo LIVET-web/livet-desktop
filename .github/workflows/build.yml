@@ -32,6 +32,10 @@ jobs:
       - name: Instalar dependencias
         run: npm install
 
+      - name: Lector del calendario (Mac)
+        if: runner.os == 'macOS'
+        run: swiftc -O build/calread.swift -o build/calread
+
       - name: Armar instalador
         run: npm run dist
 

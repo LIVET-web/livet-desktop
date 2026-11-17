@@ -1,8 +1,9 @@
 // LIVET para escritorio.
 // La app abre https://app.livet.work en su propia ventana: es la misma LIVET de la web,
 // así que cada vez que actualizás la página en GitHub, la app de escritorio se actualiza sola.
-const { app, BrowserWindow, Menu, shell, session } = require("electron");
+const { app, BrowserWindow, Menu, shell, session, ipcMain } = require("electron");
 const path = require("path");
+const { execFile } = require("child_process");
 
 const APP_URL = "https://app.livet.work";
 // Sitios que se abren dentro de la app. Todo lo demás se abre en el navegador.
@@ -45,6 +46,7 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: true,
       spellcheck: true,
+      preload: path.join(__dirname, "preload.js"),
     },
   });
 
@@ -69,6 +71,22 @@ function createWindow() {
 
   win.loadURL(APP_URL, { extraHeaders: "pragma: no-cache\n" });
 }
+
+// Calendario de la Mac → LIVET. Solo responde a la página de LIVET y solo lee.
+ipcMain.handle("livet:calendar", (event, fromMs, toMs) => new Promise((resolve) => {
+  try {
+    const host = new URL(event.senderFrame.url).hostname;
+    if (!INTERNAL_HOSTS.includes(host)) return resolve({ ok: false, error: "origen" });
+  } catch { return resolve({ ok: false, error: "origen" }); }
+  if (process.platform !== "darwin") return resolve({ ok: false, error: "solo_mac" });
+  const from = Number.isFinite(fromMs) ? fromMs : Date.now() - 30 * 864e5;
+  const to = Number.isFinite(toMs) ? Math.min(toMs, from + 400 * 864e5) : Date.now() + 180 * 864e5;
+  const bin = path.join(path.dirname(process.execPath), "calread");
+  execFile(bin, [String(Math.round(from)), String(Math.round(to))], { timeout: 150000, maxBuffer: 20 * 1024 * 1024 }, (err, stdout) => {
+    if (err && !stdout) return resolve({ ok: false, error: "lector" });
+    try { resolve(JSON.parse(String(stdout).trim().split("\n").pop())); } catch { resolve({ ok: false, error: "lectura" }); }
+  });
+}));
 
 function buildMenu() {
   const isMac = process.platform === "darwin";

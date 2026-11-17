@@ -943,6 +943,7 @@ dialog::backdrop{background:radial-gradient(circle at 50% 48%,rgba(14,116,144,.5
 .cs-cal svg,.item.ext svg,.item.team svg{width:12px;height:12px;vertical-align:-1px}
 .cal-row .input{flex:1;min-width:200px}
 .item.team{border-left:3px solid #8b5cf6;background:rgba(139,92,246,.10)}
+.item.ext.mac{border-left-color:var(--mc)}
 .item.ext{border-left:3px solid #9aa4ad;background:rgba(154,164,173,.10)}.cal-btn{justify-content:center;text-decoration:none!important}.cal-row{display:flex;gap:8px;flex-wrap:wrap}
 .agent-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
 .agent-tile{display:grid;gap:6px;align-content:start;text-align:left;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--text);cursor:pointer;transition:border-color .2s,transform .3s var(--spring)}
@@ -2515,13 +2516,26 @@ function DayColumn(d, opts) {
         h("span", { class: "it-t" }, t.title), h("span", { class: "it-m" }, "Tarea · " + PRI[t.priority]))),
       Ext.team.filter(e => extDay(e) === d).sort(byStart).map(e => h("button", { class: "item team", type: "button", onclick: () => TeamEventDialog(e) },
         h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, icon("team"), (e.all_day ? "Todo el día" : fmtTime(e.starts_at)) + " · " + (Ext.coNames[e.company_id] || "Equipo")))),
+      Ext.mac.filter(e => extDay(e) === d).sort(byStart).map(e => h("button", { class: "item ext mac", type: "button", style: `--mc:${e.color || "#9aa4ad"}`, onclick: () => ExtEventDialog(e) },
+        h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, e.all_day ? "Todo el día" : fmtTime(e.starts_at), " · ", e.cal))),
       Ext.events.filter(e => extDay(e) === d).sort(byStart).map(e => h("button", { class: "item ext", type: "button", onclick: () => ExtEventDialog(e) },
         h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, icon("phone"), e.all_day ? "Todo el día" : fmtTime(e.starts_at)))),
       h("button", { class: "add-day", type: "button", "aria-label": `Agregar evento el ${fmtShort(d)}`, onclick: () => EventDialog(null, { date: d }) }, "+")));
 }
 
 /* ----- Calendarios conectados (iPhone / iCloud) y reuniones del equipo ----- */
-const Ext = { events: [], team: [], cals: [], coNames: {}, errors: [], at: 0, loading: false, timer: null };
+const Ext = { events: [], team: [], cals: [], mac: [], coNames: {}, errors: [], at: 0, loading: false, timer: null };
+// Calendario de la Mac (solo en la app de escritorio): trae TODO lo que tiene la Mac, incluido iCloud del iPhone.
+const macCalAvailable = () => !!(window.livetDesktop && window.livetDesktop.platform === "darwin" && window.livetDesktop.readCalendar);
+const macCalOn = () => { try { return localStorage.getItem("livet-maccal") === "1"; } catch { return false; } };
+const macCalSet = v => { try { v ? localStorage.setItem("livet-maccal", "1") : localStorage.removeItem("livet-maccal"); } catch { /* sin almacenamiento */ } };
+async function macCalRead() {
+  if (!macCalAvailable()) return { ok: false, error: "no_app" };
+  const from = Date.now() - 60 * 864e5, to = Date.now() + 240 * 864e5;
+  const r = await window.livetDesktop.readCalendar(from, to).catch(() => ({ ok: false, error: "lector" }));
+  if (r?.ok) Ext.mac = (r.events || []).map(e => ({ ...e, mac: true }));
+  return r || { ok: false };
+}
 const extDay = e => (e.all_day ? String(e.starts_at).slice(0, 10) : isoDay(e.starts_at));
 const byStart = (a, b) => String(a.starts_at).localeCompare(String(b.starts_at));
 async function extLoad(force) {
@@ -2541,6 +2555,7 @@ async function extLoad(force) {
       const r = await sb.functions.invoke("cal-import", { body: { from, to } });
       if (r.data?.ok) { Ext.events = r.data.events || []; Ext.errors = r.data.errors || []; }
     } else { Ext.events = []; Ext.errors = []; }
+    if (macCalOn() && macCalAvailable()) { const r = await macCalRead(); if (!r.ok && r.error === "denied") { macCalSet(false); Ext.mac = []; } }
     Ext.at = Date.now();
   } catch (e) { console.error("calendarios", e); }
   finally { Ext.loading = false; }
@@ -2557,7 +2572,8 @@ function ExtEventDialog(e) {
   modal({ title: e.title, hideSubmit: true, body: h("div", { class: "sec" },
     h("p", {}, h("b", {}, fmtLong ? new Date(extDay(e) + "T12:00").toLocaleDateString("es-UY", { weekday: "long", day: "numeric", month: "long" }) : extDay(e)),
       e.all_day ? " · Todo el día" : ` · ${fmtTime(e.starts_at)} a ${fmtTime(e.ends_at)}`),
-    h("p", { class: "hint" }, icon("phone"), ` Viene de ${cal?.name || "tu calendario"}. Para cambiarlo, editalo en el Calendario de tu iPhone.`)) });
+    e.place ? h("p", { class: "muted" }, e.place) : null,
+    h("p", { class: "hint" }, icon("phone"), ` Viene de tu calendario «${e.mac ? e.cal : (cal?.name || "iPhone")}». Para cambiarlo, editalo en el Calendario de tu iPhone o tu Mac.`)) });
 }
 function TeamEventDialog(ev, preset = {}) {
   const cid = ev?.company_id || preset.company_id;
@@ -2640,6 +2656,18 @@ async function CalSyncDialog() {
         h("p", {}, "Tus eventos, tareas, publicaciones y reuniones del equipo aparecen en el Calendario de tu iPhone y tu Mac, y se actualizan solos cada 5 minutos.")),
       h("a", { class: "btn primary big cal-btn", href: webcal, onclick: () => setTimeout(() => toast("Confirmá «Suscribirse» en la ventana de Calendario y listo."), 600) }, icon("phone"), "Conectar con mi calendario"),
       h("p", { class: "hint", style: "text-align:center" }, "Apple te pide confirmar una vez. ", h("a", { class: "linkbtn", href: "https://calendar.google.com/calendar/r?cid=" + encodeURIComponent(webcal), target: "_blank", rel: "noopener" }, "¿Usás Google Calendar?")),
+      h("div", { class: "cs-block" },
+        h("div", { class: "cs-h" }, h("div", {}, h("h3", {}, "Tu calendario dentro de LIVET"), h("p", { class: "muted" }, "Todo lo que tenés en el Calendario del iPhone y la Mac, adentro de LIVET."))),
+        !macCalAvailable()
+          ? h("p", { class: "hint" }, "Funciona en la app LIVET Work para Mac. ", h("button", { class: "linkbtn", type: "button", onclick: () => { $("#dlg").close(); navTo("descargar"); } }, "Descargar la app"))
+          : macCalOn()
+            ? h("div", { class: "cs-cal" }, h("span", {}, icon("check"), ` Conectado · ${Ext.mac.length} eventos`), h("button", { class: "linkbtn", type: "button", onclick: () => { macCalSet(false); Ext.mac = []; draw(); render(); } }, "Desconectar"))
+            : h("button", { class: "btn big cal-btn", type: "button", onclick: async ev => {
+                const b = ev.currentTarget; b.disabled = true; b.textContent = "Esperando tu permiso…";
+                const r = await macCalRead();
+                if (r.ok) { macCalSet(true); toast(`Listo: ${Ext.mac.length} eventos de tu calendario ya están en LIVET.`); draw(); render(); }
+                else { b.disabled = false; b.textContent = "Traer mi calendario"; toast(r.error === "denied" ? "La Mac no dio permiso. Activalo en Ajustes del Sistema → Privacidad y seguridad → Calendarios → LIVET Work." : "No se pudo leer el calendario. Actualizá la app LIVET Work."); }
+              } }, icon("cal"), "Traer mi calendario")),
       ...(Ext.cals.length ? [h("div", { class: "cs-list" }, Ext.cals.map(c => h("div", { class: "cs-cal" }, h("span", {}, icon("phone"), " ", c.name, " · se muestra en LIVET"),
         h("button", { class: "linkbtn", type: "button", onclick: async () => { const { error } = await sb.from("external_calendars").delete().eq("id", c.id); if (error) return toast(errMsg(error)); await extLoad(true); draw(); } }, "Quitar"))))] : []));
   };
