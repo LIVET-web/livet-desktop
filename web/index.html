@@ -5615,8 +5615,33 @@ async function startCheckout(key) {
   let body = c && Date.now() - c.t < 15 * 60e3 ? await c.p : null;
   if (!body?.ok) body = await billingCall({ action: "checkout", key });
   if (body?.ok && body.url) { location.href = body.url; return true; }
+  if (body?.code === "has_sub") return "has_sub";
   if (body?.code === "not_configured") return false;
   throw new Error(body?.message || "No se pudo abrir el pago. Probá de nuevo.");
+}
+// Cambiar de plan (o de mensual a anual): se cambia LA MISMA suscripción; nunca se paga dos paquetes.
+function changePlan(p, billingOverride) {
+  const cur = Plans.sub || Access.sub || {};
+  const billing = billingOverride || (Plans.billing === "anual" ? "anual" : "mensual");
+  const from = PLANS.find(x => x.id === cur.tier), price = billing === "anual" ? p.year : p.month;
+  const key = `${p.id}-${billing}`;
+  const fromTxt = from ? `${from.name} ${cur.billing === "anual" ? "anual" : "mensual"}` : "tu plan actual";
+  modal({ title: "Cambiar de plan", submit: `Cambiar a ${p.name}`, body: h("div", { style: "display:grid;gap:10px" },
+      h("p", {}, h("b", {}, `${fromTxt} → ${p.name} ${billing}`)),
+      h("ul", { class: "plan-has", style: "margin:0" },
+        h("li", {}, "Tu suscripción pasa a ser solo de este plan: no se suma otra."),
+        h("li", {}, "Hoy se cobra (o se descuenta) la diferencia por los días que quedan de tu período, con la misma tarjeta."),
+        h("li", {}, `Después pagás ${usd(price)} ${billing === "anual" ? "por año" : "por mes"}.`),
+        h("li", {}, `Las secciones de ${p.name} se abren al instante.`)),
+      h("p", { class: "hint" }, "Los pagos ya hechos no son reembolsables.")),
+    onSubmit: async () => {
+      busyOn("Cambiando tu plan…");
+      const body = await billingCall({ action: "change", key }).finally(busyOff);
+      if (body?.code === "no_sub") { $("#dlg").close(); planCheckout(p); return false; }
+      if (!body?.ok) throw new Error(body?.message || "No se pudo cambiar el plan. Probá de nuevo.");
+      Plans.sub = { ...(Plans.sub || {}), tier: p.id, billing, status: "active", current_period_end: body.period_end || Plans.sub?.current_period_end };
+      Access.sub = Plans.sub; renderNav(); toast(`Listo: ya tenés el plan ${p.name}.`);
+    } });
 }
 // Cancelar: frena las renovaciones y se sigue usando el plan hasta el final del período pagado.
 function cancelSubscription(p) {
@@ -5663,7 +5688,9 @@ async function requestPlan(p) {
   try {
     // Si el cobro está activado, va directo al pago; si no, se registra el pedido de acceso.
     busyOn("Abriendo el pago seguro…");
-    if (await startCheckout(`${p.id}-${Plans.billing === "anual" ? "anual" : "mensual"}`)) { Plans.busy = false; return; }
+    const res = await startCheckout(`${p.id}-${Plans.billing === "anual" ? "anual" : "mensual"}`);
+    if (res === "has_sub") { busyOff(); Plans.busy = false; changePlan(p); return; }
+    if (res) { Plans.busy = false; return; }
     busyOff();
     const { error } = await sb.from("plan_interest").upsert({ user_id: state.user.id, tier: p.id, billing: Plans.billing === "anual" ? "anual" : "mensual" }, { onConflict: "user_id" });
     if (error) throw error;
@@ -5706,12 +5733,13 @@ function planInfo(p) {
     h("p", { class: "plan-info-tag" }, h("span", { class: "plan-tag" }, p.tag), " ", p.who),
     h("div", { class: "plan-info" }, p.more.map(([t, d]) => h("div", { class: "plan-info-item" + (/^Próximamente/.test(t) ? " soon" : "") }, h("b", {}, t), h("p", {}, d)))),
     h("p", { class: "hint" }, `${usd(p.month)} por mes o ${usd(p.year)} por año. Se renueva solo y cancelás cuando quieras.`)],
-    extraActions: h("button", { class: "btn primary", type: "button", onclick: () => { $("#dlg").close(); planCheckout(p); } }, state.user ? "Suscribirme" : "Crear cuenta y suscribirme") });
+    extraActions: h("button", { class: "btn primary", type: "button", onclick: () => { $("#dlg").close(); const on = Plans.sub && Plans.sub.status !== "canceled"; on ? (Plans.sub.tier === p.id ? null : changePlan(p)) : planCheckout(p); } }, !state.user ? "Crear cuenta y suscribirme" : Plans.sub && Plans.sub.status !== "canceled" ? (Plans.sub.tier === p.id ? "Tu plan actual" : "Cambiar a este plan") : "Suscribirme") });
 }
 function PlanCard(p) {
   const yearly = Plans.billing === "anual";
   const per = yearly ? p.year / 12 : p.month;
   const subOn = Plans.sub && Plans.sub.status !== "canceled", subMine = subOn && Plans.sub.tier === p.id;
+  const wantBilling = yearly ? "anual" : "mensual", otherBilling = subMine && Plans.sub.billing && Plans.sub.billing !== wantBilling;
   const mine = !subOn && Plans.interest?.tier === p.id;
   return h("article", { class: "plan" + (p.featured ? " featured" : "") + (mine ? " mine" : ""), "aria-label": "Plan " + p.name,
     onmousemove: e => { const r = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty("--mx", ((e.clientX - r.left) / r.width * 100).toFixed(0) + "%"); } },
@@ -5724,10 +5752,11 @@ function PlanCard(p) {
     h("button", { class: "btn ghost sm plan-more", type: "button", onclick: () => planInfo(p) }, "Más info →"),
     subMine ? h("div", { style: "display:grid;gap:6px" }, h("div", { class: "plan-ok" }, Plans.sub.status === "canceling" ? "Plan activo, se cancela al final del período" : "Tu plan actual"),
         h("button", { class: "btn ghost sm", type: "button", onclick: openPortal }, "Administrar suscripción"),
+        otherBilling ? h("button", { class: "btn sm", type: "button", onclick: () => changePlan(p, wantBilling) }, yearly ? "Pasar a pago anual (20% menos)" : "Pasar a pago mensual") : null,
         Plans.sub.status === "active" ? h("button", { class: "btn ghost sm", type: "button", style: "color:var(--alert-ink, #c0392b)", onclick: () => cancelSubscription(p) }, "Cancelar suscripción") : null)
     : mine ? h("div", { style: "display:grid;gap:6px" }, h("button", { class: "btn primary", type: "button", onclick: () => requestPlan(p) }, "Pagar y activar"),
         h("button", { class: "btn ghost sm", type: "button", onclick: cancelInterest }, "Retirar pedido"))
-      : h("button", { class: (p.featured ? "btn primary" : "btn") + " plan-cta", type: "button", onclick: () => planCheckout(p) }, h("span", {}, state.user ? (subOn ? "Cambiar a este plan" : "Suscribirme") : "Crear cuenta y suscribirme"), h("i", { class: "plan-cta-arrow" }, "→")),
+      : h("button", { class: (p.featured ? "btn primary" : "btn") + " plan-cta", type: "button", onclick: () => subOn ? changePlan(p) : planCheckout(p) }, h("span", {}, state.user ? (subOn ? "Cambiar a este plan" : "Suscribirme") : "Crear cuenta y suscribirme"), h("i", { class: "plan-cta-arrow" }, "→")),
     subMine ? null : h("p", { class: "hint", style: "margin:0;text-align:center" }, yearly ? "Se renueva cada año. Cancelás cuando quieras." : "Se renueva cada mes. Cancelás cuando quieras."));
 }
 
