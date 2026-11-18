@@ -1126,6 +1126,10 @@ dialog{background:var(--surface);border:1px solid var(--line-strong)}
 .hf-tpl.free .hf-tpl-art{display:grid;place-items:center;background:linear-gradient(135deg,var(--graphite),#2a1a10)}
 .hf-tpl.free .hf-tpl-art b{font-size:13px;letter-spacing:.08em;color:#fff;font-weight:800}
 .hf-tpl .hf-tpl-art.own i:nth-child(1){background:var(--tc1)}.hf-tpl .hf-tpl-art.own i:nth-child(2){background:var(--tc3)}.hf-tpl .hf-tpl-art.own i:nth-child(3){background:var(--tc1)}
+html.i18n-wait body{opacity:0}
+body{transition:opacity .15s}
+.lang-sel{background:transparent;color:inherit;border:1px solid var(--line-strong);border-radius:999px;padding:6px 10px;font:inherit;font-size:13px;cursor:pointer}
+.lang-sel option{color:#111}
 .hf-fonts{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
 .hf-font{display:grid;gap:2px;text-align:left;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface-2);color:var(--text);cursor:pointer;transition:border-color .2s,transform .2s}
 .hf-font:hover{border-color:var(--line-strong);transform:translateY(-1px)}.hf-font.on{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,102,0,.18)}
@@ -1393,6 +1397,73 @@ body.ai-working::after{content:"";position:fixed;left:0;top:0;height:3px;width:1
    de la clave. NUNCA pegues acá la clave service_role ni la de Anthropic.
 ------------------------------------------------------------------- */
 const SUPABASE_URL = "https://cwizubypvbscpyfebrlc.supabase.co";
+/* ------------------------- Idiomas -------------------------
+   La app está escrita en español. Para los otros idiomas, cada texto que aparece en pantalla se cambia por su traducción
+   (diccionario generado una vez y publicado en el almacenamiento de Supabase). Lo que escribe cada persona no se traduce. */
+const LANGS = { es: "Español", en: "English", pt: "Português", it: "Italiano", de: "Deutsch" };
+const LOCALES = { es: "es-UY", en: "en-US", pt: "pt-BR", it: "it-IT", de: "de-DE" };
+const I18N_V = "1";
+const I18N = { lang: "es", s: null, p: [], cache: new Map() };
+const LOC = () => LOCALES[I18N.lang] || "es-UY";
+const I18N_SKIP = new Set(["SCRIPT", "STYLE", "TEXTAREA", "CODE", "PRE", "NOSCRIPT", "IFRAME", "SVG", "svg"]);
+const I18N_ATTRS = ["placeholder", "title", "aria-label", "alt"];
+function tr(t) {
+  if (!I18N.s || typeof t !== "string") return t;
+  const k = t.replace(/\s+/g, " ").trim();
+  if (!k || k.length > 1500 || !/[A-Za-zÁ-ÿ]/.test(k)) return t;
+  let v = I18N.cache.get(k);
+  if (v === undefined) {
+    v = I18N.s[k] ?? null;
+    if (v == null) for (const [re, dst, order] of I18N.p) {
+      const m = re.exec(k);
+      if (m) { v = dst.replace(/\{(\d+)\}/g, (_, n) => { const i = order.indexOf(+n); const x = i >= 0 ? m[i + 1] : ""; return I18N.s[x] ?? x; }); break; }
+    }
+    I18N.cache.set(k, v);
+  }
+  if (v == null) return t;
+  return (t.match(/^\s*/)[0]) + v + (t.match(/\s*$/)[0]);
+}
+function i18nText(n) { const v = n.nodeValue; if (v && v.length > 1) { const t = tr(v); if (t !== v) n.nodeValue = t; } }
+function i18nEl(el) {
+  for (const a of I18N_ATTRS) { const v = el.getAttribute(a); if (v) { const t = tr(v); if (t !== v) el.setAttribute(a, t); } }
+}
+function i18nWalk(root) {
+  if (!I18N.s || !root) return;
+  if (root.nodeType === 3) { if (!root.parentElement?.closest("[data-no-i18n],[contenteditable=true],textarea,script,style,code,pre")) i18nText(root); return; }
+  if (root.nodeType !== 1 || I18N_SKIP.has(root.tagName) || root.closest("[data-no-i18n],[contenteditable=true]")) return;
+  i18nEl(root);
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, { acceptNode: n => n.nodeType === 1
+    ? (I18N_SKIP.has(n.tagName) || n.hasAttribute("data-no-i18n") || n.isContentEditable ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) : NodeFilter.FILTER_ACCEPT });
+  let n; while ((n = w.nextNode())) n.nodeType === 3 ? i18nText(n) : i18nEl(n);
+}
+function setLang(l) { try { localStorage.setItem("livet-lang", l); } catch { /* sin almacenamiento */ } location.reload(); }
+function LangSelect(cls = "lang-sel") {
+  const s = h("select", { class: cls, "aria-label": "Idioma / Language", "data-no-i18n": "" }, Object.entries(LANGS).map(([k, v]) => h("option", { value: k, selected: k === I18N.lang }, v)));
+  s.onchange = () => setLang(s.value);
+  return s;
+}
+(function i18nInit() {
+  let l = ""; try { l = localStorage.getItem("livet-lang") || ""; } catch { /* nada */ }
+  if (!LANGS[l]) l = (navigator.languages || [navigator.language || "es"]).map(x => String(x).slice(0, 2).toLowerCase()).find(x => LANGS[x]) || "es";
+  I18N.lang = l; document.documentElement.lang = l;
+  if (l === "es") return;
+  document.documentElement.classList.add("i18n-wait");
+  const done = () => document.documentElement.classList.remove("i18n-wait");
+  setTimeout(done, 2500); // si tarda, se muestra igual
+  fetch(`${SUPABASE_URL}/storage/v1/object/public/promo/i18n/${l}.json?v=${I18N_V}`).then(r => r.ok ? r.json() : null).then(d => {
+    if (!d) return;
+    I18N.s = d.s || {};
+    I18N.p = (d.p || []).map(([a, b]) => [new RegExp("^" + a.split(/\{\d+\}/).map(x => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("(.+?)") + "$"), b, [...a.matchAll(/\{(\d+)\}/g)].map(m => +m[1])]);
+    const go = () => { i18nWalk(document.body); document.title = tr(document.title);
+      new MutationObserver(ms => { for (const m of ms) {
+        if (m.type === "characterData") { if (!m.target.parentElement?.closest("[data-no-i18n],[contenteditable=true],textarea")) i18nText(m.target); }
+        else if (m.type === "attributes") { if (!m.target.closest("[data-no-i18n]")) i18nEl(m.target); }
+        else m.addedNodes.forEach(i18nWalk);
+      } }).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: I18N_ATTRS }); };
+    document.body ? go() : addEventListener("DOMContentLoaded", go);
+  }).catch(() => {}).finally(done);
+})();
+
 const SUPABASE_KEY = "sb_publishable_3Gj0j_DX-1Php8pzObFwgA_2Htu6lSO";
 const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
@@ -1485,7 +1556,7 @@ function fmtRange(start) {
     ? `${a.getDate()} – ${b.getDate()} ${MONTHS[b.getMonth()]}`
     : `${a.getDate()} ${MONTHS[a.getMonth()]} – ${b.getDate()} ${MONTHS[b.getMonth()]}`;
 }
-const fmtTime = iso => new Date(iso).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit", hour12: false });
+const fmtTime = iso => new Date(iso).toLocaleTimeString(LOC(), { hour: "2-digit", minute: "2-digit", hour12: false });
 const isoDay = iso => ymd(new Date(iso));
 // Día de inicio y de fin (incluido) de un evento, para mostrarlo en todos los días que dura.
 function evSpan(e) {
@@ -1513,15 +1584,15 @@ const fromLocalInput = v => (v ? new Date(v).toISOString() : null);
 const curCode = () => (typeof state !== "undefined" && state.profile?.currency) || "UYU";
 const fmtMoney = n => {
   const v = Number(n || 0);
-  try { return new Intl.NumberFormat("es-UY", { style: "currency", currency: curCode() }).format(v); }
-  catch { return "$ " + v.toLocaleString("es-UY", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  try { return new Intl.NumberFormat(LOC(), { style: "currency", currency: curCode() }).format(v); }
+  catch { return "$ " + v.toLocaleString(LOC(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 };
-const fmtInt = n => Number(n || 0).toLocaleString("es-UY");
+const fmtInt = n => Number(n || 0).toLocaleString(LOC());
 function greeting() {
   const hr = new Date().getHours();
   return hr < 6 ? "Buenas noches" : hr < 13 ? "Buen día" : hr < 20 ? "Buenas tardes" : "Buenas noches";
 }
-const fmtLong = () => new Date().toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" });
+const fmtLong = () => new Date().toLocaleDateString(LOC(), { weekday: "long", day: "numeric", month: "long" });
 
 function toast(msg) {
   const t = $("#toast"); t.textContent = msg; t.classList.add("show");
@@ -1831,7 +1902,7 @@ const AI = {
     // Sin consentimiento expreso no se envía nada al proveedor de IA (el servidor también lo exige).
     if (AI.status && AI.status.consented === false && !(await AI.askConsent()))
       throw Object.assign(new Error("Para usar la IA tenés que aceptar el envío de datos al proveedor."), { code: "no_consent" });
-    const { data, error } = await sb.functions.invoke("ai", { body: { mode, today: today(), ...payload } });
+    const { data, error } = await sb.functions.invoke("ai", { body: { mode, today: today(), lang: I18N.lang, ...payload } });
     if (error) {
       let body = null;
       try { body = await error.context.json(); } catch { /* sin cuerpo */ }
@@ -1958,7 +2029,7 @@ const Logic = {
   delta(cur, prev) {
     if (!prev) return cur ? "Sin datos del mes anterior" : "";
     const p = (cur - prev) / Math.abs(prev) * 100;
-    return `${p >= 0 ? "+" : "−"}${Math.abs(p).toLocaleString("es-UY", { maximumFractionDigits: 0 })} % vs. mes anterior`;
+    return `${p >= 0 ? "+" : "−"}${Math.abs(p).toLocaleString(LOC(), { maximumFractionDigits: 0 })} % vs. mes anterior`;
   },
   normCat(raw) {
     const clean = String(raw || "").trim().replace(/\s+/g, " ").slice(0, 40);
@@ -2650,7 +2721,7 @@ function extWatch() {
 function ExtEventDialog(e) {
   const cal = Ext.cals.find(c => c.id === e.cal);
   modal({ title: e.title, hideSubmit: true, body: h("div", { class: "sec" },
-    h("p", {}, h("b", {}, fmtLong ? new Date(extDay(e) + "T12:00").toLocaleDateString("es-UY", { weekday: "long", day: "numeric", month: "long" }) : extDay(e)),
+    h("p", {}, h("b", {}, fmtLong ? new Date(extDay(e) + "T12:00").toLocaleDateString(LOC(), { weekday: "long", day: "numeric", month: "long" }) : extDay(e)),
       e.all_day ? " · Todo el día" : ` · ${fmtTime(e.starts_at)} a ${fmtTime(e.ends_at)}`),
     e.place ? h("p", { class: "muted" }, e.place) : null,
     h("p", { class: "hint" }, icon("phone"), ` Viene de tu calendario «${e.mac ? e.cal : (cal?.name || "iPhone")}». Para cambiarlo, editalo en el Calendario de tu iPhone o tu Mac.`)) });
@@ -2889,7 +2960,7 @@ const FIN_SUG = {
   negocio: { gasto: ["Insumos", "Sueldos", "Impuestos", "Alquiler del local", "Publicidad", "Software y servicios", "Transporte", "Otros"], ingreso: ["Ventas", "Servicios", "Honorarios", "Otros ingresos"] },
 };
 const finKind = () => (["independiente", "empresa", "agencia", "creador"].includes(state.profile?.use_type) ? "negocio" : "personal");
-const pctText = n => (n * 100).toLocaleString("es-UY", { maximumFractionDigits: 0 }) + " %";
+const pctText = n => (n * 100).toLocaleString(LOC(), { maximumFractionDigits: 0 }) + " %";
 
 function TxDialog(tx) {
   const kind = sel([["gasto", "Gasto"], ["ingreso", "Ingreso"]], tx?.kind || "gasto");
@@ -3050,17 +3121,20 @@ const LEGAL_DOCS = {
       sec("1. Quién es responsable de tus datos",
         ["Responsable: LIVET, servicio operado desde ", BUSINESS.country, "."],
         ["Contacto para temas de privacidad y para ejercer tus derechos: ", B("email"), ". Respondemos desde ese email y, si una autoridad competente lo requiere, informamos los datos del titular."]),
-      sec("2. Qué datos tratamos",
+      sec("2. Tus datos son tuyos: nosotros no los miramos",
+        h("b", {}, "Nadie del equipo de LIVET lee tus tareas, tu plata, tus hábitos, tus objetivos, tus clientes ni tu contenido."),
+        " Lo que cargás se guarda en tu cuenta solo para mostrártelo a vos en tus dispositivos. No lo revisamos, no lo usamos para otra cosa, no lo vendemos y no hacemos publicidad con eso. Nuestro panel interno de administración solo muestra tu email, tu nombre, tu plan y contadores (por ejemplo, cuántas tareas tenés), nunca qué dicen.",
+        "La ley llama \"tratamiento\" a guardar datos, aunque nadie los mire. Por eso, para ser transparentes, este es el detalle de lo que se guarda:",
         [["Cuenta: ", "tu email, tu nombre (opcional) y tu contraseña, que se guarda cifrada (hash) por el servicio de autenticación; nosotros no la vemos."],
-         ["Lo que vos cargás: ", "tareas, objetivos e hitos, eventos, hábitos, movimientos y metas de ahorro, perfil de creador, memorias, contenido y sus métricas, hooks, plan de aprendizaje y mensajes con el asistente."],
+         ["Lo que vos cargás: ", "tareas, objetivos e hitos, eventos, hábitos, movimientos y metas de ahorro, perfil de creador, memorias, contenido y sus métricas, hooks, plan de aprendizaje y mensajes con el asistente. Se guardan para vos y no los mira nadie del equipo."],
          ["Empresa (si la usás): ", "nombre de la empresa, tu nombre y rol, clientes, tareas, comentarios, documentos que subís y mensajes de chat. Esos datos los ven las personas de tu empresa según su rol."],
          ["Uso: ", "un contador diario de usos de IA, para aplicar los límites del plan, la fecha y hora de tus ingresos a la app, el plan que pidas si pedís acceso anticipado a una suscripción, para medir el uso del servicio (solo la ve el administrador)."],
          ["Constancias: ", "qué documentos aceptaste, qué versión y cuándo."]],
         "No conectamos cuentas bancarias ni de redes sociales: los números y textos los escribís vos. Te pedimos que no cargues datos sensibles (salud, origen racial, creencias, orientación sexual, etc.) ni datos de terceras personas que no puedas compartir."),
       sec("2 bis. Datos de terceros: clientes y Empresa",
         "En la sección Clientes (personal) y en Empresa, si cargás datos de clientes o de compañeros, sos quien decide qué cargar y debés contar con su consentimiento o con otra base legal, e informarles. El dueño de la empresa es responsable de ese uso dentro de su equipo. Un empleado ve solo sus tareas, la lista de clientes y los chats en los que participa; los jefes ven todas las tareas de su empresa. El chat no está cifrado de extremo a extremo. Los documentos se guardan en un almacenamiento privado y se descargan con enlaces temporales. No cargues datos sensibles."),
-      sec("3. Para qué los usamos",
-        [["Darte el servicio: guardar y mostrarte tus datos en tus dispositivos."],
+      sec("3. Para qué se usan",
+        [["Darte el servicio: guardar y mostrarte tus datos en tus dispositivos. Nada más."],
          ["Si lo activás: generar sugerencias con IA (ver punto 4)."],
          ["Seguridad, prevención de abuso y límites de uso."],
          ["Cumplir obligaciones legales."]],
@@ -3078,7 +3152,7 @@ const LEGAL_DOCS = {
         "Mientras tu cuenta exista. Si la borrás desde \"Mis datos\", eliminamos tu cuenta y todo lo que cargaste, incluidas las constancias de aceptación. Las copias de seguridad del proveedor de base de datos pueden conservar datos por un tiempo limitado hasta que se renuevan."),
       sec("7. Tus derechos",
         "Tenés derecho a acceder a tus datos, rectificarlos, actualizarlos, incluirlos y suprimirlos (Ley 18.331). Desde \"Mis datos\" podés descargar todo en formato JSON y borrar tu cuenta; los datos los podés corregir directamente en la app. También podés escribirnos a nuestro email de contacto.",
-        ["Si considerás que no respondimos bien, podés reclamar ante la Unidad Reguladora y de Control de Datos Personales (URCDP): ", ext("https://www.gub.uy/unidad-reguladora-control-datos-personales", "gub.uy/unidad-reguladora-control-datos-personales"), "."]),
+        "Si considerás que no respondimos bien, podés reclamar ante la Unidad Reguladora y de Control de Datos Personales (URCDP) de Uruguay."),
       sec("7 bis. Pagos",
         "Los pagos los procesa Polar Software, Inc., que actúa como vendedor (merchant of record), junto con su procesador de pagos (Stripe). Ellos reciben los datos de tu tarjeta o medio de pago; nosotros no los vemos ni los guardamos. De Polar recibimos solo lo necesario para activar tu plan: tu email, el plan, el estado de la suscripción, el país y los importes.",
         "Polar y Stripe tratan esos datos según sus propias políticas de privacidad y pueden conservarlos por las obligaciones fiscales y contables que les corresponden."),
@@ -3388,7 +3462,7 @@ function BrandView() {
     h("div", { style: "margin-top:16px" }, Card("Análisis de mercado",
       aiButton("Analizar mi mercado", analyzeMarket, { cls: "btn hot" }),
       h("div", { class: "card-p" },
-        c.market_analysis ? [h("p", { class: "hint", style: "margin:0 0 12px" }, `Actualizado el ${new Date(c.market_analyzed_at).toLocaleDateString("es", { day: "numeric", month: "long" })}. Buscado en la web; lo que no tiene fuente es hipótesis.`), markdown(c.market_analysis)]
+        c.market_analysis ? [h("p", { class: "hint", style: "margin:0 0 12px" }, `Actualizado el ${new Date(c.market_analyzed_at).toLocaleDateString(LOC(), { day: "numeric", month: "long" })}. Buscado en la web; lo que no tiene fuente es hipótesis.`), markdown(c.market_analysis)]
           : Empty("Todavía no hiciste el análisis", "Completá tu perfil y pedí el análisis: busca tendencias, huecos y referentes de tu nicho, y guía los calendarios semanales."))))
   );
 }
@@ -4035,12 +4109,12 @@ function hfFxHtml(o, W, H) {
 function hfFxJs(fx, W, H) {
   switch (fx) {
     case "particulas": return `tl.to(".fxp", { y: -${Math.round(H * 0.35)}, x: (i) => (i % 2 ? 1 : -1) * ${Math.round(W * 0.05)}, duration: D, ease: "none" }, 0);`;
-    case "ondas": return `[0, 1, 2].forEach(k => { for (let t = k; t < D; t += 3) tl.fromTo(".fxw:nth-child(" + (k + 1) + ")", { scale: 0.2, opacity: 0.7 }, { scale: 2.6, opacity: 0, duration: 3, ease: "power1.out", immediateRender: false }, t); });`;
+    case "ondas": return `[0, 1, 2].forEach(k => { for (let t = k; t < D - 0.3; t += 3) tl.fromTo(".fxw:nth-child(" + (k + 1) + ")", { scale: 0.2, opacity: 0.7 }, { scale: 2.6, opacity: 0, duration: Math.min(3, D - t), ease: "power1.out", immediateRender: false }, t); });`;
     case "gradiente": return `tl.fromTo(".fxg", { x: "-10%", y: "-8%", rotation: 0 }, { x: "10%", y: "8%", rotation: 25, duration: D, ease: "sine.inOut" }, 0);`;
     case "grilla": return `tl.fromTo(".fxr", { y: 0 }, { y: ${Math.round(Math.min(W, H) / 1080 * 120)}, duration: D, ease: "none" }, 0);`;
     case "formas": return `tl.to(".fxs", { rotation: (i) => (i % 2 ? 90 : -120), y: (i) => (i % 2 ? -1 : 1) * ${Math.round(H * 0.08)}, duration: D, ease: "sine.inOut" }, 0);`;
-    case "brillo": return `for (let t = 0.4; t < D; t += 3.2) tl.fromTo(".fxb", { left: "-60%" }, { left: "130%", duration: 1.4, ease: "power2.inOut", immediateRender: false }, t);`;
-    case "lluvia": return `tl.to(".fxl", { y: ${Math.round(H * 1.4)}, duration: (i) => 2 + (i % 4) * 0.6, ease: "none", repeat: Math.ceil(D / 2), stagger: { each: 0.25 } }, 0);`;
+    case "brillo": return `for (let t = 0.4; t < D - 0.3; t += 3.2) tl.fromTo(".fxb", { left: "-60%" }, { left: "130%", duration: Math.min(1.4, D - t), ease: "power2.inOut", immediateRender: false }, t);`;
+    case "lluvia": return `document.querySelectorAll(".fxl").forEach((el, i) => { const d = 2 + (i % 4) * 0.6; for (let t = (i * 0.25) % d; t < D - 0.2; t += d) tl.fromTo(el, { y: 0 }, { y: ${Math.round(H * 1.4)}, duration: Math.min(d, D - t), ease: "none", immediateRender: false }, t); });`;
     default: return "";
   }
 }
@@ -4239,7 +4313,7 @@ const HF_TPL = {
       const js = stats.map(([n], i) => {
         const c = hfCount(n), t = 1.9 + i * 1.7;
         const count = c ? `{ const o = { v: 0 }, el = document.querySelector("#n${i} b"); el.textContent = ${JSON.stringify(c.pre)} + "0" + ${JSON.stringify(c.post)};
-    tl.to(o, { v: ${c.n}, duration: 1.2, ease: "power2.out", onUpdate: () => { el.textContent = ${JSON.stringify(c.pre)} + o.v.toLocaleString("es", { useGrouping: "always", minimumFractionDigits: ${c.dec}, maximumFractionDigits: ${c.dec} }) + ${JSON.stringify(c.post)}; } }, ${t + 0.1}); }` : "";
+    tl.to(o, { v: ${c.n}, duration: 1.2, ease: "power2.out", onUpdate: () => { el.textContent = ${JSON.stringify(c.pre)} + o.v.toLocaleString(${JSON.stringify(LOC())}, { useGrouping: "always", minimumFractionDigits: ${c.dec}, maximumFractionDigits: ${c.dec} }) + ${JSON.stringify(c.post)}; } }, ${t + 0.1}); }` : "";
         return `tl.from("#n${i}", { x: ${i % 2 ? 1 : -1} * ${Math.round(200 * u)}, opacity: 0, duration: 0.6, ease: "power3.out" }, ${t}); tl.from("#n${i} .ln", { scaleX: 0, duration: 0.6, ease: "power3.inOut" }, ${t + 0.3}); ${count}`;
       }).join("\n  ");
       return {
@@ -4477,7 +4551,7 @@ AI.stream = async function (fn, body, onText, signal) {
     throw Object.assign(new Error("Para usar la IA tenés que aceptar el envío de datos al proveedor."), { code: "no_consent" });
   const { data: { session } } = await sb.auth.getSession();
   const r = await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, { method: "POST", signal,
-    headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${session?.access_token || SUPABASE_KEY}` }, body: JSON.stringify(body) });
+    headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${session?.access_token || SUPABASE_KEY}` }, body: JSON.stringify({ lang: I18N.lang, ...body }) });
   if (!r.ok || !r.body) { let msg = "El asistente no respondió."; try { const j = await r.json(); msg = j.message || msg; if (j.code) throw Object.assign(new Error(msg), { code: j.code }); } catch (e) { if (e.code) throw e; } throw new Error(msg); }
   const rd = r.body.getReader(), dec = new TextDecoder(); let text = "";
   while (true) { const { value, done } = await rd.read(); if (done) break; text += dec.decode(value, { stream: true }); onText(text); }
@@ -5018,7 +5092,7 @@ function VideoView() {
         Card("Mis videos", null,
           h("div", { class: "card-b" }, HF.list.length ? HF.list.map(it => h("div", { class: "task" + (HF.cur === it ? " on" : ""), style: "grid-template-columns:1fr auto" },
             h("div", { class: "t-main", onclick: () => { hfOpen(it); render(); } }, h("div", { class: "t-title" }, (HF.cur === it ? "▶ " : "") + it.title),
-              h("div", { class: "t-meta" }, new Date(it.created).toLocaleDateString("es", { day: "numeric", month: "short" }), it.tpl ? " · plantilla" : it.idea ? " · " + clip(it.idea, 40) : "", (it.layers || []).length ? ` · ${it.layers.length} capa${it.layers.length > 1 ? "s" : ""}` : "")),
+              h("div", { class: "t-meta" }, new Date(it.created).toLocaleDateString(LOC(), { day: "numeric", month: "short" }), it.tpl ? " · plantilla" : it.idea ? " · " + clip(it.idea, 40) : "", (it.layers || []).length ? ` · ${it.layers.length} capa${it.layers.length > 1 ? "s" : ""}` : "")),
             h("button", { class: "btn sm ghost danger", type: "button", "aria-label": "Borrar video", onclick: e => {
               const b = e.currentTarget; if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "¿Borrar?"; return; }
               HF.list = HF.list.filter(x => x !== it); hfSave(); if (HF.cur === it) { HF.cur = null; } render(); } }, "✕")))
@@ -5164,7 +5238,7 @@ const Co = {
 /* ----- piezas ----- */
 const CsChip = s => h("span", { class: "cs", "data-s": s }, CS_LBL[s] || s);
 const fileSize = n => n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB";
-const hhmm = iso => new Date(iso).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
+const hhmm = iso => new Date(iso).toLocaleTimeString(LOC(), { hour: "2-digit", minute: "2-digit" });
 const stamp = iso => (iso.slice(0, 10) === today() ? "" : fmtShort(iso.slice(0, 10)) + " · ") + hhmm(iso);
 
 function CompanyStart() {
@@ -5687,7 +5761,7 @@ async function ledgerDelete(r) { try { const { error } = await sb.from("admin_le
 function LedgerCard() {
   const sum = k => Ledger.rows.filter(r => r.kind === k).reduce((a, r) => a + Number(r.amount), 0);
   const inc = sum("ingreso"), ads = sum("ads"), oth = sum("otro"), ai = Number(Ledger.ai.cost || 0), net = inc - ads - oth - ai;
-  const f = n => (n < 0 ? "−" : "") + "US$ " + Math.abs(n).toLocaleString("es-UY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const f = n => (n < 0 ? "−" : "") + "US$ " + Math.abs(n).toLocaleString(LOC(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const st = (l, v, note, cls) => h("div", { class: "card stat " + (cls || "") }, h("span", {}, l), h("b", { class: "serif tnum", style: "white-space:nowrap;font-size:clamp(18px,2vw,24px)" }, v), note ? h("small", {}, note) : null);
   const month = inp({ type: "month", value: Ledger.month, "aria-label": "Mes" });
   month.addEventListener("change", async () => { if (!month.value) return; Ledger.month = month.value; try { await ledgerLoad(); } catch (e) { toast(errMsg(e)); } });
@@ -5745,8 +5819,8 @@ function adminDeleteDialog(u) {
     toast("Cuenta borrada: " + u.email); adminLoad();
   } });
 }
-const dShort = v => (v ? new Date(v).toLocaleDateString("es-UY", { day: "2-digit", month: "short", year: "numeric" }) : "—");
-const dDay = v => new Date(v + "T12:00:00").toLocaleDateString("es-UY", { day: "numeric", month: "short" });
+const dShort = v => (v ? new Date(v).toLocaleDateString(LOC(), { day: "2-digit", month: "short", year: "numeric" }) : "—");
+const dDay = v => new Date(v + "T12:00:00").toLocaleDateString(LOC(), { day: "numeric", month: "short" });
 
 
 // Detalle de una persona: cantidades por sección y fechas. No muestra el contenido que cargó.
@@ -5774,7 +5848,7 @@ async function adminDetailDialog(u) {
         sec("IA", row("Mensajes con el asistente", n(d.ai_messages)), row("Usos hoy", n(u.ai_today)), row("Usos en total", n(u.ai_total)),
           ...(d.ai_days || []).slice(0, 5).map(a => row(dShort(a.day), a.count)))),
       sec("Ingresos a la app", row("En los últimos 7 días", n(u.visits_7d)), row("En total", n(u.visits_total)),
-        ...(d.visits || []).map(v => row(new Date(v).toLocaleString("es-UY", { dateStyle: "medium", timeStyle: "short" }), "")),
+        ...(d.visits || []).map(v => row(new Date(v).toLocaleString(LOC(), { dateStyle: "medium", timeStyle: "short" }), "")),
         !(d.visits || []).length ? h("p", { class: "muted" }, "Todavía sin ingresos registrados.") : null),
       h("p", { class: "hint" }, "Ves cantidades y fechas, no el contenido de las tareas, finanzas ni mensajes."));
   } catch (e) { body.replaceChildren(h("div", { class: "note" }, h("b", {}, "No se pudo cargar. "), errMsg(e))); }
@@ -5877,7 +5951,7 @@ const PLAN_ROWS = [
   ["Mi marca, lanzamientos y hooks", [0, 1, 1]], ["Aprendizaje y equipo creativo", [0, 0, 1]], ["Video", [0, 0, 1]],
 ];
 const Plans = { interest: null, sub: null, loaded: false, billing: "anual", busy: false };
-const usd = n => "US$ " + n.toLocaleString("es-UY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const usd = n => "US$ " + n.toLocaleString(LOC(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 async function plansLoad() {
   if (Plans.loaded || !state.user || state.demo) return;
@@ -5960,7 +6034,7 @@ function changePlan(p, billingOverride) {
 }
 // Cancelar: frena las renovaciones y se sigue usando el plan hasta el final del período pagado.
 function cancelSubscription(p) {
-  const end = Plans.sub?.current_period_end ? new Date(Plans.sub.current_period_end).toLocaleDateString("es-UY", { day: "numeric", month: "long", year: "numeric" }) : "";
+  const end = Plans.sub?.current_period_end ? new Date(Plans.sub.current_period_end).toLocaleDateString(LOC(), { day: "numeric", month: "long", year: "numeric" }) : "";
   modal({ title: "Cancelar suscripción", submit: "Sí, cancelar",
     body: h("div", { style: "display:grid;gap:10px" },
       h("p", {}, `Vas a cancelar tu plan ${p.name}. No se te va a volver a cobrar.`),
@@ -6303,6 +6377,7 @@ function renderTopbar() {
       h("button", { type: "button", class: "search-btn", "aria-label": "Buscar", onclick: openPalette }, icon("search"), h("span", {}, "Buscar"), h("kbd", {}, "Ctrl K")),
       isDesktopApp() ? null : h("button", { type: "button", class: "btn dl-top", "aria-current": current === "descargar" ? "page" : null, onclick: () => navTo("descargar") }, icon("download"), h("span", {}, "Descargar")),
       h("button", { type: "button", class: "btn ghost icon-btn", "aria-label": dark ? "Cambiar a tema claro" : "Cambiar a tema oscuro", onclick: () => applyTheme(dark ? "light" : "dark") }, icon(dark ? "sun" : "moon")),
+      LangSelect(),
       state.user
         ? h("button", { type: "button", class: "btn primary", onclick: () => navTo("") }, "Abrir la app")
         : h("button", { type: "button", class: "btn primary", onclick: () => navTo("entrar") }, "Entrar"),
@@ -6374,7 +6449,7 @@ function HeroStage(onScene) {
   const B = fl(10, 0, "pn money",
     h("div", { class: "board-h" }, h("b", {}, "Orden financiero · octubre"), h("span", {}, "Balance")),
     h("div", { class: "bal serif" }, "+$ 21.760"),
-    bars.map(([n, v, w, t], k) => h("div", { class: "mbar", style: `--k:${k}` }, h("span", {}, n), h("div", { class: "mtrack" }, h("i", { "data-tone": t, style: `--w:${w}%` })), h("b", { class: "tnum" }, "$ " + v.toLocaleString("es-UY")))),
+    bars.map(([n, v, w, t], k) => h("div", { class: "mbar", style: `--k:${k}` }, h("span", {}, n), h("div", { class: "mtrack" }, h("i", { "data-tone": t, style: `--w:${w}%` })), h("b", { class: "tnum" }, "$ " + v.toLocaleString(LOC())))),
     h("div", { class: "mgoal" }, h("span", {}, "Meta: viaje"), h("div", { class: "mtrack" }, h("i", { "data-tone": "cy", style: "--w:62%" })), h("b", {}, "62%")),
     h("div", { class: "mchips" }, ["Súper $ 12.400", "Transporte $ 5.200", "Servicios $ 9.800"].map(x => h("span", {}, x))));
   const emps = [["Lucía", "Carrusel La Espiga"], ["Diego", "Presupuesto web"], ["Mateo", "Informe mensual"]];
@@ -6482,7 +6557,7 @@ function FinancePanel() {
   const max = 60500;
   return h("div", { class: "fin-panel" },
     h("div", { class: "fin-bars", role: "img", "aria-label": "Ejemplo: ingresos 60.500, gastos 38.740, balance 21.760" },
-      rows.map(([n, v, t]) => h("div", { class: "fin-bar" }, h("span", {}, n), h("i", { "data-tone": t, style: `width:${Math.round(v / max * 100)}%` }), h("b", { class: "tnum" }, v.toLocaleString("es-UY"))))),
+      rows.map(([n, v, t]) => h("div", { class: "fin-bar" }, h("span", {}, n), h("i", { "data-tone": t, style: `width:${Math.round(v / max * 100)}%` }), h("b", { class: "tnum" }, v.toLocaleString(LOC()))))),
     h("ul", { class: "mod-list" }, [["Movimientos", "Registrá ingresos y gastos por categoría y mes."], ["Gastos por categoría", "Mirá en qué se va la plata."], ["Metas de ahorro", "Aportá y seguí el avance de cada meta."], ["Balance en Hoy", "El resumen del mes aparece en tu pantalla principal."]]
       .map(([a, b]) => h("li", {}, h("b", {}, a), h("span", {}, b)))),
     h("p", { class: "hint" }, "Cifras de ejemplo. Tus datos son privados y solo vos los ves."),
@@ -6644,13 +6719,13 @@ function AboutPage() {
   return h("div", { class: "doc" }, PageTitle("Acerca de LIVET", "Una herramienta para ordenar la vida y planificar contenido, sin prometer más de lo que hace."),
     Sec("Qué es", null, h("p", {}, "LIVET reúne tareas, objetivos, calendario, hábitos y finanzas personales, más un módulo para creadores con memoria de marca, calendario de lanzamientos, laboratorio de hooks, reseñas y un equipo de agentes.")),
     Sec("Qué no es", null, h("ul", { class: "plain" },
-      h("li", {}, "No garantiza resultados en redes."), h("li", {}, "No da asesoramiento financiero, legal ni médico."), h("li", {}, "No publica por vos todavía."))),
+      h("li", {}, "No garantiza resultados en redes."), h("li", {}, "No da asesoramiento financiero, legal ni médico."), h("li", {}, "No publica por vos ", h("b", { style: "color:var(--orange);letter-spacing:.04em" }, "TODAVÍA"), " ", h("span", { class: "chip", style: "font-size:11px;padding:2px 8px;border-radius:99px;background:var(--orange);color:#111;font-weight:700;vertical-align:middle" }, "Próximamente")))),
     Sec("Quién está detrás", null,
-      h("p", {}, "LIVET nació en ", BUSINESS.country, " de un equipo de jóvenes con sus propios emprendimientos. Teníamos las tareas en una app, la plata en una planilla, los clientes en el chat y las ideas de contenido en notas sueltas. Buscamos una herramienta que juntara todo y no la encontramos, así que la hicimos."),
+      h("p", {}, "Detrás de LIVET hay un grupo de chicos jóvenes emprendedores de ", BUSINESS.country, ", cada uno con sus propios proyectos. Teníamos las tareas en una app, la plata en una planilla, los clientes en el chat y las ideas de contenido en notas sueltas. Buscamos una herramienta que juntara todo y no la encontramos, así que la hicimos."),
       h("p", {}, "Las mismas personas que la construyen la usan todos los días para llevar adelante sus proyectos: organizar la semana, cobrar a tiempo, coordinar al equipo y publicar con constancia. Cada función nueva sale de algo que necesitamos nosotros o que nos pidió alguien que usa LIVET.")),
     Sec("Preguntas frecuentes", null, h("div", { class: "faq" },
       h("details", {}, h("summary", {}, "¿Quién está detrás de LIVET?"),
-        h("p", {}, "Un equipo independiente de jóvenes emprendedores con base en Montevideo, Uruguay. LIVET empezó como la herramienta que necesitábamos para nuestros propios emprendimientos, y la seguimos construyendo y usando todos los días.")),
+        h("p", {}, "Un grupo de chicos jóvenes emprendedores de Montevideo, Uruguay. LIVET empezó como la herramienta que necesitábamos para nuestros propios emprendimientos, y la seguimos construyendo y usando todos los días.")),
       h("details", {}, h("summary", {}, "¿Dónde encuentro a LIVET en internet?"),
         h("p", {}, "En ", h("a", { href: "https://app.livet.work" }, "app.livet.work"), " y en Instagram como ", h("a", { href: "https://www.instagram.com/livetwork/", target: "_blank", rel: "noopener noreferrer" }, "@livetwork"), ". También podés instalarla en tu computadora o tu celular desde la sección Descargar.")),
       h("details", {}, h("summary", {}, "¿Puedo probar LIVET gratis?"),
@@ -6660,7 +6735,7 @@ function AboutPage() {
     Sec("Hablemos", null, h("p", {}, "Emprendedor, creador, agencia, prensa o socio: nos encantaría saber de vos."),
       h("div", { class: "cal-row" }, h("button", { class: "btn primary", type: "button", onclick: () => navTo("contacto") }, "Contactanos"), h("button", { class: "btn", type: "button", onclick: () => navTo("faq") }, "Preguntas frecuentes"))),
     Sec("Créditos", null, h("ul", { class: "plain" },
-      h("li", {}, "Criterios para Instagram adaptados de ", h("a", { href: "https://github.com/sergebulaev/instagram-skills", target: "_blank", rel: "noopener noreferrer" }, "instagram-skills"), " (Sergey Bulaev, licencia MIT)."),
+      h("li", {}, "Nuestro equipo de agentes trabaja con 20 skills especializadas (ideas, guiones, hooks, video, campañas, contenido, email, finanzas, hábitos, objetivos, clientes, equipo y más) y más de 25 fórmulas y criterios de contenido."),
       h("li", {}, "Base de datos y autenticación: Supabase. IA: Anthropic."),
       h("li", {}, `Versión de los documentos legales: ${LEGAL_VERSION}.`))));
 }
@@ -7150,7 +7225,7 @@ $("#demo-btn").onclick = () => enterDemo();
 $(".user .who").onclick = () => go("profile");
 $("#avatar").onclick = () => go("profile");
 $("#auth-legal").append(LegalLinks());
-$("#side-legal").append(LegalLinks(), isDesktopApp() ? "" : h("button", { type: "button", class: "linkbtn", onclick: () => navTo("descargar") }, "Descargar la app"), h("button", { type: "button", class: "linkbtn", onclick: PersonalizeDialog }, "Personalizar"), h("button", { type: "button", class: "linkbtn", onclick: MyDataDialog }, "Mis datos"), h("button", { type: "button", class: "linkbtn", onclick: () => NewPasswordDialog(false) }, "Cambiar contraseña"));
+$("#side-legal").append(LangSelect("lang-sel side"), LegalLinks(), isDesktopApp() ? "" : h("button", { type: "button", class: "linkbtn", onclick: () => navTo("descargar") }, "Descargar la app"), h("button", { type: "button", class: "linkbtn", onclick: PersonalizeDialog }, "Personalizar"), h("button", { type: "button", class: "linkbtn", onclick: MyDataDialog }, "Mis datos"), h("button", { type: "button", class: "linkbtn", onclick: () => NewPasswordDialog(false) }, "Cambiar contraseña"));
 for (const k of ["terms", "privacy"]) { const b = document.querySelector(`[data-doc="${k}"]`); if (b) b.addEventListener("click", () => openLegal(k)); }
 
 let currentUid = null;
