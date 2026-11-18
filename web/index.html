@@ -3982,16 +3982,19 @@ function hfDoc({ title, W, H, dur, o, css, body, js }) {
 </head>
 <body>
 <div id="stage" data-composition-id="livet" data-start="0" data-duration="${dur}" data-width="${W}" data-height="${H}">
+${hfFxHtml(o, W, H)}
 ${body}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"><\/script>
 <script>
   const tl = gsap.timeline({ paused: true });
   const D = ${dur};
+  const ST = ${JSON.stringify((HF_ANIMS[o.anim] || HF_ANIMS.sube).slice(1))};
   const inOut = (sel, t, d, from) => {
-    tl.fromTo(sel, Object.assign({ opacity: 0, y: 70 }, from || {}), { opacity: 1, y: 0, x: 0, scale: 1, rotation: 0, duration: 0.5, ease: "power3.out" }, t);
-    if (t + d < D - 0.05) tl.to(sel, { opacity: 0, y: -50, duration: 0.35, ease: "power2.in" }, t + d - 0.35);
+    tl.fromTo(sel, Object.assign({ opacity: 0 }, ST[0], from || {}), Object.assign({ opacity: 1, y: 0, x: 0, scale: 1, rotation: 0, duration: 0.5, ease: "power3.out" }, ST[1]), t);
+    if (t + d < D - 0.05) tl.to(sel, Object.assign({ opacity: 0, duration: 0.35, ease: "power2.in" }, ST[2]), t + d - 0.35);
   };
+  ${hfFxJs(o.fx, W, H)}
   ${js}
   tl.fromTo(".bar", { scaleX: 0 }, { scaleX: 1, duration: D, ease: "none" }, 0);
   tl.to({}, { duration: 0.01 }, D - 0.01);
@@ -4001,6 +4004,45 @@ ${body}
 </body>
 </html>
 `;
+}
+/* ---------- Motion graphics: estilos de entrada y fondos animados ----------
+   Todo va en la línea de tiempo de GSAP (nada de animaciones CSS sueltas), así el MP4 exportado sale igual a la vista previa. */
+const HF_ANIMS = {
+  sube: ["Sube", { y: 70 }, {}, { y: -50 }],
+  zoom: ["Zoom", { scale: 0.55 }, { ease: "back.out(1.6)" }, { scale: 1.25 }],
+  desliza: ["Desliza", { x: -160 }, { ease: "power4.out" }, { x: 160 }],
+  desenfoque: ["Desenfoque", { filter: "blur(24px)", scale: 1.08 }, { filter: "blur(0px)", duration: 0.6 }, { filter: "blur(18px)" }],
+  giro: ["Giro", { rotation: -10, y: 50, scale: 0.85 }, { ease: "back.out(1.4)" }, { rotation: 8, y: -40 }],
+  rebote: ["Rebote", { y: 160 }, { ease: "elastic.out(1,0.55)", duration: 0.9 }, { y: 120 }],
+  barrido: ["Barrido", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.6, ease: "power2.inOut" }, { clipPath: "inset(0 0 0 100%)" }],
+  cae: ["Cae", { y: -140, rotation: 4 }, { ease: "bounce.out", duration: 0.8 }, { y: 140 }],
+};
+const HF_FXS = { ninguno: "Ninguno", particulas: "Partículas", ondas: "Ondas", gradiente: "Gradiente en movimiento", grilla: "Grilla", formas: "Formas flotantes", brillo: "Destello", lluvia: "Lluvia de líneas" };
+function hfFxHtml(o, W, H) {
+  const fx = HF_FXS[o.fx] && o.fx !== "ninguno" ? o.fx : "";
+  if (!fx) return "";
+  const u = Math.min(W, H) / 1080, c1 = o.c1, c3 = o.c3, R = (i, n) => ((i * 9301 + 49297) % 233280) / 233280 * n;
+  const wrap = inner => `<div class="fx" style="position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0">${inner}</div>`;
+  if (fx === "particulas") return wrap(Array.from({ length: 22 }, (_, i) => { const sz = Math.round((6 + R(i + 3, 16)) * u); return `<i class="fxp" style="position:absolute;left:${R(i + 7, W).toFixed(0)}px;top:${R(i + 11, H).toFixed(0)}px;width:${sz}px;height:${sz}px;border-radius:50%;background:${i % 3 ? c1 : c3};opacity:${(0.15 + R(i, 0.35)).toFixed(2)}"></i>`; }).join(""));
+  if (fx === "ondas") return wrap([0, 1, 2].map(i => `<i class="fxw" style="position:absolute;left:50%;top:50%;width:${Math.round(600 * u)}px;height:${Math.round(600 * u)}px;margin:-${Math.round(300 * u)}px 0 0 -${Math.round(300 * u)}px;border-radius:50%;box-sizing:border-box;border:${Math.round(6 * u)}px solid ${c1};opacity:0"></i>`).join(""));
+  if (fx === "gradiente") return wrap(`<i class="fxg" style="position:absolute;left:-50%;top:-50%;width:200%;height:200%;background:radial-gradient(circle at 30% 30%, ${c1}55, transparent 35%),radial-gradient(circle at 70% 70%, ${c3}22, transparent 40%)"></i>`);
+  if (fx === "grilla") return wrap(`<i class="fxr" style="position:absolute;left:0;top:-${Math.round(120 * u)}px;width:100%;height:calc(100% + ${Math.round(240 * u)}px);opacity:.18;background-image:linear-gradient(${c3} 1px,transparent 1px),linear-gradient(90deg,${c3} 1px,transparent 1px);background-size:${Math.round(120 * u)}px ${Math.round(120 * u)}px"></i>`);
+  if (fx === "formas") return wrap(Array.from({ length: 6 }, (_, i) => { const sz = Math.round((90 + R(i + 5, 160)) * u); return `<i class="fxs" style="position:absolute;left:${R(i + 2, W - sz).toFixed(0)}px;top:${R(i + 9, H - sz).toFixed(0)}px;width:${sz}px;height:${sz}px;border:${Math.round(8 * u)}px solid ${i % 2 ? c1 : c3};border-radius:${i % 3 === 0 ? "50%" : i % 3 === 1 ? Math.round(20 * u) + "px" : "0"};opacity:.22;box-sizing:border-box"></i>`; }).join(""));
+  if (fx === "brillo") return wrap(`<i class="fxb" style="position:absolute;top:-50%;left:-60%;width:40%;height:200%;transform:rotate(20deg);background:linear-gradient(90deg,transparent,${c3}33,transparent)"></i>`);
+  if (fx === "lluvia") return wrap(Array.from({ length: 16 }, (_, i) => `<i class="fxl" style="position:absolute;left:${R(i + 4, W).toFixed(0)}px;top:-${Math.round(300 * u)}px;width:${Math.max(2, Math.round(4 * u))}px;height:${Math.round((120 + R(i, 200)) * u)}px;border-radius:9px;background:${i % 2 ? c1 : c3};opacity:.3"></i>`).join(""));
+  return "";
+}
+function hfFxJs(fx, W, H) {
+  switch (fx) {
+    case "particulas": return `tl.to(".fxp", { y: -${Math.round(H * 0.35)}, x: (i) => (i % 2 ? 1 : -1) * ${Math.round(W * 0.05)}, duration: D, ease: "none" }, 0);`;
+    case "ondas": return `[0, 1, 2].forEach(k => { for (let t = k; t < D; t += 3) tl.fromTo(".fxw:nth-child(" + (k + 1) + ")", { scale: 0.2, opacity: 0.7 }, { scale: 2.6, opacity: 0, duration: 3, ease: "power1.out", immediateRender: false }, t); });`;
+    case "gradiente": return `tl.fromTo(".fxg", { x: "-10%", y: "-8%", rotation: 0 }, { x: "10%", y: "8%", rotation: 25, duration: D, ease: "sine.inOut" }, 0);`;
+    case "grilla": return `tl.fromTo(".fxr", { y: 0 }, { y: ${Math.round(Math.min(W, H) / 1080 * 120)}, duration: D, ease: "none" }, 0);`;
+    case "formas": return `tl.to(".fxs", { rotation: (i) => (i % 2 ? 90 : -120), y: (i) => (i % 2 ? -1 : 1) * ${Math.round(H * 0.08)}, duration: D, ease: "sine.inOut" }, 0);`;
+    case "brillo": return `for (let t = 0.4; t < D; t += 3.2) tl.fromTo(".fxb", { left: "-60%" }, { left: "130%", duration: 1.4, ease: "power2.inOut", immediateRender: false }, t);`;
+    case "lluvia": return `tl.to(".fxl", { y: ${Math.round(H * 1.4)}, duration: (i) => 2 + (i % 4) * 0.6, ease: "none", repeat: Math.ceil(D / 2), stagger: { each: 0.25 } }, 0);`;
+    default: return "";
+  }
 }
 const hfLogoBar = o => o.logo ? `<div class="brandbar"><img class="logo" src="asset:${o.logo}" alt=""></div>` : "";
 function hfCount(raw) {
@@ -4032,8 +4074,7 @@ const HF_TPL = {
   <section id="s9" class="clip center" data-start="9.5" data-duration="2.5" data-track-index="0"><div class="cta">${em(o.cta || "")}</div>${o.url ? `<div class="url">${hfEsc(o.url)}</div>` : ""}</section>
   <div class="bar"></div>`,
         js: `${lines.map((t, i) => `inOut("#s${i + 1}", ${(i * slot).toFixed(2)}, ${slot.toFixed(2)});`).join(" ")}
-  inOut("#s9", 9.5, 2.5, { y: 0, scale: 0.9 });
-  tl.fromTo(".bar", { scaleX: 0 }, { scaleX: 1, duration: D, ease: "none" }, 0);`,
+  inOut("#s9", 9.5, 2.5, { scale: 0.9 });`,
       };
     },
   },
@@ -4153,8 +4194,8 @@ const HF_TPL = {
       const list = v ? `left:${Math.round(80 * u)}px;right:${Math.round(80 * u)}px;top:${Math.round(220 * u + H * 0.4 + 80 * u)}px` : `left:${Math.round(100 * u)}px;width:${Math.round(W * 0.4)}px;top:0;bottom:0;display:flex;flex-direction:column;justify-content:center`;
       return {
         css: `#intro{background:${o.c2}}
-  .ring{position:absolute;left:50%;top:50%;width:${Math.round(900 * u)}px;height:${Math.round(900 * u)}px;margin:-${Math.round(450 * u)}px 0 0 -${Math.round(450 * u)}px;border-radius:50%;border:${Math.round(40 * u)}px solid ${o.c1}}
-  .biglogo{width:${Math.round(Math.min(W * 0.7, 900 * u))}px;max-height:${Math.round(260 * u)}px;object-fit:contain}
+  .ring{position:absolute;left:50%;top:50%;width:${Math.round(900 * u)}px;height:${Math.round(900 * u)}px;margin:-${Math.round(450 * u)}px 0 0 -${Math.round(450 * u)}px;border-radius:50%;box-sizing:border-box;border:${Math.round(40 * u)}px solid ${o.c1}}
+  .biglogo{position:relative;z-index:1;display:block;margin:0 auto;width:${Math.round(Math.min(W * 0.7, 900 * u))}px;max-height:${Math.round(260 * u)}px;object-fit:contain}
   .kick{display:inline-block;background:${o.c1};color:${o.c2};font-size:${Math.round(40 * u)}px;letter-spacing:.1em;text-transform:uppercase;padding:${Math.round(10 * u)}px ${Math.round(26 * u)}px;border-radius:999px}
   .t{font-size:${Math.round(108 * u)}px;line-height:1;letter-spacing:-.03em;margin-top:${Math.round(30 * u)}px;max-width:${Math.round(W - 180 * u)}px}
   .mbox{${box};border-radius:${Math.round(32 * u)}px;background:${o.c3}11}
@@ -4225,7 +4266,7 @@ const HF_TPL = {
   },
 };
 function hfTplDefaults(key) {
-  const t = HF_TPL[key], o = { format: t.fmt, font: "impacto", logo: HF.brand.logo, c1: HF.brand.c1, c2: HF.brand.c2, c3: HF.brand.c3, url: HF.brand.url };
+  const t = HF_TPL[key], o = { format: t.fmt, font: "impacto", anim: "sube", fx: "ninguno", logo: HF.brand.logo, c1: HF.brand.c1, c2: HF.brand.c2, c3: HF.brand.c3, url: HF.brand.url };
   t.fields.forEach(([k, , , d]) => { o[k] = d; });
   return o;
 }
@@ -4692,6 +4733,8 @@ function hfCleanOpts(base, o, shared) {
   const out = hfTplDefaults(base), txt = v => String(v ?? "").replace(/[<>]/g, "").slice(0, 400);
   if (HF_FORMATS[o.format]) out.format = o.format;
   if (HF_FONTS[o.font]) out.font = o.font;
+  if (HF_ANIMS[o.anim]) out.anim = o.anim;
+  if (HF_FXS[o.fx]) out.fx = o.fx;
   for (const k of ["c1", "c2", "c3"]) if (HF_HEX.test(o[k] || "")) out[k] = o[k];
   t.fields.forEach(([k, , type]) => {
     if (type === "media") out[k] = HF_EX[o[k]] ? o[k] : !shared && HF_ID.test(o[k] || "") ? o[k] : "";
@@ -4872,6 +4915,9 @@ function HfCustomize(item) {
     h("div", { class: "card-p hf-form" },
       h("div", { class: "row2" }, F("Formato", fmt), F("Logo", logo)),
       F("Tipografía", HfFontPicker(o.font || "impacto", v => { o.font = v; apply(true); })),
+      h("div", { class: "row2" },
+        F("Animación de entrada", (() => { const x = sel(Object.entries(HF_ANIMS).map(([k, v]) => [k, v[0]]), o.anim || "sube"); x.onchange = () => { o.anim = x.value; apply(true); }; return x; })()),
+        F("Fondo animado", (() => { const x = sel(Object.entries(HF_FXS), o.fx || "ninguno"); x.onchange = () => { o.fx = x.value; apply(true); }; return x; })())),
       h("div", { class: "row3" }, color("c1", "Acento"), color("c2", "Fondo"), color("c3", "Texto")),
       ...fields,
       F("Web o usuario", (() => { const i = inp({ value: o.url, maxLength: 60 }); i.addEventListener("input", () => { o.url = i.value; apply(); }); return i; })()),
@@ -6428,7 +6474,7 @@ function HookLab() {
   paint();
   return h("div", { class: "lab" },
     h("div", { class: "lab-in" }, field("tema", "Tema"), field("audiencia", "Para quién"), field("resultado", "Resultado, con un verbo")),
-    out, h("p", { class: "hint" }, "Gratis y sin cuenta."));
+    out);
 }
 
 function FinancePanel() {
@@ -6599,7 +6645,20 @@ function AboutPage() {
     Sec("Qué es", null, h("p", {}, "LIVET reúne tareas, objetivos, calendario, hábitos y finanzas personales, más un módulo para creadores con memoria de marca, calendario de lanzamientos, laboratorio de hooks, reseñas y un equipo de agentes.")),
     Sec("Qué no es", null, h("ul", { class: "plain" },
       h("li", {}, "No garantiza resultados en redes."), h("li", {}, "No da asesoramiento financiero, legal ni médico."), h("li", {}, "No publica por vos todavía."))),
-    Sec("Quién está detrás", null, h("p", {}, "Un equipo chico en ", BUSINESS.country, ". Escribinos a ", B("email"), ".")),
+    Sec("Quién está detrás", null,
+      h("p", {}, "LIVET nació en ", BUSINESS.country, " de un equipo de jóvenes con sus propios emprendimientos. Teníamos las tareas en una app, la plata en una planilla, los clientes en el chat y las ideas de contenido en notas sueltas. Buscamos una herramienta que juntara todo y no la encontramos, así que la hicimos."),
+      h("p", {}, "Las mismas personas que la construyen la usan todos los días para llevar adelante sus proyectos: organizar la semana, cobrar a tiempo, coordinar al equipo y publicar con constancia. Cada función nueva sale de algo que necesitamos nosotros o que nos pidió alguien que usa LIVET.")),
+    Sec("Preguntas frecuentes", null, h("div", { class: "faq" },
+      h("details", {}, h("summary", {}, "¿Quién está detrás de LIVET?"),
+        h("p", {}, "Un equipo independiente de jóvenes emprendedores con base en Montevideo, Uruguay. LIVET empezó como la herramienta que necesitábamos para nuestros propios emprendimientos, y la seguimos construyendo y usando todos los días.")),
+      h("details", {}, h("summary", {}, "¿Dónde encuentro a LIVET en internet?"),
+        h("p", {}, "En ", h("a", { href: "https://app.livet.work" }, "app.livet.work"), " y en Instagram como ", h("a", { href: "https://www.instagram.com/livetwork/", target: "_blank", rel: "noopener noreferrer" }, "@livetwork"), ". También podés instalarla en tu computadora o tu celular desde la sección Descargar.")),
+      h("details", {}, h("summary", {}, "¿Puedo probar LIVET gratis?"),
+        h("p", {}, "Sí. Podés recorrer la demo con datos de ejemplo y crear una cuenta gratuita con las funciones básicas. Los planes pagos suman finanzas, clientes, el equipo de IA, video y más; los ves en Precios.")),
+      h("details", {}, h("summary", {}, "¿Cómo contactan a LIVET la prensa, los socios o las marcas?"),
+        h("p", {}, "Escribinos a ", B("email"), " contándonos quién sos y qué tenés en mente. Respondemos desde ese mismo email.")))),
+    Sec("Hablemos", null, h("p", {}, "Emprendedor, creador, agencia, prensa o socio: nos encantaría saber de vos."),
+      h("div", { class: "cal-row" }, h("button", { class: "btn primary", type: "button", onclick: () => navTo("contacto") }, "Contactanos"), h("button", { class: "btn", type: "button", onclick: () => navTo("faq") }, "Preguntas frecuentes"))),
     Sec("Créditos", null, h("ul", { class: "plain" },
       h("li", {}, "Criterios para Instagram adaptados de ", h("a", { href: "https://github.com/sergebulaev/instagram-skills", target: "_blank", rel: "noopener noreferrer" }, "instagram-skills"), " (Sergey Bulaev, licencia MIT)."),
       h("li", {}, "Base de datos y autenticación: Supabase. IA: Anthropic."),
