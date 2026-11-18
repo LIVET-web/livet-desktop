@@ -1117,6 +1117,15 @@ dialog{background:var(--surface);border:1px solid var(--line-strong)}
 .hf-tpl[data-k="lanzamiento"] .hf-tpl-art{background:var(--orange)}
 .hf-tpl[data-k="lanzamiento"] .hf-tpl-art i{background:var(--graphite)}
 .hf-tpl[data-k="numeros"] .hf-tpl-art i:nth-child(1){height:30px;width:40%}
+.hf-tpl.new{border-style:dashed;border-color:var(--orange)}
+.hf-tpl.new .hf-tpl-art{display:grid;place-items:center;background:transparent;border:1.5px dashed var(--line-strong)}
+.hf-tpl.new .hf-tpl-art b{font-size:34px;line-height:1;color:var(--orange);font-weight:800}
+.hf-tpl.free .hf-tpl-art{display:grid;place-items:center;background:linear-gradient(135deg,var(--graphite),#2a1a10)}
+.hf-tpl.free .hf-tpl-art b{font-size:13px;letter-spacing:.08em;color:#fff;font-weight:800}
+.hf-tpl .hf-tpl-art.own i:nth-child(1){background:var(--tc1)}.hf-tpl .hf-tpl-art.own i:nth-child(2){background:var(--tc3)}.hf-tpl .hf-tpl-art.own i:nth-child(3){background:var(--tc1)}
+.hf-tpl-sub{font-size:12px;color:var(--muted);margin:6px 0 2px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;grid-column:1/-1}
+.hf-tpl-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.hf-tpl-row .btn{padding:4px 8px;font-size:12px}
 @keyframes tpl-a{0%{transform:scaleX(0);transform-origin:0 50%}35%,80%{transform:scaleX(1);transform-origin:0 50%}100%{transform:scaleX(0);transform-origin:100% 50%}}
 @keyframes tpl-b{0%,20%{transform:scale(0)}45%,85%{transform:scale(1)}100%{transform:scale(0)}}
 .hf-tpl-t{font:800 14px/1.2 var(--display);font-stretch:110%}
@@ -2300,6 +2309,7 @@ const TIER_NAME = { free: "Gratis", personal: "Personal", creators: "Creators", 
 const Access = { sub: null, member: false, loaded: false };
 async function accessLoad() {
   Access.loaded = false; Access.sub = null; Access.member = false;
+  try { Object.assign(HFT, { mine: [], community: [], loaded: false, loading: false }); } catch { /* todavía no cargó el módulo de video */ } // plantillas de la cuenta que entra
   if (!sb || !state.user || state.demo) return;
   const [s, m] = await Promise.all([
     sb.from("subscriptions").select("tier,status").maybeSingle(),
@@ -4596,9 +4606,131 @@ function HfBrand() {
       F("Web o usuario para el cierre", url),
       h("button", { class: "btn", type: "button", disabled: !HF.cur?.tpl, onclick: () => { Object.assign(HF.cur.opts, { logo: b.logo, c1: b.c1, c2: b.c2, c3: b.c3, url: b.url }); hfSave(); hfOpen(HF.cur); render(); toast("Marca aplicada al video actual"); } }, "Aplicar al video actual")));
 }
+
+/* ---------- Plantillas propias y de la comunidad ----------
+   Son solo datos (diseño base, textos, colores y formato): nunca HTML ni código, así compartirlas es seguro.
+   Al usar una de otra persona no viajan sus imágenes ni su logo: se pone tu marca. */
+const HFT = { mine: [], community: [], loaded: false, loading: false };
+const HF_HEX = /^#[0-9a-f]{6}$/i, HF_ID = /^[\w-]{1,80}$/;
+function hfCleanOpts(base, o, shared) {
+  const t = HF_TPL[base]; if (!t) return null;
+  o = o && typeof o === "object" ? o : {};
+  const out = hfTplDefaults(base), txt = v => String(v ?? "").replace(/[<>]/g, "").slice(0, 400);
+  if (HF_FORMATS[o.format]) out.format = o.format;
+  for (const k of ["c1", "c2", "c3"]) if (HF_HEX.test(o[k] || "")) out[k] = o[k];
+  t.fields.forEach(([k, , type]) => {
+    if (type === "media") out[k] = !shared && HF_ID.test(o[k] || "") ? o[k] : "";
+    else if (k in o) out[k] = txt(o[k]);
+  });
+  if (!shared) { if ("url" in o) out.url = txt(o.url).slice(0, 60); if (o.logo === "" || HF_ID.test(o.logo || "")) out.logo = o.logo; }
+  return out;
+}
+async function hftLoad(force) {
+  if (HFT.loading || (HFT.loaded && !force)) return;
+  if (!sb || !state.user || state.demo) { HFT.loaded = true; return; }
+  HFT.loading = true;
+  try {
+    const cols = "id,name,description,base,opts,is_public,uses,author,created_at";
+    const [m, c] = await Promise.all([
+      sb.from("video_templates").select(cols).eq("user_id", state.user.id).order("created_at", { ascending: false }).limit(60),
+      sb.from("video_templates").select(cols).eq("is_public", true).eq("hidden", false).neq("user_id", state.user.id)
+        .order("uses", { ascending: false }).order("created_at", { ascending: false }).limit(30)]);
+    HFT.mine = (m.data || []).filter(r => HF_TPL[r.base]);
+    HFT.community = (c.data || []).filter(r => HF_TPL[r.base]);
+  } catch (e) { console.warn("plantillas", e); }
+  HFT.loaded = true; HFT.loading = false;
+  if (state.view === "video") render();
+}
+function hftUse(r, shared) {
+  const it = hfAdd({ tpl: r.base, opts: hfCleanOpts(r.base, r.opts, shared), title: r.name, idea: shared ? "Plantilla de la comunidad" : "Mi plantilla", myTpl: shared ? null : r.id });
+  if (shared && sb && !state.demo) sb.rpc("video_template_use", { p_id: r.id }).then(() => {}, () => {});
+  render(); scrollTo({ top: 0, behavior: "smooth" });
+  return it;
+}
+// Crear (o guardar como) una plantilla propia. from = video abierto con plantilla, para guardar lo que ya armaste.
+function hftDialog(from) {
+  const base = sel(Object.entries(HF_TPL).map(([k, t]) => [k, `${t.name} — ${t.desc}`]), from?.tpl || "tips");
+  const name = inp({ maxLength: 60, required: true, value: from ? (from.title || "") : "", placeholder: "Ej: Mis tips de los lunes" });
+  const desc = inp({ maxLength: 160, placeholder: "Para qué sirve (opcional)" });
+  const pub = h("input", { type: "checkbox" });
+  modal({ title: from ? "Guardar como mi plantilla" : "Crear mi propia plantilla", submit: from ? "Guardar plantilla" : "Crear plantilla", body: [
+    h("p", { class: "hint", style: "margin-top:0" }, from ? "Se guardan los textos, colores, formato y diseño de este video para reusarlos cuando quieras."
+      : "Elegí un diseño base, después cambiá textos, colores y formato a tu gusto. Queda guardada en tu cuenta para usarla las veces que quieras."),
+    from ? null : F("Diseño base", base), F("Nombre", name), F("Descripción", desc),
+    h("label", { class: "check-row", style: "display:flex;gap:8px;align-items:flex-start" }, pub,
+      h("span", {}, h("b", {}, "Compartirla con la comunidad"), h("br"), h("span", { class: "hint" }, "Otras personas de LIVET la van a poder usar con su propia marca. Tus imágenes y tu logo no se comparten; se muestra solo tu primer nombre.")))],
+    onSubmit: async () => {
+      const b = from?.tpl || base.value;
+      const row = { name: name.value.trim(), description: desc.value.trim(), base: b, opts: hfCleanOpts(b, from ? from.opts : hfTplDefaults(b), false), is_public: pub.checked,
+        author: ((state.profile?.full_name || "").split(" ")[0] || "Alguien de LIVET").slice(0, 40) };
+      if (!row.name) throw new Error("Ponele un nombre a la plantilla.");
+      let saved = { ...row, id: "local-" + Date.now(), uses: 0, created_at: new Date().toISOString() };
+      if (sb && state.user && !state.demo) {
+        const { data, error } = await sb.from("video_templates").insert(row).select("id,name,description,base,opts,is_public,uses,author,created_at").single();
+        if (error) throw error; saved = data;
+      }
+      HFT.mine.unshift(saved);
+      if (from) { from.myTpl = saved.id; hfSave(); toast("Plantilla guardada. La encontrás en \"Mis plantillas\"."); }
+      else { hftUse(saved, false); toast("Plantilla creada: cambiá textos, colores y formato en \"Personalizar\" y tocá \"Guardar en mi plantilla\"."); }
+    } });
+}
+async function hftSaveInto(item) {
+  const r = HFT.mine.find(x => x.id === item.myTpl); if (!r) return hftDialog(item);
+  const opts = hfCleanOpts(item.tpl, item.opts, false);
+  if (sb && state.user && !state.demo && !String(r.id).startsWith("local-")) {
+    const { error } = await sb.from("video_templates").update({ opts, base: item.tpl, updated_at: new Date().toISOString() }).eq("id", r.id);
+    if (error) throw error;
+  }
+  r.opts = opts; r.base = item.tpl; toast(`Guardado en tu plantilla "${r.name}".`);
+}
+async function hftShare(r) {
+  const v = !r.is_public;
+  if (sb && state.user && !state.demo && !String(r.id).startsWith("local-")) {
+    const { error } = await sb.from("video_templates").update({ is_public: v, updated_at: new Date().toISOString() }).eq("id", r.id);
+    if (error) throw error;
+  }
+  r.is_public = v; toast(v ? "Ahora la comunidad puede usar tu plantilla." : "Tu plantilla volvió a ser privada."); render();
+}
+async function hftDelete(r) {
+  if (sb && state.user && !state.demo && !String(r.id).startsWith("local-")) { const { error } = await sb.from("video_templates").delete().eq("id", r.id); if (error) throw error; }
+  HFT.mine = HFT.mine.filter(x => x !== r); toast("Plantilla borrada"); render();
+}
+function hftArt(r) {
+  const o = r.opts || {}, c = k => HF_HEX.test(o[k] || "") ? o[k] : null;
+  const f = HF_FORMATS[o.format] ? o.format : HF_TPL[r.base].fmt;
+  return h("span", { class: "hf-tpl-art own", "data-f": f, style: `${c("c2") ? `background:${c("c2")};` : ""}--tc1:${c("c1") || "var(--orange)"};--tc3:${c("c3") || "#fff"}` }, h("i"), h("i"), h("i"));
+}
+function HfCommunity() {
+  hftLoad();
+  const list = HFT.community;
+  return Card("Plantillas de la comunidad", h("span", { class: "muted", style: "font-size:12px" }, "Creadas por otras personas de LIVET"),
+    h("div", { class: "card-p" }, !HFT.loaded ? h("p", { class: "muted" }, h("span", { class: "ai-dots" }, h("i"), h("i"), h("i")), " Cargando…")
+      : list.length ? h("div", { class: "hf-tpls" }, list.map(r => h("button", { class: "hf-tpl", type: "button", "data-k": r.base, onclick: () => hftUse(r, true) },
+          hftArt(r), h("span", { class: "hf-tpl-t" }, r.name), r.description ? h("span", { class: "hf-tpl-d" }, r.description) : null,
+          h("span", { class: "hf-tpl-m" }, `${HF_TPL[r.base].dur} s · por ${r.author || "alguien de LIVET"}${r.uses ? ` · ${r.uses} uso${r.uses > 1 ? "s" : ""}` : ""}`))))
+      : h("p", { class: "muted", style: "margin:0" }, "Todavía nadie compartió plantillas. ¡Creá la tuya y compartila para ser la primera persona!")));
+}
 function HfTemplates() {
-  return Card("Videos de ejemplo", h("span", { class: "muted", style: "font-size:12px" }, "Tocá uno para usarlo"),
-    h("div", { class: "card-p hf-tpls" }, Object.entries(HF_TPL).map(([k, t]) => h("button", { class: "hf-tpl", type: "button", "data-k": k, onclick: () => { hfFromTpl(k); render(); scrollTo({ top: 0, behavior: "smooth" }); } },
+  hftLoad();
+  return Card("Plantillas", h("span", { class: "muted", style: "font-size:12px" }, "Tocá una para usarla"),
+    h("div", { class: "card-p hf-tpls" },
+      h("button", { class: "hf-tpl new", type: "button", onclick: () => hftDialog() },
+        h("span", { class: "hf-tpl-art" }, h("b", {}, "+")), h("span", { class: "hf-tpl-t" }, "Crear mi propia plantilla"),
+        h("span", { class: "hf-tpl-d" }, "Tus textos, colores y formato, guardados para reusar. Si querés, compartila con la comunidad."), h("span", { class: "hf-tpl-m" }, "Se guarda en tu cuenta")),
+      h("button", { class: "hf-tpl free", type: "button", onclick: hfGoCreate },
+        h("span", { class: "hf-tpl-art" }, h("b", {}, "SIN PLANTILLA")), h("span", { class: "hf-tpl-t" }, "Desde cero, con IA"),
+        h("span", { class: "hf-tpl-d" }, "No hace falta plantilla: contale tu idea a la IA y arma el video entero, con tu marca."), h("span", { class: "hf-tpl-m" }, "Cualquier formato y duración")),
+      HFT.mine.length ? h("div", { class: "hf-tpl-sub" }, "Mis plantillas") : null,
+      HFT.mine.map(r => h("div", { class: "hf-tpl", "data-k": r.base, role: "group", "aria-label": r.name },
+        h("button", { type: "button", class: "linkbtn", style: "all:unset;cursor:pointer;display:grid;gap:4px", onclick: () => hftUse(r, false) },
+          hftArt(r), h("span", { class: "hf-tpl-t" }, r.name), r.description ? h("span", { class: "hf-tpl-d" }, r.description) : null,
+          h("span", { class: "hf-tpl-m" }, `${HF_TPL[r.base].dur} s · ${r.is_public ? `compartida${r.uses ? ` · ${r.uses} uso${r.uses > 1 ? "s" : ""}` : ""}` : "privada"}`)),
+        h("div", { class: "hf-tpl-row" },
+          h("button", { class: "btn sm ghost", type: "button", onclick: () => hftShare(r).catch(e => toast(errMsg(e))) }, r.is_public ? "Dejar de compartir" : "Compartir"),
+          h("button", { class: "btn sm ghost danger", type: "button", "aria-label": "Borrar plantilla", onclick: e => {
+            const b = e.currentTarget; if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "¿Borrar?"; return; } hftDelete(r).catch(x => toast(errMsg(x))); } }, "✕")))),
+      HFT.mine.length ? h("div", { class: "hf-tpl-sub" }, "Ejemplos de LIVET") : null,
+      Object.entries(HF_TPL).map(([k, t]) => h("button", { class: "hf-tpl", type: "button", "data-k": k, onclick: () => { hfFromTpl(k); render(); scrollTo({ top: 0, behavior: "smooth" }); } },
       h("span", { class: "hf-tpl-art", "data-f": t.fmt }, h("i"), h("i"), h("i")),
       h("span", { class: "hf-tpl-t" }, t.name), h("span", { class: "hf-tpl-d" }, t.desc),
       h("span", { class: "hf-tpl-m" }, `${t.dur} s · ${HF_FORMATS[t.fmt][0].split(" (")[0]}`)))));
@@ -4622,7 +4754,11 @@ function HfCustomize(item) {
       h("div", { class: "row3" }, color("c1", "Acento"), color("c2", "Fondo"), color("c3", "Texto")),
       ...fields,
       F("Web o usuario", (() => { const i = inp({ value: o.url, maxLength: 60 }); i.addEventListener("input", () => { o.url = i.value; apply(); }); return i; })()),
-      null));
+      h("div", { class: "actions-row" },
+        item.myTpl && HFT.mine.some(r => r.id === item.myTpl)
+          ? h("button", { class: "btn primary", type: "button", onclick: () => hftSaveInto(item).catch(e => toast(errMsg(e))) }, "Guardar en mi plantilla")
+          : null,
+        h("button", { class: "btn", type: "button", onclick: () => hftDialog(item) }, "Guardar como plantilla nueva"))));
 }
 function hfLayerDialog(item, assetId) {
   const L = { asset: assetId || HF.brand.logo || "livet", pos: "tr", size: "s", start: 0, end: 0 };
@@ -4672,7 +4808,7 @@ function VideoView() {
   })) : h("p", { class: "hint", style: "margin:0" }, "Subí imágenes o clips en \"Mis recursos\" y elegilos acá para que la IA los use.");
   const cur = HF.cur;
   return h("div", { class: "hf-studio" },
-    PageHead("Video", "Elegí un ejemplo, ponele tu marca y bajalo en MP4.",
+    PageHead("Video", "Usá una plantilla, creá la tuya o pedile a la IA un video desde cero, sin plantilla. Después bajalo en MP4.",
       HfUploadButton("Subir recursos", "btn"),
       h("button", { class: "btn primary", type: "button", onclick: hfGoCreate }, icon("spark"), "Crear video")),
     h("div", { class: "grid g-main" },
@@ -4690,7 +4826,8 @@ function VideoView() {
             : Empty("Todavía no hay videos", "Contale a la IA tu idea o elegí un ejemplo.",
                 h("button", { class: "btn primary", type: "button", onclick: hfGoCreate }, icon("spark"), "Crear video")))),
         cur && cur.tpl && HF_TPL[cur.tpl] ? HfCustomize(cur) : null,
-        cur ? HfLayers(cur) : null),
+        cur ? HfLayers(cur) : null,
+        HfCommunity()),
       h("div", { class: "grid", style: "align-content:start" },
         HfTemplates(),
         HfAssets(),
