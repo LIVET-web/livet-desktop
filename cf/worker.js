@@ -1,4 +1,5 @@
 // LIVET en Cloudflare: sirve la web (carpeta web/) y el enlace del calendario /cal/<token>.ics.
+// Se publica solo: cada push a main que no diga [skip ci] lo despliega Cloudflare (Workers Builds).
 export default {
   async fetch(req, env) {
     const u = new URL(req.url);
