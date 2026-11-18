@@ -9,6 +9,8 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
+    # Los cambios solo de la web (los publica Cloudflare) no arman instaladores.
+    paths-ignore: ["web/**", "cf/**", "wrangler.jsonc", "promo/**"]
 
 permissions:
   contents: write

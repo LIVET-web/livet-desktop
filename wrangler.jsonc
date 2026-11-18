@@ -1,0 +1,9 @@
+// Publicación de app.livet.work en Cloudflare (Worker "livet").
+// Cloudflare lo usa al conectar el repo en Workers & Pages → livet → Settings → Build (comando: npx wrangler deploy).
+{
+  "name": "livet",
+  "main": "cf/worker.js",
+  "compatibility_date": "2026-11-09",
+  "assets": { "directory": "./web", "binding": "ASSETS" },
+  "workers_dev": true
+}
