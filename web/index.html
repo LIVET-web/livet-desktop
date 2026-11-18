@@ -5312,7 +5312,7 @@ function CompanyView() {
   if (!c) return h("div", {}, PageHead("Empresa", "Tareas, clientes y chat del equipo."), CompanyStart());
 
   const acts = [];
-  if (state.demo) acts.push(h("label", { class: "demo-as" }, "Ver como ", sel(Co.members.map(m => [m.user_id, `${m.display_name} (${ROLE_LBL[m.role]})`]), Co.demoUser,
+  if (state.demo) acts.push(h("label", { class: "demo-as" }, "Ver como ", sel(Co.members.map(m => [m.user_id, `${m.display_name} (${tr(ROLE_LBL[m.role])})`]), Co.demoUser,
     { "aria-label": "Ver la demo como", onchange: e => { Co.demoUser = e.target.value; Co.me = Co.members.find(m => m.user_id === Co.demoUser); Co.chatWith = null; render(); } })));
   if (Co.list.length > 1) acts.push(sel(Co.list.map(x => [x.id, x.name]), Co.cur, { "aria-label": "Empresa", onchange: async e => { Co.cur = e.target.value; Co.loaded = false; render(); } }));
   acts.push(aiButton("Resumen del equipo con IA", teamSummaryAI));
@@ -5322,7 +5322,7 @@ function CompanyView() {
   if (Co.tab === "calendario") { extLoad(); extWatch(); }
   const pane = { tareas: TasksTab, calendario: CoCalendarTab, clientes: ClientsTab, equipo: TeamTab, chat: ChatTab }[Co.tab]();
   return h("div", {},
-    PageHead(c.name, `${KIND_LBL[c.kind] || "Empresa"} · tu rol: ${ROLE_LBL[Co.me?.role] || "sin rol"}. Lo que cargás acá lo ve solo esta empresa.`, ...acts),
+    PageHead(c.name, `${KIND_LBL[c.kind] || "Empresa"} · tu rol: ${tr(ROLE_LBL[Co.me?.role]) || "sin rol"}. Lo que cargás acá lo ve solo esta empresa.`, ...acts),
     CompanySetup(),
     h("div", { class: "pills", role: "tablist" }, tabs.map(([k, l]) => Pill(l, Co.tab === k, () => { Co.tab = k; render(); }))),
     pane);
@@ -5340,10 +5340,10 @@ function TasksTab() {
     const client = Co.clients.find(c => c.id === t.client_id);
     return h("button", { class: "ctask", type: "button", onclick: () => TaskDetail(t) },
       h("span", { class: "ctask-main" }, h("b", {}, t.title),
-        h("small", {}, [boss ? Co.name(t.assignee_id) : null, client?.name, t.due_date ? "Vence " + fmtDue(t.due_date) : null].filter(Boolean).join(" · "))),
+        h("small", {}, [boss ? Co.name(t.assignee_id) : null, client?.name, t.due_date ? tr("Vence") + " " + tr(fmtDue(t.due_date)) : null].filter(Boolean).join(" · "))),
       CsChip(t.status));
   };
-  const secs = CS_SECTIONS.map(([s, label]) => [s, label, list.filter(t => t.status === s)]).filter(x => x[2].length);
+  const secs = CS_SECTIONS.map(([s, label]) => [s, tr(label), list.filter(t => t.status === s)]).filter(x => x[2].length);
   return h("div", { class: "grid", style: "gap:16px" }, tools,
     secs.length ? secs.map(([s, label, items]) => Card(`${label} (${items.length})`, null, h("div", { class: "card-b" }, items.map(row))))
       : Empty("Sin tareas", boss ? "Creá una tarea y asignala a alguien del equipo." : "Todavía no te asignaron tareas."));
@@ -5352,7 +5352,7 @@ function TasksTab() {
 function TaskForm(t) {
   const title = inp({ value: t?.title || "", maxLength: 200, placeholder: "Qué hay que hacer" });
   const desc = ta(t?.description || "", { rows: 4, maxLength: 4000, placeholder: "Detalles, links, criterios para darla por buena" });
-  const who = sel(Co.members.map(m => [m.user_id, `${m.display_name} (${ROLE_LBL[m.role]})`]), t?.assignee_id || Co.members.find(m => m.role === "empleado")?.user_id || Co.uid());
+  const who = sel(Co.members.map(m => [m.user_id, `${m.display_name} (${tr(ROLE_LBL[m.role])})`]), t?.assignee_id || Co.members.find(m => m.role === "empleado")?.user_id || Co.uid());
   const client = sel([["", "Sin cliente"], ...Co.clients.map(c => [c.id, c.name])], t?.client_id || "");
   client.addEventListener("change", () => { const r = Co.clients.find(c => c.id === client.value)?.assigned_to; if (r) who.value = r; });
   const due = inp({ type: "date", value: t?.due_date || "" });
@@ -5440,7 +5440,7 @@ function TaskDetail(t0) {
 
     body.replaceChildren(
       h("div", { class: "td-head" }, CsChip(t.status),
-        h("span", { class: "muted" }, [`Asignada a ${Co.name(t.assignee_id)}`, client?.name, t.due_date ? "Vence " + fmtDue(t.due_date) : null].filter(Boolean).join(" · "))),
+        h("span", { class: "muted" }, [`Asignada a ${Co.name(t.assignee_id)}`, client?.name, t.due_date ? tr("Vence") + " " + tr(fmtDue(t.due_date)) : null].filter(Boolean).join(" · "))),
       t.description ? h("p", { class: "td-desc" }, t.description) : null,
       acts.length ? h("div", { class: "actions-row" }, acts) : null,
       h("h4", {}, "Documentos"), filesEl,
@@ -5463,7 +5463,7 @@ function ClientForm(c) {
   const name = inp({ value: c?.name || "", maxLength: 120, placeholder: "Nombre del cliente o empresa" });
   const contact = inp({ value: c?.contact || "", maxLength: 200, placeholder: "Teléfono, email o persona de contacto" });
   const notes = ta(c?.notes || "", { rows: 4, maxLength: 2000, placeholder: "Notas internas" });
-  const owner = sel([["", "Sin responsable"], ...Co.members.map(m => [m.user_id, `${m.display_name} (${ROLE_LBL[m.role]})`])], c?.assigned_to || "", { "aria-label": "Responsable" });
+  const owner = sel([["", "Sin responsable"], ...Co.members.map(m => [m.user_id, `${m.display_name} (${tr(ROLE_LBL[m.role])})`])], c?.assigned_to || "", { "aria-label": "Responsable" });
   const st = sel(Object.entries(CLIENT_ST), c?.status || "activo", { "aria-label": "Estado" });
   modal({ title: c ? "Editar cliente" : "Nuevo cliente", body: [F("Nombre", name), F("Responsable", owner, "La persona a la que derivás este cliente. Ve sus datos y sus tareas."), F("Estado", st),
       F("Contacto", contact, "Cargá solo los datos que necesitás y que podés tratar con su consentimiento o una base legal."), F("Notas", notes)],
@@ -5531,7 +5531,7 @@ function InviteDialog() {
       if (error) throw error;
       Co.invites.unshift(data);
       setTimeout(() => modal({ title: "Código creado", hideSubmit: true, body: [
-        h("p", {}, `Rol: ${ROLE_LBL[data.role]}. Vence el ${fmtShort(data.expires_at.slice(0, 10))}.`),
+        h("p", {}, `Rol: ${tr(ROLE_LBL[data.role])}. Vence el ${fmtShort(data.expires_at.slice(0, 10))}.`),
         h("input", { class: "input code", readonly: true, value: data.code, "aria-label": "Código de invitación", onfocus: e => e.target.select() }),
         h("div", { class: "actions-row" }, h("button", { class: "btn primary", type: "button", onclick: () => copyText(data.code) }, icon("copy"), "Copiar código"))] }), 0);
       return false;
@@ -5551,13 +5551,13 @@ function TeamTab() {
   const members = h("div", { class: "card-b" }, Co.members.map(m => h("div", { class: "mrow" },
     h("span", { class: "avatar sm", "aria-hidden": "true" }, (m.display_name[0] || "?").toUpperCase()),
     h("span", { class: "mname" }, m.display_name, m.user_id === me ? h("small", {}, " (vos)") : null),
-    owner && m.role !== "owner" ? sel([["jefe", "Jefe/a"], ["empleado", "Empleado/a"]], m.role, { "aria-label": `Rol de ${m.display_name}`, onchange: e => setRole(m, e.target.value) }) : h("span", { class: "role", "data-r": m.role }, ROLE_LBL[m.role]),
+    owner && m.role !== "owner" ? sel([["jefe", "Jefe/a"], ["empleado", "Empleado/a"]], m.role, { "aria-label": `Rol de ${m.display_name}`, onchange: e => setRole(m, e.target.value) }) : h("span", { class: "role", "data-r": m.role }, tr(ROLE_LBL[m.role])),
     owner && m.role !== "owner" ? h("button", { class: "btn sm ghost", type: "button", onclick: () => removeM(m, false) }, "Quitar")
       : (m.user_id === me && m.role !== "owner" ? h("button", { class: "btn sm ghost", type: "button", onclick: () => removeM(m, true) }, "Salir") : null))));
   const blocks = [Card("Integrantes", boss ? h("button", { class: "btn sm primary", type: "button", onclick: InviteDialog }, icon("plus"), "Invitar") : null, members)];
   if (boss) blocks.push(Card("Invitaciones activas", null, h("div", { class: "card-b" }, Co.invites.filter(i => i.uses_left > 0 && new Date(i.expires_at) > new Date()).length
     ? Co.invites.filter(i => i.uses_left > 0 && new Date(i.expires_at) > new Date()).map(i => h("div", { class: "mrow" },
-      h("code", {}, i.code), h("span", { class: "role", "data-r": i.role }, ROLE_LBL[i.role]), h("small", { class: "muted" }, "vence " + fmtShort(i.expires_at.slice(0, 10))),
+      h("code", {}, i.code), h("span", { class: "role", "data-r": i.role }, tr(ROLE_LBL[i.role])), h("small", { class: "muted" }, "vence " + fmtShort(i.expires_at.slice(0, 10))),
       h("button", { class: "btn sm ghost", type: "button", onclick: async () => { try { if (!state.demo) { const { error } = await sb.from("company_invites").delete().eq("code", i.code); if (error) throw error; } Co.invites = Co.invites.filter(x => x.code !== i.code); } catch (e) { toast(errMsg(e)); } render(); } }, "Revocar")))
     : h("p", { class: "muted", style: "padding:12px" }, "No hay invitaciones activas."))));
   if (owner) blocks.push(Card("Zona de riesgo", null, h("div", { class: "card-p", style: "display:grid;gap:10px" },
@@ -5723,7 +5723,7 @@ function ProfileView() {
         h("b", {}, ut ? ut.label : "Sin elegir"), h("p", { class: "muted" }, ut ? ut.line : "Elegí tu caso y te mostramos solo lo que necesitás."),
         h("div", { class: "who-mods" }, enabledModules().map(k => h("span", {}, MODULES[k][0]))))),
       Card(companyLabel(), null, h("div", { class: "card-b", style: "display:grid;gap:8px" },
-        c ? [h("b", {}, c.name), h("p", { class: "muted" }, `${KIND_LBL[c.kind] || "Empresa"} · tu rol: ${ROLE_LBL[Co.me?.role] || "sin rol"} · ${Co.members.length} integrante(s)`)]
+        c ? [h("b", {}, c.name), h("p", { class: "muted" }, `${KIND_LBL[c.kind] || "Empresa"} · tu rol: ${tr(ROLE_LBL[Co.me?.role]) || "sin rol"} · ${Co.members.length} integrante(s)`)]
           : h("p", { class: "muted" }, "Creá tu empresa o unite con un código: equipo, clientes, tareas con revisión y chat."),
         h("div", {}, h("button", { class: "btn", type: "button", onclick: () => go("company") }, c ? "Abrir" : "Crear o unirme")))),
       Card("Plan y asistente", null, h("div", { class: "card-b", style: "display:grid;gap:8px" },
