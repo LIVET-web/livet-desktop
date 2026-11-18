@@ -6874,7 +6874,7 @@ function liven(root, fresh) {
     const txt = el.textContent.trim(), m = /^(\D*)(\d{1,4})(\D*)$/.exec(txt);
     if (!m || m[2] === "0") return;
     const n = Number(m[2]), t0 = performance.now(), d = 700;
-    const step = now => { const p = Math.min(1, (now - t0) / d), e = 1 - Math.pow(1 - p, 3); el.textContent = m[1] + Math.round(n * e) + m[3]; if (p < 1) requestAnimationFrame(step); };
+    const step = now => { const p = Math.max(0, Math.min(1, (now - t0) / d)), e = 1 - Math.pow(1 - p, 3); el.textContent = m[1] + Math.round(n * e) + m[3]; if (p < 1) requestAnimationFrame(step); };
     el.classList.add("stat-n"); requestAnimationFrame(step);
   });
 }
