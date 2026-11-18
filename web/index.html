@@ -1403,7 +1403,7 @@ const SUPABASE_URL = "https://cwizubypvbscpyfebrlc.supabase.co";
    (diccionario generado una vez y publicado en el almacenamiento de Supabase). Lo que escribe cada persona no se traduce. */
 const LANGS = { es: "Español", en: "English", pt: "Português", it: "Italiano", de: "Deutsch" };
 const LOCALES = { es: "es-UY", en: "en-US", pt: "pt-BR", it: "it-IT", de: "de-DE" };
-const I18N_V = "1";
+const I18N_V = "2";
 const I18N = { lang: "es", s: null, p: [], cache: new Map() };
 const LOC = () => LOCALES[I18N.lang] || "es-UY";
 const I18N_SKIP = new Set(["SCRIPT", "STYLE", "TEXTAREA", "CODE", "PRE", "NOSCRIPT", "IFRAME", "SVG", "svg"]);
@@ -1460,7 +1460,7 @@ function LangSelect(cls = "lang-sel", short = false) {
   document.documentElement.classList.add("i18n-wait");
   const done = () => document.documentElement.classList.remove("i18n-wait");
   setTimeout(done, 2500); // si tarda, se muestra igual
-  fetch(`${SUPABASE_URL}/storage/v1/object/public/promo/i18n/${l}.json?v=${I18N_V}`).then(r => r.ok ? r.json() : null).then(d => {
+  fetch(`${SUPABASE_URL}/storage/v1/object/public/promo/i18n/${l}.json?v=${I18N_V}`, { cache: "no-cache" }).then(r => r.ok ? r.json() : null).then(d => {
     if (!d) return;
     I18N.s = d.s || {};
     I18N.p = (d.p || []).map(([a, b]) => [new RegExp("^" + a.split(/\{\d+\}/).map(x => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("(.+?)") + "$"), b, [...a.matchAll(/\{(\d+)\}/g)].map(m => +m[1])]);
