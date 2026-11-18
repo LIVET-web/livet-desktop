@@ -1126,9 +1126,13 @@ dialog{background:var(--surface);border:1px solid var(--line-strong)}
 .hf-tpl.free .hf-tpl-art{display:grid;place-items:center;background:linear-gradient(135deg,var(--graphite),#2a1a10)}
 .hf-tpl.free .hf-tpl-art b{font-size:13px;letter-spacing:.08em;color:#fff;font-weight:800}
 .hf-tpl .hf-tpl-art.own i:nth-child(1){background:var(--tc1)}.hf-tpl .hf-tpl-art.own i:nth-child(2){background:var(--tc3)}.hf-tpl .hf-tpl-art.own i:nth-child(3){background:var(--tc1)}
-.hf-live{position:relative;display:grid;place-items:center;height:170px;border-radius:10px;overflow:hidden;background:#0d0d0d;margin-bottom:4px}
-.hf-live-box{position:relative;overflow:hidden;border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
-.hf-live-box iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;pointer-events:none}
+.hf-fonts{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.hf-font{display:grid;gap:2px;text-align:left;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface-2);color:var(--text);cursor:pointer;transition:border-color .2s,transform .2s}
+.hf-font:hover{border-color:var(--line-strong);transform:translateY(-1px)}.hf-font.on{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,102,0,.18)}
+.hf-font-s{font-size:20px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hf-font-l{font-size:11px;color:var(--muted)}
+.hf-cprev{position:relative;display:grid;place-items:center;height:170px;border-radius:10px;overflow:hidden;background:#0d0d0d;margin-bottom:4px}
+.hf-cprev-box{position:relative;overflow:hidden;border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.hf-cprev-box iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;pointer-events:none}
 .hf-badge{position:absolute;left:8px;top:8px;z-index:2;font-size:10px;font-weight:800;letter-spacing:.04em;padding:3px 7px;border-radius:99px;background:var(--orange);color:#111}
 .hf-tpl-sub{font-size:12px;color:var(--muted);margin:6px 0 2px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;grid-column:1/-1}
 .hf-tpl-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
@@ -3817,6 +3821,19 @@ const HF_FORMATS = { vertical: ["Vertical 9:16 (Reels, TikTok, Shorts)", 1080, 1
 const HF_PLAYER_JS = "https://cdn.jsdelivr.net/npm/@hyperframes/player/dist/hyperframes-player.global.js";
 const HF_BLANK = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 const hfCssUrl = v => { try { return (getComputedStyle(document.documentElement).getPropertyValue(v).match(/url\(["']?([^"')]+)/) || [])[1] || ""; } catch { return ""; } };
+// Imágenes y logos de ejemplo (ilustraciones propias de LIVET) para las plantillas destacadas.
+const HF_EX = {
+  "ex-zapatilla": "data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 800 800%22%3E%3Cdefs%3E%3CradialGradient id=%22g%22 cx=%2250%25%22 cy=%2245%25%22 r=%2265%25%22%3E%3Cstop offset=%220%22 stop-color=%22%23fff4c2%22/%3E%3Cstop offset=%221%22 stop-color=%22%23ffcf3a%22/%3E%3C/radialGradient%3E%3ClinearGradient id=%22b%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%23ff5a3c%22/%3E%3Cstop offset=%221%22 stop-color=%22%23c81d25%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width=%22800%22 height=%22800%22 fill=%22url(%23g)%22/%3E%3Cellipse cx=%22400%22 cy=%22585%22 rx=%22290%22 ry=%2234%22 fill=%22%23000%22 opacity=%22.18%22/%3E%3Cg transform=%22translate(110 300) rotate(-8 290 140)%22%3E%3Cpath d=%22M20 210 C20 150 60 120 120 110 L250 40 C280 25 320 30 340 55 L420 140 C470 150 560 160 590 200 C605 222 600 250 580 258 L40 262 C25 258 20 240 20 210Z%22 fill=%22url(%23b)%22/%3E%3Cpath d=%22M15 238 L595 238 C600 262 590 285 560 288 L50 292 C25 292 12 270 15 238Z%22 fill=%22%23fff%22/%3E%3Cpath d=%22M15 262 L598 262%22 stroke=%22%23e8e8e8%22 stroke-width=%226%22/%3E%3Cpath d=%22M260 60 L330 140 M235 80 L300 152 M210 100 L270 165%22 stroke=%22%23fff%22 stroke-width=%2212%22 stroke-linecap=%22round%22/%3E%3Cpath d=%22M120 112 C150 170 230 200 330 190%22 fill=%22none%22 stroke=%22%23111%22 stroke-width=%2210%22 stroke-linecap=%22round%22 opacity=%22.85%22/%3E%3Ccircle cx=%22470%22 cy=%22190%22 r=%2222%22 fill=%22%23fff%22 opacity=%22.9%22/%3E%3Cpath d=%22M380 210 C430 175 510 175 560 205%22 fill=%22none%22 stroke=%22%23111%22 stroke-width=%2212%22 stroke-linecap=%22round%22/%3E%3C/g%3E%3Ctext x=%22400%22 y=%22700%22 text-anchor=%22middle%22 font-family=%22Arial Black,Arial,sans-serif%22 font-size=%2244%22 fill=%22%237a1015%22 letter-spacing=%226%22%3EURBAN RUN%3C/text%3E%3C/svg%3E",
+  "ex-bolso": "data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1200 800%22%3E%3Crect width=%221200%22 height=%22800%22 fill=%22%23f3f1ec%22/%3E%3Crect x=%220%22 y=%22560%22 width=%221200%22 height=%22240%22 fill=%22%23e7e3da%22/%3E%3Cellipse cx=%22600%22 cy=%22640%22 rx=%22260%22 ry=%2226%22 fill=%22%23000%22 opacity=%22.12%22/%3E%3Cpath d=%22M500 300 C500 170 700 170 700 300%22 fill=%22none%22 stroke=%22%232b2b2b%22 stroke-width=%2218%22 stroke-linecap=%22round%22/%3E%3Cpath d=%22M400 290 L800 290 L770 630 L430 630 Z%22 fill=%22%23d9c7a7%22/%3E%3Cpath d=%22M400 290 L800 290 L795 330 L405 330Z%22 fill=%22%23c9b591%22/%3E%3Ctext x=%22600%22 y=%22480%22 text-anchor=%22middle%22 font-family=%22Georgia,serif%22 font-size=%2246%22 fill=%22%232b2b2b%22 letter-spacing=%2210%22%3EATELIER%3C/text%3E%3Ctext x=%22600%22 y=%22525%22 text-anchor=%22middle%22 font-family=%22Helvetica,Arial,sans-serif%22 font-size=%2220%22 fill=%22%235a5245%22 letter-spacing=%226%22%3EHECHO A MANO%3C/text%3E%3Ccircle cx=%22250%22 cy=%22560%22 r=%2270%22 fill=%22%231f1f1f%22/%3E%3Crect x=%22235%22 y=%22380%22 width=%2230%22 height=%22180%22 fill=%22%236b8f5e%22/%3E%3Ccircle cx=%22250%22 cy=%22370%22 r=%2260%22 fill=%22%237fa36f%22/%3E%3Ccircle cx=%22215%22 cy=%22330%22 r=%2240%22 fill=%22%238db57b%22/%3E%3C/svg%3E",
+  "ex-logo-cafe": "data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 720 200%22%3E%3Cg transform=%22translate(70 40)%22%3E%3Cpath d=%22M10 50 L90 50 L82 120 C80 135 20 135 18 120Z%22 fill=%22%23b5651d%22/%3E%3Cpath d=%22M90 65 C120 65 120 105 86 105%22 fill=%22none%22 stroke=%22%23b5651d%22 stroke-width=%2210%22/%3E%3Cpath d=%22M35 35 C25 20 45 10 35 -5 M60 35 C50 20 70 10 60 -5%22 stroke=%22%23b5651d%22 stroke-width=%226%22 fill=%22none%22 stroke-linecap=%22round%22/%3E%3C/g%3E%3Ctext x=%22170%22 y=%22120%22 text-anchor=%22start%22 font-family=%22Georgia,serif%22 font-size=%2296%22 font-weight=%22900%22 fill=%22%233b2a1d%22 letter-spacing=%222%22%3ECaf%C3%A9%3C/text%3E%3Ctext x=%22170%22 y=%22168%22 text-anchor=%22start%22 font-family=%22Helvetica,Arial,sans-serif%22 font-size=%2226%22 fill=%22%233b2a1d%22 opacity=%22.8%22 letter-spacing=%228%22%3EDE LA ESQUINA%3C/text%3E%3C/svg%3E",
+  "ex-logo-neon": "data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 640 200%22%3E%3Ctext x=%22326%22 y=%22138%22 text-anchor=%22middle%22 font-family=%22Arial Narrow,Impact,sans-serif%22 font-size=%22120%22 font-weight=%22900%22 fill=%22%23ff2bd6%22 letter-spacing=%2214%22 opacity=%22.8%22%3ENE%C3%98N%3C/text%3E%3Ctext x=%22320%22 y=%22132%22 text-anchor=%22middle%22 font-family=%22Arial Narrow,Impact,sans-serif%22 font-size=%22120%22 font-weight=%22900%22 fill=%22%2339ff14%22 letter-spacing=%2214%22%3ENE%C3%98N%3C/text%3E%3C/svg%3E",
+  "ex-logo-urban": "data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 640 200%22%3E%3Cpath d=%22M60 150 L200 50 L230 50 L90 150Z%22 fill=%22%23ffd400%22/%3E%3Ctext x=%22380%22 y=%22130%22 text-anchor=%22middle%22 font-family=%22Arial Black,Arial,sans-serif%22 font-size=%2296%22 font-style=%22italic%22 fill=%22%23ffffff%22 letter-spacing=%222%22%3EURBAN%3C/text%3E%3C/svg%3E",
+  "ex-logo-verde": "data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 720 200%22%3E%3Cg transform=%22translate(40 50)%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2248%22 fill=%22%231db954%22/%3E%3Ctext x=%2250%22 y=%2272%22 text-anchor=%22middle%22 font-family=%22Arial Black,Arial,sans-serif%22 font-size=%2262%22 fill=%22%230b1f14%22%3E%24%3C/text%3E%3C/g%3E%3Ctext x=%22170%22 y=%22132%22 text-anchor=%22start%22 font-family=%22Helvetica Neue,Helvetica,Arial,sans-serif%22 font-size=%2278%22 font-weight=%22900%22 fill=%22%23eafff1%22 letter-spacing=%220%22%3EPlata Clara%3C/text%3E%3C/svg%3E",
+  "ex-logo-mente": "data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 720 200%22%3E%3Cg transform=%22translate(36 52)%22%3E%3Ccircle cx=%2248%22 cy=%2248%22 r=%2244%22 fill=%22none%22 stroke=%22%23ff4d8d%22 stroke-width=%2210%22/%3E%3Ccircle cx=%2248%22 cy=%2248%22 r=%2216%22 fill=%22%23ff4d8d%22/%3E%3C/g%3E%3Ctext x=%22170%22 y=%22132%22 text-anchor=%22start%22 font-family=%22Trebuchet MS,Verdana,sans-serif%22 font-size=%2274%22 font-weight=%22900%22 fill=%22%23ffe3ee%22 letter-spacing=%221%22%3Emente calma%3C/text%3E%3C/svg%3E",
+  "ex-logo-atelier": "data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 640 200%22%3E%3Ctext x=%22320%22 y=%22120%22 text-anchor=%22middle%22 font-family=%22Georgia,serif%22 font-size=%2296%22 font-weight=%22900%22 fill=%22%23111111%22 letter-spacing=%2218%22%3EATELIER%3C/text%3E%3Ctext x=%22320%22 y=%22168%22 text-anchor=%22middle%22 font-family=%22Helvetica,Arial,sans-serif%22 font-size=%2226%22 fill=%22%23111111%22 opacity=%22.8%22 letter-spacing=%228%22%3ECOLECCI%C3%93N 2026%3C/text%3E%3C/svg%3E",
+  "ex-logo-pulso": "data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 720 200%22%3E%3Cg transform=%22translate(40 60)%22%3E%3Cpath d=%22M0 40 L30 40 L45 5 L65 80 L80 40 L110 40%22 fill=%22none%22 stroke=%22%2300d1ff%22 stroke-width=%2212%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3C/g%3E%3Ctext x=%22175%22 y=%22132%22 text-anchor=%22start%22 font-family=%22Helvetica Neue,Helvetica,Arial,sans-serif%22 font-size=%22104%22 font-weight=%22900%22 fill=%22%23ffffff%22 letter-spacing=%22-2%22%3Epulso%3C/text%3E%3C/svg%3E"
+};
+const HF_EX_NAME = {"ex-zapatilla": "Zapatilla (ejemplo)", "ex-bolso": "Bolso (ejemplo)", "ex-logo-cafe": "Logo café (ejemplo)", "ex-logo-neon": "Logo neón (ejemplo)", "ex-logo-urban": "Logo urban (ejemplo)", "ex-logo-verde": "data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 720 200%22%3E%3Cg transform=%22translate(40 50)%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2248%22 fill=%22%231db954%22/%3E%3Ctext x=%2250%22 y=%2272%22 text-anchor=%22middle%22 font-family=%22Arial Black,Arial,sans-serif%22 font-size=%2262%22 fill=%22%230b1f14%22%3E%24%3C/text%3E%3C/g%3E%3Ctext x=%22170%22 y=%22132%22 text-anchor=%22start%22 font-family=%22Helvetica Neue,Helvetica,Arial,sans-serif%22 font-size=%2278%22 font-weight=%22900%22 fill=%22%23eafff1%22 letter-spacing=%220%22%3EPlata Clara%3C/text%3E%3C/svg%3E", "ex-logo-mente": "Logo bienestar (ejemplo)", "ex-logo-atelier": "Logo atelier (ejemplo)", "ex-logo-pulso": "Logo métricas (ejemplo)"};
 const HF_LOGO = { get livet() { return hfCssUrl("--logo-light"); }, get "livet-dark"() { return hfCssUrl("--logo-on-orange"); } };
 const hfEsc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const hfLines = s => String(s ?? "").split(/\n+/).map(x => x.trim()).filter(Boolean);
@@ -3912,6 +3929,7 @@ async function hfDeleteAsset(a) {
   if (HF.brand.logo === a.id) { HF.brand.logo = "livet"; hfSaveBrand(); }
 }
 function hfDataUrl(id) {
+  if (HF_EX[id]) return Promise.resolve(HF_EX[id]);
   if (HF_LOGO[id]) return Promise.resolve(HF_LOGO[id]);
   const a = hfAsset(id); if (!a) return Promise.resolve(HF_BLANK);
   return HFM.data[id] || (HFM.data[id] = new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => res(HF_BLANK); r.readAsDataURL(a.blob); }));
@@ -3919,7 +3937,7 @@ function hfDataUrl(id) {
 async function hfResolve(html, mode) {
   await hfMediaLoad();
   const ids = [...new Set([...html.matchAll(/asset:([\w-]+)/g)].map(m => m[1]))], map = {};
-  for (const id of ids) map[id] = mode === "data" ? await hfDataUrl(id) : (HF_LOGO[id] || hfAsset(id)?.url || HF_BLANK);
+  for (const id of ids) map[id] = HF_EX[id] || (mode === "data" ? await hfDataUrl(id) : (HF_LOGO[id] || hfAsset(id)?.url || HF_BLANK));
   return html.replace(/asset:([\w-]+)/g, (m, id) => map[id] || HF_BLANK);
 }
 
@@ -4617,7 +4635,7 @@ function hfEdit(item) {
 
 /* ---------- Interfaz ---------- */
 function hfAssetPicker(value, onPick, { allowNone = true, only = null, logos = false } = {}) {
-  const opts = [...(allowNone ? [["", "— Ninguno —"]] : []), ...(logos ? [["livet", "Logo LIVET"]] : []),
+  const opts = [...(allowNone ? [["", "— Ninguno —"]] : []), ...(logos ? [["livet", "Logo LIVET"]] : []), ...(HF_EX[value] ? [[value, "✨ " + (HF_EX_NAME[value] || "Imagen de ejemplo")]] : []),
     ...HFM.list.filter(a => !only || a.type === only).map(a => [a.id, `${a.type === "video" ? "🎬" : "🖼️"} ${a.name}`])];
   const s = sel(opts, value || (allowNone ? "" : opts[0]?.[0]));
   s.onchange = () => onPick(s.value);
@@ -4676,10 +4694,11 @@ function hfCleanOpts(base, o, shared) {
   if (HF_FONTS[o.font]) out.font = o.font;
   for (const k of ["c1", "c2", "c3"]) if (HF_HEX.test(o[k] || "")) out[k] = o[k];
   t.fields.forEach(([k, , type]) => {
-    if (type === "media") out[k] = !shared && HF_ID.test(o[k] || "") ? o[k] : "";
+    if (type === "media") out[k] = HF_EX[o[k]] ? o[k] : !shared && HF_ID.test(o[k] || "") ? o[k] : "";
     else if (k in o) out[k] = txt(o[k]);
   });
   if (!shared) { if ("url" in o) out.url = txt(o.url).slice(0, 60); if (o.logo === "" || HF_ID.test(o.logo || "")) out.logo = o.logo; }
+  else if (HF_EX[o.logo] && (!HF.brand.logo || HF.brand.logo === "livet")) out.logo = o.logo; // sin logo propio: queda el de ejemplo
   return out;
 }
 async function hftLoad(force) {
@@ -4689,15 +4708,15 @@ async function hftLoad(force) {
   try {
     const cols = "id,name,description,base,opts,is_public,uses,author,created_at";
     if (!state.user || state.demo) { // demo o sin cuenta: solo la galería de la comunidad
-      const { data } = await sb.from("video_templates").select(cols).eq("is_public", true).eq("hidden", false)
-        .order("uses", { ascending: false }).order("created_at", { ascending: false }).limit(30);
+      const { data } = await sb.from("video_templates").select(cols + ",featured_rank").eq("is_public", true).eq("hidden", false)
+        .order("featured_rank", { ascending: true, nullsFirst: false }).order("uses", { ascending: false }).order("created_at", { ascending: false }).limit(30);
       HFT.community = (data || []).filter(hftOk);
       throw null;
     }
     const [m, c] = await Promise.all([
       sb.from("video_templates").select(cols).eq("user_id", state.user.id).order("created_at", { ascending: false }).limit(60),
-      sb.from("video_templates").select(cols).eq("is_public", true).eq("hidden", false).neq("user_id", state.user.id)
-        .order("uses", { ascending: false }).order("created_at", { ascending: false }).limit(30)]);
+      sb.from("video_templates").select(cols + ",featured_rank").eq("is_public", true).eq("hidden", false).neq("user_id", state.user.id)
+        .order("featured_rank", { ascending: true, nullsFirst: false }).order("uses", { ascending: false }).order("created_at", { ascending: false }).limit(30)]);
     HFT.mine = (m.data || []).filter(hftOk);
     HFT.community = (c.data || []).filter(hftOk);
   } catch (e) { if (e) console.warn("plantillas", e); }
@@ -4786,13 +4805,13 @@ function hftArt(r) {
 const hftUsesTxt = n => !n ? "" : n >= 1000 ? `+${Math.floor(n / 1000)}K usos` : `${n} uso${n > 1 ? "s" : ""}`;
 function HftLive(r) {
   if (r.base === HF_FREE || !HF_TPL[r.base]) return hftArt(r);
-  const o = { ...hfCleanOpts(r.base, r.opts, true), logo: "" }, [, W, H] = HF_FORMATS[o.format] || HF_FORMATS[HF_TPL[r.base].fmt];
+  const o = { ...hfCleanOpts(r.base, r.opts, true), logo: HF_EX[r.opts?.logo] ? r.opts.logo : "" }, [, W, H] = HF_FORMATS[o.format] || HF_FORMATS[HF_TPL[r.base].fmt];
   const boxH = 150, boxW = Math.round(boxH * W / H) > 230 ? 230 : Math.round(boxH * W / H), sc = Math.min(boxW / W, boxH / H);
-  const box = h("div", { class: "hf-live-box", style: `width:${Math.round(W * sc)}px;height:${Math.round(H * sc)}px;background:${o.c2}` });
-  const wrap = h("span", { class: "hf-live" }, r.author === "Equipo LIVET" ? h("span", { class: "hf-badge" }, "Destacada") : null, box);
+  const box = h("div", { class: "hf-cprev-box", style: `width:${Math.round(W * sc)}px;height:${Math.round(H * sc)}px;background:${o.c2}` });
+  const wrap = h("span", { class: "hf-cprev" }, r.author === "Equipo LIVET" ? h("span", { class: "hf-badge" }, "Destacada") : null, box);
   const load = () => {
     if (box.firstChild) return;
-    const html = hfHtml({ tpl: r.base, opts: o, title: r.name, layers: [] }).replace(/<\/body>(?![\s\S]*<\/body>)/i,
+    const html = hfHtml({ tpl: r.base, opts: o, title: r.name, layers: [] }).replace(/asset:([\w-]+)/g, (m, id) => HF_EX[id] || HF_BLANK).replace(/<\/body>(?![\s\S]*<\/body>)/i,
       `<script>addEventListener("load",function(){var n=0,go=function(){var t=window.__timelines&&Object.values(window.__timelines)[0];if(!t){if(n++<100)setTimeout(go,60);return}t.repeat(-1).repeatDelay(0.6).play()};go()})<\/script></body>`);
     const f = h("iframe", { sandbox: "allow-scripts", title: "Vista previa de " + r.name, loading: "lazy", style: `width:${W}px;height:${H}px;transform:scale(${sc})` });
     f.srcdoc = html; box.append(f);
@@ -4852,7 +4871,7 @@ function HfCustomize(item) {
   return Card("Personalizar", h("span", { class: "muted", style: "font-size:12px" }, t.name),
     h("div", { class: "card-p hf-form" },
       h("div", { class: "row2" }, F("Formato", fmt), F("Logo", logo)),
-      F("Tipografía", (() => { const f = sel(Object.entries(HF_FONTS).map(([k, v]) => [k, v[0]]), o.font || "impacto"); f.onchange = () => { o.font = f.value; apply(true); }; return f; })()),
+      F("Tipografía", HfFontPicker(o.font || "impacto", v => { o.font = v; apply(true); })),
       h("div", { class: "row3" }, color("c1", "Acento"), color("c2", "Fondo"), color("c3", "Texto")),
       ...fields,
       F("Web o usuario", (() => { const i = inp({ value: o.url, maxLength: 60 }); i.addEventListener("input", () => { o.url = i.value; apply(); }); return i; })()),
@@ -4861,6 +4880,15 @@ function HfCustomize(item) {
           ? h("button", { class: "btn primary", type: "button", onclick: () => hftSaveInto(item).catch(e => toast(errMsg(e))) }, "Guardar en mi plantilla")
           : null,
         h("button", { class: "btn", type: "button", onclick: () => hftDialog(item) }, "Guardar como plantilla nueva"))));
+}
+// Selector de tipografía con vista previa: cada opción se muestra escrita en su propia letra.
+function HfFontPicker(value, onPick) {
+  const box = h("div", { class: "hf-fonts", role: "radiogroup", "aria-label": "Tipografía" });
+  const paint = v => box.querySelectorAll(".hf-font").forEach(b => { const on = b.dataset.k === v; b.classList.toggle("on", on); b.setAttribute("aria-checked", on); });
+  Object.entries(HF_FONTS).forEach(([k, [label, family, weight]]) => box.append(h("button", { type: "button", class: "hf-font", role: "radio", "data-k": k, onclick: () => { paint(k); onPick(k); } },
+    h("span", { class: "hf-font-s", style: `font-family:${family};font-weight:${weight}` }, "Aa Tu título"), h("span", { class: "hf-font-l" }, label.split(" (")[0]))));
+  paint(value);
+  return box;
 }
 function hfLayerDialog(item, assetId) {
   const L = { asset: assetId || HF.brand.logo || "livet", pos: "tr", size: "s", start: 0, end: 0 };
