@@ -5802,8 +5802,10 @@ function navTo(page) {
   try { if (history.replaceState) history.replaceState(null, "", page ? "#" + page : location.pathname + location.search); } catch { /* sin historial */ }
   route(); window.scrollTo(0, 0);
 }
+const LEGAL_HASH = { privacidad: "privacy", terminos: "terms", cookies: "cookies", reembolsos: "refunds", "eliminar-datos": "privacy" };
 function route() {
   const p = state.page || "";
+  if (LEGAL_HASH[p]) { renderSite(SITE_HOME); showScreen("site"); setTimeout(() => openLegal(LEGAL_HASH[p]), 0); return; }
   if (p === "entrar" && !state.user) return showScreen("auth");
   if (SITE_PAGES[p] || (p === SITE_HOME)) { renderSite(p); return showScreen("site"); }
   if (state.user) return showScreen("app");
