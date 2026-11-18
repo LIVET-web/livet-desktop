@@ -2288,12 +2288,13 @@ const VIEWS = {};
 /* ------------------------- Accesos por suscripción ------------------------- */
 // Qué secciones incluye cada plan. Sin suscripción (Gratis) quedan solo las básicas.
 const ACC_BASE = ["home", "profile", "plans", "admin", "tasks", "calendar", "habits", "company"];
-const ACC_PERSONAL = [...ACC_BASE, "goals", "money", "clients", "assistant", "brand", "launches", "hooks"];
+const ACC_PERSONAL = [...ACC_BASE, "goals", "money", "clients", "assistant"];
+const ACC_CREATOR_BASICS = ["brand", "launches", "hooks"]; // Mi marca, Lanzamientos y Hooks: no van en Personal
 const ACCESS = {
   free: ACC_BASE,
   personal: ACC_PERSONAL,
-  creators: [...ACC_PERSONAL, "marketing", "reviews", "learning", "agents", "video"],
-  empresa: [...ACC_PERSONAL, "marketing"],
+  creators: [...ACC_PERSONAL, ...ACC_CREATOR_BASICS, "marketing", "reviews", "learning", "agents", "video"],
+  empresa: [...ACC_PERSONAL, ...ACC_CREATOR_BASICS, "marketing"],
 };
 const TIER_NAME = { free: "Gratis", personal: "Personal", creators: "Creators", empresa: "Empresa" };
 const Access = { sub: null, member: false, loaded: false };
@@ -5530,12 +5531,12 @@ VIEWS.admin = AdminView;
 const PLANS = [
   { id: "personal", name: "Personal", tag: "Para vos", line: "Tu plata, tus tareas y tus hábitos en orden.", month: 14.99, year: 143.9,
     who: "Para ordenar tu vida y tu trabajo, en una sola app.",
-    has: ["Finanzas: lo que entra, lo que sale y lo que ahorrás", "Tareas del día con prioridad y fecha", "Clientes, si trabajás por tu cuenta", "Hábitos diarios con racha", "Objetivos divididos en pasos", "Marca, lanzamientos y hooks", "300 créditos de IA por mes"],
+    has: ["Finanzas: lo que entra, lo que sale y lo que ahorrás", "Tareas del día con prioridad y fecha", "Clientes, si trabajás por tu cuenta", "Hábitos diarios con racha", "Objetivos divididos en pasos", "300 créditos de IA por mes"],
     more: [["Orden financiero", "Cargás ingresos y gastos en segundos y ves cuánto te queda, en qué se te va la plata y cuánto ahorrás cada mes. La IA te marca qué ajustar."],
       ["Orden de tareas", "Lo de hoy arriba, lo urgente marcado y lo vencido a la vista. El asistente te dice qué hacer primero."],
       ["Clientes", "Si trabajás por tu cuenta: cada cliente con sus tareas, sus cobros y lo que falta entregar."],
       ["Hábitos y objetivos", "Marcás tus hábitos cada día y ves la racha. Tus metas grandes se dividen en pasos chicos que sí podés cumplir."],
-      ["Y más", "Calendario, marca y hooks para tus redes, y un asistente de IA que conoce tus datos."]] },
+      ["Y más", "Calendario y un asistente de IA que conoce tus datos."]] },
   { id: "empresa", name: "Empresa", tag: "Para equipos y negocios", line: "Tu empresa, tus clientes y tu equipo en orden.", month: 23.99, year: 230.3, featured: true,
     who: "Para pymes, agencias y equipos. Hasta 4 personas.",
     has: ["Todo lo del plan Personal", "Clientes y clientes potenciales", "Lo que viene por delante, con fechas", "Equipo con roles: derivás tareas", "El equipo adjunta y muestra lo que hizo", "IA para cada cliente: preguntas y tareas", "Agentes de Marketing", "680 créditos de IA por mes"],
