@@ -1129,6 +1129,7 @@ dialog{background:var(--surface);border:1px solid var(--line-strong)}
 html.i18n-wait body{opacity:0}
 body{transition:opacity .15s}
 .lang-sel{background:transparent;color:inherit;border:1px solid var(--line-strong);border-radius:999px;padding:6px 10px;font:inherit;font-size:13px;cursor:pointer}
+.tright .btn,.tright .search-btn{white-space:nowrap}.tright{min-width:0}
 .lang-sel option{color:#111}
 .hf-fonts{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
 .hf-font{display:grid;gap:2px;text-align:left;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface-2);color:var(--text);cursor:pointer;transition:border-color .2s,transform .2s}
@@ -1436,9 +1437,18 @@ function i18nWalk(root) {
     ? (I18N_SKIP.has(n.tagName) || n.hasAttribute("data-no-i18n") || n.isContentEditable ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) : NodeFilter.FILTER_ACCEPT });
   let n; while ((n = w.nextNode())) n.nodeType === 3 ? i18nText(n) : i18nEl(n);
 }
+// Datos de ejemplo (demo y plantillas destacadas) en el idioma elegido: se traduce cada texto, no los ids, fechas ni colores.
+const I18N_KEEP = /(^id$|_id$|^id_|_at$|_on$|^date|date$|^at$|^color$|^c[123]$|^url$|^format$|^font$|^anim$|^fx$|^logo$|^media$|^bg$|^kind$|^status$|^role$|^priority$|^platform$|^plan$|^tier$|^billing$|^time$|^week_start$|^type$|^icon$|^tone$)/;
+function trDeep(o, key) {
+  if (!I18N.s || o == null) return o;
+  if (typeof o === "string") return key && I18N_KEEP.test(key) ? o : o.includes("\n") ? o.split("\n").map(x => tr(x)).join("\n") : tr(o);
+  if (Array.isArray(o)) return o.map(x => trDeep(x, key));
+  if (typeof o === "object") { for (const k of Object.keys(o)) o[k] = trDeep(o[k], k); return o; }
+  return o;
+}
 function setLang(l) { try { localStorage.setItem("livet-lang", l); } catch { /* sin almacenamiento */ } location.reload(); }
-function LangSelect(cls = "lang-sel") {
-  const s = h("select", { class: cls, "aria-label": "Idioma / Language", "data-no-i18n": "" }, Object.entries(LANGS).map(([k, v]) => h("option", { value: k, selected: k === I18N.lang }, v)));
+function LangSelect(cls = "lang-sel", short = false) {
+  const s = h("select", { class: cls, "aria-label": "Idioma / Language", title: LANGS[I18N.lang], "data-no-i18n": "" }, Object.entries(LANGS).map(([k, v]) => h("option", { value: k, selected: k === I18N.lang }, short ? k.toUpperCase() : v)));
   s.onchange = () => setLang(s.value);
   return s;
 }
@@ -4341,7 +4351,7 @@ const HF_TPL = {
 };
 function hfTplDefaults(key) {
   const t = HF_TPL[key], o = { format: t.fmt, font: "impacto", anim: "sube", fx: "ninguno", logo: HF.brand.logo, c1: HF.brand.c1, c2: HF.brand.c2, c3: HF.brand.c3, url: HF.brand.url };
-  t.fields.forEach(([k, , , d]) => { o[k] = d; });
+  t.fields.forEach(([k, , , d]) => { o[k] = tr(d); });
   return o;
 }
 
@@ -4841,6 +4851,7 @@ async function hftLoad(force) {
   if (state.view === "video") render();
 }
 function hftUse(r, shared) {
+  if (shared && r.author === "Equipo LIVET") r = { ...r, name: tr(r.name), opts: trDeep(JSON.parse(JSON.stringify(r.opts || {}))) };
   if (r.base === HF_FREE) {
     const o = hfCleanOpts(HF_FREE, r.opts);
     Object.assign(HF.form, { recipe: o.recipe, recipeName: r.name, format: o.format, seconds: o.seconds });
@@ -4922,7 +4933,7 @@ function hftArt(r) {
 const hftUsesTxt = n => !n ? "" : n >= 1000 ? `+${Math.floor(n / 1000)}K usos` : `${n} uso${n > 1 ? "s" : ""}`;
 function HftLive(r) {
   if (r.base === HF_FREE || !HF_TPL[r.base]) return hftArt(r);
-  const o = { ...hfCleanOpts(r.base, r.opts, true), logo: HF_EX[r.opts?.logo] ? r.opts.logo : "" }, [, W, H] = HF_FORMATS[o.format] || HF_FORMATS[HF_TPL[r.base].fmt];
+  const o = { ...hfCleanOpts(r.base, r.author === "Equipo LIVET" ? trDeep(JSON.parse(JSON.stringify(r.opts || {}))) : r.opts, true), logo: HF_EX[r.opts?.logo] ? r.opts.logo : "" }, [, W, H] = HF_FORMATS[o.format] || HF_FORMATS[HF_TPL[r.base].fmt];
   const boxH = 150, boxW = Math.round(boxH * W / H) > 230 ? 230 : Math.round(boxH * W / H), sc = Math.min(boxW / W, boxH / H);
   const box = h("div", { class: "hf-cprev-box", style: `width:${Math.round(W * sc)}px;height:${Math.round(H * sc)}px;background:${o.c2}` });
   const wrap = h("span", { class: "hf-cprev" }, r.author === "Equipo LIVET" ? h("span", { class: "hf-badge" }, "Destacada") : null, box);
@@ -4944,7 +4955,7 @@ function HfCommunity() {
     h("div", { class: "card-p" }, !HFT.loaded ? h("p", { class: "muted" }, h("span", { class: "ai-dots" }, h("i"), h("i"), h("i")), " Cargando…")
       : list.length ? h("div", { class: "hf-tpls", style: "grid-template-columns:repeat(auto-fill,minmax(190px,1fr))" }, list.map(r => h("button", { class: "hf-tpl", type: "button", "data-k": r.base, onclick: () => hftUse(r, true) },
           HftLive(r), h("span", { class: "hf-tpl-t" }, r.name), r.description ? h("span", { class: "hf-tpl-d" }, r.description) : null,
-          h("span", { class: "hf-tpl-m" }, [hftDur(r), `por ${r.author || "alguien de LIVET"}`, hftUsesTxt(r.uses), HF_FONTS[r.opts?.font] ? HF_FONTS[r.opts.font][0].split(" (")[0] : ""].filter(Boolean).join(" · ")))))
+          h("span", { class: "hf-tpl-m" }, [hftDur(r), tr(`por ${tr(r.author || "alguien de LIVET")}`), tr(hftUsesTxt(r.uses)), HF_FONTS[r.opts?.font] ? tr(HF_FONTS[r.opts.font][0].split(" (")[0]) : ""].filter(Boolean).join(" · ")))))
       : h("p", { class: "muted", style: "margin:0" }, "Todavía nadie compartió plantillas. ¡Creá la tuya y compartila para ser la primera persona!")));
 }
 function HfTemplates() {
@@ -5231,6 +5242,7 @@ const Co = {
       dt2: [{ id: "dc-2", author_id: "u-camila", body: "Faltan las 3 opciones de precio. Corregí y volvé a marcarla.", created_at: at(-1, "18:00") }] };
     Co.demoFiles = { dt1: [{ id: "df-1", name: "carrusel-padre-borrador.pdf", size_bytes: 482000, uploader_id: "u-lucia", created_at: at(-1, "17:00"), url: null }] };
     Co.invites = [];
+    for (const k of ["list", "members", "clients", "tasks", "msgs", "demoThreads", "demoFiles"]) if (Co[k]) trDeep(Co[k]);
   },
   async reloadAll() { Co.loaded = false; await Co.init(); },
 };
@@ -6377,7 +6389,7 @@ function renderTopbar() {
       h("button", { type: "button", class: "search-btn", "aria-label": "Buscar", onclick: openPalette }, icon("search"), h("span", {}, "Buscar"), h("kbd", {}, "Ctrl K")),
       isDesktopApp() ? null : h("button", { type: "button", class: "btn dl-top", "aria-current": current === "descargar" ? "page" : null, onclick: () => navTo("descargar") }, icon("download"), h("span", {}, "Descargar")),
       h("button", { type: "button", class: "btn ghost icon-btn", "aria-label": dark ? "Cambiar a tema claro" : "Cambiar a tema oscuro", onclick: () => applyTheme(dark ? "light" : "dark") }, icon(dark ? "sun" : "moon")),
-      LangSelect(),
+      LangSelect("lang-sel", true),
       state.user
         ? h("button", { type: "button", class: "btn primary", onclick: () => navTo("") }, "Abrir la app")
         : h("button", { type: "button", class: "btn primary", onclick: () => navTo("entrar") }, "Entrar"),
@@ -6577,10 +6589,10 @@ function CompanyPanel() {
 
 // El texto de arriba cambia con cada escena del carrusel.
 const HERO_COPY = [
-  { tag: "Agenda", a: "Lo que no anotás, ", m: "se te escapa", b: ".", lead: "LIVET es tu agenda diaria: las tareas de hoy, tu plata y tu equipo en una sola pantalla. Abrila cada mañana y sabés qué hacer, qué es urgente y cuánto te queda." },
-  { tag: "Finanzas", a: "Tu plata, ", m: "en orden", b: ".", lead: "Cargá ingresos y gastos, mirá a dónde se va cada peso y ahorrá para lo que querés. El balance del mes queda siempre a la vista." },
-  { tag: "Empresa", a: "Manejá tu empresa ", m: "hablando con tu equipo", b: ".", lead: "Derivá tareas a cada persona, revisá lo que entregan y chateá sin salir de LIVET. Cada empleado ve solo lo suyo." },
-  { tag: "Todo junto", a: "Cada cosa, ", m: "en su lugar", b: ".", lead: "Tareas, plata y equipo en una sola pantalla. Entrás y ves lo de hoy, lo urgente y cuánto te queda." },
+  { tag: "Agenda", t: "Lo que no anotás, *se te escapa*.", lead: "LIVET es tu agenda diaria: las tareas de hoy, tu plata y tu equipo en una sola pantalla. Abrila cada mañana y sabés qué hacer, qué es urgente y cuánto te queda." },
+  { tag: "Finanzas", t: "Tu plata, *en orden*.", lead: "Cargá ingresos y gastos, mirá a dónde se va cada peso y ahorrá para lo que querés. El balance del mes queda siempre a la vista." },
+  { tag: "Empresa", t: "Manejá tu empresa *hablando con tu equipo*.", lead: "Derivá tareas a cada persona, revisá lo que entregan y chateá sin salir de LIVET. Cada empleado ve solo lo suyo." },
+  { tag: "Todo junto", t: "Cada cosa, *en su lugar*.", lead: "Tareas, plata y equipo en una sola pantalla. Entrás y ves lo de hoy, lo urgente y cuánto te queda." },
 ];
 function Ticker(words) {
   const row = () => words.map(w => h("span", {}, w));
@@ -6591,7 +6603,8 @@ function HomePage() {
   const tag = h("span", { class: "hero-tag" }), h1 = h("h1", {}), lead = h("p", { class: "lead" });
   const copy = h("div", { class: "hero-text", "aria-live": "polite" }, tag, h1, lead);
   const setCopy = k => {
-    const c = HERO_COPY[k]; tag.textContent = c.tag; h1.replaceChildren(c.a, h("span", { class: "mark" }, c.m), c.b); lead.textContent = c.lead;
+    const c = HERO_COPY[k], parts = /^([\s\S]*?)\*([\s\S]+?)\*([\s\S]*)$/.exec(tr(c.t)) || ["", tr(c.t).replace(/\*/g, ""), "", ""];
+    tag.textContent = tr(c.tag); h1.replaceChildren(parts[1], h("span", { class: "mark" }, parts[2]), parts[3]); lead.textContent = tr(c.lead);
     copy.classList.remove("swap"); void copy.offsetWidth; copy.classList.add("swap");
   };
   setCopy(0); copy.classList.remove("swap");
@@ -7030,7 +7043,7 @@ function seedDemo() {
     mk("learning_items", 3, { topic: "Fotografía de comida con luz natural", why: "Mejor miniatura y primer segundo.", minutes: 45, week_start: wk, status: "hecho" }),
     mk("learning_items", 4, { topic: "Cómo vender un curso desde Instagram", why: "Objetivo del trimestre.", minutes: 60, week_start: wk }),
   ];
-  state.db = db;
+  state.db = trDeep(db);
 }
 
 /* ------------------------- Autenticación ------------------------- */
