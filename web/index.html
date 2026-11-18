@@ -1417,7 +1417,9 @@ function tr(t) {
     v = I18N.s[k] ?? null;
     if (v == null) for (const [re, dst, order] of I18N.p) {
       const m = re.exec(k);
-      if (m) { v = dst.replace(/\{(\d+)\}/g, (_, n) => { const i = order.indexOf(+n); const x = i >= 0 ? m[i + 1] : ""; return I18N.s[x] ?? x; }); break; }
+      if (m) { v = dst.replace(/\{(\d+)\}/g, (_, n) => { const i = order.indexOf(+n); const x = i >= 0 ? m[i + 1] : ""; if (I18N.s[x] != null) return I18N.s[x];
+        const up = x.charAt(0).toUpperCase() + x.slice(1), y = I18N.s[up]; // "empresa o comercio" → "Empresa o comercio"
+        return y != null && up !== x ? y.charAt(0).toLowerCase() + y.slice(1) : x; }); break; }
     }
     I18N.cache.set(k, v);
   }
@@ -1431,10 +1433,11 @@ function i18nEl(el) {
 function i18nWalk(root) {
   if (!I18N.s || !root) return;
   if (root.nodeType === 3) { if (!root.parentElement?.closest("[data-no-i18n],[contenteditable=true],textarea,script,style,code,pre")) i18nText(root); return; }
+  if (root.nodeType === 1 && root.tagName === "TEXTAREA") { if (!root.closest("[data-no-i18n]")) i18nEl(root); return; }
   if (root.nodeType !== 1 || I18N_SKIP.has(root.tagName) || root.closest("[data-no-i18n],[contenteditable=true]")) return;
   i18nEl(root);
   const w = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, { acceptNode: n => n.nodeType === 1
-    ? (I18N_SKIP.has(n.tagName) || n.hasAttribute("data-no-i18n") || n.isContentEditable ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) : NodeFilter.FILTER_ACCEPT });
+    ? (n.tagName === "TEXTAREA" ? (i18nEl(n), NodeFilter.FILTER_REJECT) : I18N_SKIP.has(n.tagName) || n.hasAttribute("data-no-i18n") || n.isContentEditable ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) : NodeFilter.FILTER_ACCEPT });
   let n; while ((n = w.nextNode())) n.nodeType === 3 ? i18nText(n) : i18nEl(n);
 }
 // Datos de ejemplo (demo y plantillas destacadas) en el idioma elegido: se traduce cada texto, no los ids, fechas ni colores.
@@ -2266,7 +2269,7 @@ function HomeView() {
 
   const more = !!state.homeMore;
   const view = h("div", {},
-    PageHead(`${greeting()}, ${name}`, null,
+    PageHead(`${tr(greeting())}, ${name}`, null,
       h("button", { class: "btn primary", onclick: () => TaskDialog() }, icon("plus"), "Nueva tarea")),
     UseChooser(),
     h("div", { class: "grid stats" },
@@ -4944,7 +4947,7 @@ function HftLive(r) {
     if (box.firstChild) return;
     const html = hfHtml({ tpl: r.base, opts: o, title: r.name, layers: [] }).replace(/asset:([\w-]+)/g, (m, id) => HF_EX[id] || HF_BLANK).replace(/<\/body>(?![\s\S]*<\/body>)/i,
       `<script>addEventListener("load",function(){var n=0,go=function(){var t=window.__timelines&&Object.values(window.__timelines)[0];if(!t){if(n++<100)setTimeout(go,60);return}t.repeat(-1).repeatDelay(0.6).play()};go()})<\/script></body>`);
-    const f = h("iframe", { sandbox: "allow-scripts", title: "Vista previa de " + r.name, loading: "lazy", style: `width:${W}px;height:${H}px;transform:scale(${sc})` });
+    const f = h("iframe", { sandbox: "allow-scripts", title: tr("Vista previa") + ": " + tr(r.name), loading: "lazy", style: `width:${W}px;height:${H}px;transform:scale(${sc})` });
     f.srcdoc = html; box.append(f);
   };
   try { const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { load(); io.disconnect(); } }, { rootMargin: "200px" }); setTimeout(() => io.observe(wrap), 0); }
@@ -4958,7 +4961,7 @@ function HfCommunity() {
     h("div", { class: "card-p" }, !HFT.loaded ? h("p", { class: "muted" }, h("span", { class: "ai-dots" }, h("i"), h("i"), h("i")), " Cargando…")
       : list.length ? h("div", { class: "hf-tpls", style: "grid-template-columns:repeat(auto-fill,minmax(190px,1fr))" }, list.map(r => h("button", { class: "hf-tpl", type: "button", "data-k": r.base, onclick: () => hftUse(r, true) },
           HftLive(r), h("span", { class: "hf-tpl-t" }, r.name), r.description ? h("span", { class: "hf-tpl-d" }, r.description) : null,
-          h("span", { class: "hf-tpl-m" }, [hftDur(r), tr(`por ${tr(r.author || "alguien de LIVET")}`), tr(hftUsesTxt(r.uses)), HF_FONTS[r.opts?.font] ? tr(HF_FONTS[r.opts.font][0].split(" (")[0]) : ""].filter(Boolean).join(" · ")))))
+          h("span", { class: "hf-tpl-m" }, [hftDur(r), tr(`por ${tr(r.author || "alguien de LIVET")}`), tr(hftUsesTxt(r.uses)), HF_FONTS[r.opts?.font] ? tr(HF_FONTS[r.opts.font][0]).split(" (")[0] : ""].filter(Boolean).join(" · ")))))
       : h("p", { class: "muted", style: "margin:0" }, "Todavía nadie compartió plantillas. ¡Creá la tuya y compartila para ser la primera persona!")));
 }
 function HfTemplates() {
@@ -4984,7 +4987,7 @@ function HfTemplates() {
       Object.entries(HF_TPL).map(([k, t]) => h("button", { class: "hf-tpl", type: "button", "data-k": k, onclick: () => { hfFromTpl(k); render(); scrollTo({ top: 0, behavior: "smooth" }); } },
       h("span", { class: "hf-tpl-art", "data-f": t.fmt }, h("i"), h("i"), h("i")),
       h("span", { class: "hf-tpl-t" }, t.name), h("span", { class: "hf-tpl-d" }, t.desc),
-      h("span", { class: "hf-tpl-m" }, `${t.dur} s · ${HF_FORMATS[t.fmt][0].split(" (")[0]}`)))));
+      h("span", { class: "hf-tpl-m" }, `${t.dur} s · ${tr(HF_FORMATS[t.fmt][0]).split(" (")[0]}`)))));
 }
 function HfCustomize(item) {
   const t = HF_TPL[item.tpl], o = item.opts;
@@ -5020,7 +5023,7 @@ function HfFontPicker(value, onPick) {
   const box = h("div", { class: "hf-fonts", role: "radiogroup", "aria-label": "Tipografía" });
   const paint = v => box.querySelectorAll(".hf-font").forEach(b => { const on = b.dataset.k === v; b.classList.toggle("on", on); b.setAttribute("aria-checked", on); });
   Object.entries(HF_FONTS).forEach(([k, [label, family, weight]]) => box.append(h("button", { type: "button", class: "hf-font", role: "radio", "data-k": k, onclick: () => { paint(k); onPick(k); } },
-    h("span", { class: "hf-font-s", style: `font-family:${family};font-weight:${weight}` }, "Aa Tu título"), h("span", { class: "hf-font-l" }, label.split(" (")[0]))));
+    h("span", { class: "hf-font-s", style: `font-family:${family};font-weight:${weight}` }, "Aa Tu título"), h("span", { class: "hf-font-l" }, tr(label).split(" (")[0]))));
   paint(value);
   return box;
 }
