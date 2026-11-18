@@ -1114,6 +1114,9 @@ dialog{background:var(--surface);border:1px solid var(--line-strong)}
 .hf-tpl-art i:nth-child(3){right:12px;bottom:12px;width:26px;height:26px;border-radius:50%;animation:tpl-b 2.4s var(--spring) .4s infinite}
 .hf-tpl[data-k="promo"] .hf-tpl-art i:nth-child(3){width:40px;height:40px;background:#fff}
 .hf-tpl[data-k="frase"] .hf-tpl-art i:nth-child(1){width:70%}
+.hf-tpl[data-k="simple"] .hf-tpl-art i:nth-child(1){left:20%;top:38px;width:60%}.hf-tpl[data-k="simple"] .hf-tpl-art i:nth-child(2),.hf-tpl[data-k="simple"] .hf-tpl-art i:nth-child(3){display:none}
+.hf-tpl[data-k="libre"] .hf-tpl-art{display:grid;place-items:center;background:linear-gradient(135deg,var(--graphite),#2a1a10)}.hf-tpl[data-k="libre"] .hf-tpl-art i{display:none}
+.hf-tpl[data-k="libre"] .hf-tpl-art::after{content:"LIBRE";color:#fff;font-weight:800;letter-spacing:.1em;font-size:13px}
 .hf-tpl[data-k="lanzamiento"] .hf-tpl-art{background:var(--orange)}
 .hf-tpl[data-k="lanzamiento"] .hf-tpl-art i{background:var(--graphite)}
 .hf-tpl[data-k="numeros"] .hf-tpl-art i:nth-child(1){height:30px;width:40%}
@@ -1123,6 +1126,10 @@ dialog{background:var(--surface);border:1px solid var(--line-strong)}
 .hf-tpl.free .hf-tpl-art{display:grid;place-items:center;background:linear-gradient(135deg,var(--graphite),#2a1a10)}
 .hf-tpl.free .hf-tpl-art b{font-size:13px;letter-spacing:.08em;color:#fff;font-weight:800}
 .hf-tpl .hf-tpl-art.own i:nth-child(1){background:var(--tc1)}.hf-tpl .hf-tpl-art.own i:nth-child(2){background:var(--tc3)}.hf-tpl .hf-tpl-art.own i:nth-child(3){background:var(--tc1)}
+.hf-live{position:relative;display:grid;place-items:center;height:170px;border-radius:10px;overflow:hidden;background:#0d0d0d;margin-bottom:4px}
+.hf-live-box{position:relative;overflow:hidden;border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.hf-live-box iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;pointer-events:none}
+.hf-badge{position:absolute;left:8px;top:8px;z-index:2;font-size:10px;font-weight:800;letter-spacing:.04em;padding:3px 7px;border-radius:99px;background:var(--orange);color:#111}
 .hf-tpl-sub{font-size:12px;color:var(--muted);margin:6px 0 2px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;grid-column:1/-1}
 .hf-tpl-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
 .hf-tpl-row .btn{padding:4px 8px;font-size:12px}
@@ -3814,6 +3821,15 @@ const HF_LOGO = { get livet() { return hfCssUrl("--logo-light"); }, get "livet-d
 const hfEsc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const hfLines = s => String(s ?? "").split(/\n+/).map(x => x.trim()).filter(Boolean);
 const hfFont = `"Arial Black","Helvetica Neue",Helvetica,Arial,sans-serif`;
+// Tipografías de las plantillas (solo fuentes del sistema: se ven igual al exportar y no cargan nada de afuera).
+const HF_FONTS = {
+  impacto: ["Impacto (gruesa)", hfFont, 900],
+  moderna: ["Moderna", `"Helvetica Neue",Helvetica,Arial,sans-serif`, 700],
+  elegante: ["Elegante (con serifa)", `Georgia,"Times New Roman",serif`, 700],
+  maquina: ["Máquina de escribir", `"Courier New",Courier,ui-monospace,monospace`, 700],
+  redonda: ["Redondeada", `"Trebuchet MS","Avenir Next",Verdana,sans-serif`, 800],
+  condensada: ["Condensada", `"Arial Narrow","Helvetica Neue Condensed",Impact,sans-serif`, 800],
+};
 
 const HF = (() => {
   let list = [], brand = {};
@@ -3931,7 +3947,7 @@ function hfDoc({ title, W, H, dur, o, css, body, js }) {
 <title>${hfEsc(title)}</title>
 <style>
   html,body{margin:0;width:${W}px;height:${H}px;overflow:hidden;background:${o.c2}}
-  #stage{position:relative;width:${W}px;height:${H}px;overflow:hidden;background:${o.c2};color:${o.c3};font-family:${hfFont};font-weight:900}
+  #stage{position:relative;width:${W}px;height:${H}px;overflow:hidden;background:${o.c2};color:${o.c3};font-family:${(HF_FONTS[o.font] || HF_FONTS.impacto)[1]};font-weight:${(HF_FONTS[o.font] || HF_FONTS.impacto)[2]}}
   .clip{position:absolute;inset:0;opacity:0}
   .fill{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;display:block}
   .m{position:absolute;overflow:hidden}
@@ -3979,6 +3995,30 @@ function hfCount(raw) {
 
 /* ---------- Plantillas de ejemplo ---------- */
 const HF_TPL = {
+  simple: {
+    name: "Sin diseño", desc: "Fondo liso y tus frases, una por pantalla. Lo más simple: vos ponés el texto, nada más.", dur: 12, fmt: "vertical",
+    fields: [["s1t", "Frase 1 (marcá una palabra entre *asteriscos* para resaltarla)", "text", "Tu idea, *sin vueltas*"], ["s2t", "Frase 2 (opcional)", "text", "Una frase por pantalla"],
+      ["s3t", "Frase 3 (opcional)", "text", "Fácil de leer en el celular"], ["s4t", "Frase 4 (opcional)", "text", ""], ["cta", "Cierre", "text", "Seguinos para más"], ["bg", "Fondo (imagen o video, opcional)", "media", ""]],
+    build(o, W, H) {
+      const u = Math.min(W, H) / 1080, em = x => hfEsc(x).replace(/\*([^*]+)\*/g, '<span class="acc">$1</span>').replace(/\*/g, "");
+      let lines = ["s1t", "s2t", "s3t", "s4t"].map(k => String(o[k] || "").trim()).filter(Boolean);
+      if (!lines.length) lines = ["Escribí tu frase"];
+      const slot = 9.5 / lines.length;
+      return {
+        css: `.say{font-size:${Math.round((W > H ? 96 : 104) * u)}px;line-height:1.05;letter-spacing:-.02em;max-width:${Math.round(W - 180 * u)}px}
+  .cta{font-size:${Math.round(80 * u)}px;line-height:1.05}
+  .url{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-weight:600;font-size:${Math.round(40 * u)}px;margin-top:${Math.round(34 * u)}px;opacity:.85}`,
+        body: `${o.bg ? `<div class="m" style="inset:0">${hfMedia(o.bg)}</div><div class="shade"></div>` : ""}
+  ${hfLogoBar(o)}
+  ${lines.map((t, i) => `<section id="s${i + 1}" class="clip center" data-start="${(i * slot).toFixed(2)}" data-duration="${slot.toFixed(2)}" data-track-index="0"><div class="say">${em(t)}</div></section>`).join("\n  ")}
+  <section id="s9" class="clip center" data-start="9.5" data-duration="2.5" data-track-index="0"><div class="cta">${em(o.cta || "")}</div>${o.url ? `<div class="url">${hfEsc(o.url)}</div>` : ""}</section>
+  <div class="bar"></div>`,
+        js: `${lines.map((t, i) => `inOut("#s${i + 1}", ${(i * slot).toFixed(2)}, ${slot.toFixed(2)});`).join(" ")}
+  inOut("#s9", 9.5, 2.5, { y: 0, scale: 0.9 });
+  tl.fromTo(".bar", { scaleX: 0 }, { scaleX: 1, duration: D, ease: "none" }, 0);`,
+      };
+    },
+  },
   tips: {
     name: "Consejos en 3 pasos", desc: "Hook, tres tips numerados y cierre. Ideal para Reels educativos.", dur: 12, fmt: "vertical",
     fields: [["kicker", "Etiqueta", "text", "Tu semana, en orden"], ["title", "Título (marcá la palabra clave entre *asteriscos*)", "text", "3 hábitos que *cambian* tu lunes"],
@@ -4167,7 +4207,7 @@ const HF_TPL = {
   },
 };
 function hfTplDefaults(key) {
-  const t = HF_TPL[key], o = { format: t.fmt, logo: HF.brand.logo, c1: HF.brand.c1, c2: HF.brand.c2, c3: HF.brand.c3, url: HF.brand.url };
+  const t = HF_TPL[key], o = { format: t.fmt, font: "impacto", logo: HF.brand.logo, c1: HF.brand.c1, c2: HF.brand.c2, c3: HF.brand.c3, url: HF.brand.url };
   t.fields.forEach(([k, , , d]) => { o[k] = d; });
   return o;
 }
@@ -4209,6 +4249,13 @@ function hfLoadPlayer() {
     document.head.append(sc);
   });
   return HF.loading;
+}
+// Un video solo anima: no puede leer tus datos, conectarse a internet ni tocar la app. Si trae algo de eso, se descarta.
+function hfUnsafe(html) {
+  const bad = /localStorage|sessionStorage|indexedDB|document\.cookie|\bfetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource|(?:window|self|globalThis|frames)\s*\.\s*(?:parent|top|opener|frameElement)|\b(?:parent|top|opener)\s*\.\s*(?:document|location|window|localStorage|postMessage)|postMessage|\beval\s*\(|new\s+Function|\bimport\s*\(|serviceWorker|<iframe|<object|<embed|<form|javascript:|\bon[a-z]+\s*=/i;
+  if (bad.test(html)) return true;
+  const srcs = [...html.matchAll(/<script[^>]*\ssrc\s*=\s*["']?([^"'\s>]+)/gi)].map(m => m[1]);
+  return srcs.some(u => !/^https:\/\/cdn\.jsdelivr\.net\/npm\/gsap@3\//.test(u));
 }
 function hfExtract(text) {
   const m = /```(?:html)?\s*([\s\S]*?)```/i.exec(text || "");
@@ -4263,7 +4310,7 @@ FORMATO OBLIGATORIO (respondé SOLO con un bloque \`\`\`html con el archivo comp
 - Sin imágenes, videos ni audio externos. Usá ÚNICAMENTE estos recursos del usuario, escribiendo el src exactamente como está (asset:...):
 ${res || "- (no hay recursos: solo texto, formas, degradados y emojis)"}
 - Texto grande y legible en celular, máximo 8 palabras por pantalla, márgenes seguros de 80px. Hook fuerte en el primer segundo. Movimiento con intención: entradas con power3.out o back.out, nada de rebotes eternos.
-- Colores de la marca salvo que pida otros: acento ${b.c1}, fondo ${b.c2}, texto ${b.c3}. Cierre con ${b.url}. ${f.style ? "Estilo pedido: " + f.style : ""}`;
+- Colores de la marca salvo que pida otros: acento ${b.c1}, fondo ${b.c2}, texto ${b.c3}. Cierre con ${b.url}. ${f.style ? "Estilo pedido: " + f.style : ""}${f.recipe ? `\n- Plantilla a seguir ("${String(f.recipeName || "").replace(/[<>]/g, "")}"): ${f.recipe}` : ""}`;
   const g = HF.gen = { text: "", t0: Date.now(), secs, format: f.format, ctrl: new AbortController(), ui: null };
   render(); document.querySelector(".hf-live")?.scrollIntoView({ behavior: "smooth", block: "start" });
   let queued = false;
@@ -4275,6 +4322,7 @@ ${res || "- (no hay recursos: solo texto, formas, degradados y emojis)"}
     g.ui?.update(text, true);
     const html = hfExtract(text);
     if (!html) throw new Error("La IA no terminó el video. Probá de nuevo o con una idea más concreta.");
+    if (hfUnsafe(html)) throw new Error("El video generado traía código que no está permitido, así que no lo guardamos. Probá de nuevo.");
     await hfWait(500);
     HF.gen = null; hfAdd({ html, idea }); render(); toast("¡Video listo! Ya se está reproduciendo.");
     document.querySelector(".hf-player")?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -4612,11 +4660,20 @@ function HfBrand() {
    Al usar una de otra persona no viajan sus imágenes ni su logo: se pone tu marca. */
 const HFT = { mine: [], community: [], loaded: false, loading: false };
 const HF_HEX = /^#[0-9a-f]{6}$/i, HF_ID = /^[\w-]{1,80}$/;
+// "Libre": no es un diseño fijo, es una receta en palabras (estilo, estructura, formato y duración) que la IA usa para armar cada video.
+const HF_FREE = "libre", HF_SECS = ["10", "15", "30", "45", "60"];
+const hftOk = r => !!HF_TPL[r.base] || r.base === HF_FREE;
+const hftDur = r => r.base === HF_FREE ? `${hfCleanOpts(HF_FREE, r.opts).seconds} s · con IA` : `${HF_TPL[r.base].dur} s`;
 function hfCleanOpts(base, o, shared) {
+  if (base === HF_FREE) {
+    o = o && typeof o === "object" ? o : {};
+    return { recipe: String(o.recipe ?? "").replace(/[<>]/g, "").slice(0, 1200), format: HF_FORMATS[o.format] ? o.format : "vertical", seconds: HF_SECS.includes(String(o.seconds)) ? String(o.seconds) : "15" };
+  }
   const t = HF_TPL[base]; if (!t) return null;
   o = o && typeof o === "object" ? o : {};
   const out = hfTplDefaults(base), txt = v => String(v ?? "").replace(/[<>]/g, "").slice(0, 400);
   if (HF_FORMATS[o.format]) out.format = o.format;
+  if (HF_FONTS[o.font]) out.font = o.font;
   for (const k of ["c1", "c2", "c3"]) if (HF_HEX.test(o[k] || "")) out[k] = o[k];
   t.fields.forEach(([k, , type]) => {
     if (type === "media") out[k] = !shared && HF_ID.test(o[k] || "") ? o[k] : "";
@@ -4627,21 +4684,34 @@ function hfCleanOpts(base, o, shared) {
 }
 async function hftLoad(force) {
   if (HFT.loading || (HFT.loaded && !force)) return;
-  if (!sb || !state.user || state.demo) { HFT.loaded = true; return; }
+  if (!sb) { HFT.loaded = true; return; }
   HFT.loading = true;
   try {
     const cols = "id,name,description,base,opts,is_public,uses,author,created_at";
+    if (!state.user || state.demo) { // demo o sin cuenta: solo la galería de la comunidad
+      const { data } = await sb.from("video_templates").select(cols).eq("is_public", true).eq("hidden", false)
+        .order("uses", { ascending: false }).order("created_at", { ascending: false }).limit(30);
+      HFT.community = (data || []).filter(hftOk);
+      throw null;
+    }
     const [m, c] = await Promise.all([
       sb.from("video_templates").select(cols).eq("user_id", state.user.id).order("created_at", { ascending: false }).limit(60),
       sb.from("video_templates").select(cols).eq("is_public", true).eq("hidden", false).neq("user_id", state.user.id)
         .order("uses", { ascending: false }).order("created_at", { ascending: false }).limit(30)]);
-    HFT.mine = (m.data || []).filter(r => HF_TPL[r.base]);
-    HFT.community = (c.data || []).filter(r => HF_TPL[r.base]);
-  } catch (e) { console.warn("plantillas", e); }
+    HFT.mine = (m.data || []).filter(hftOk);
+    HFT.community = (c.data || []).filter(hftOk);
+  } catch (e) { if (e) console.warn("plantillas", e); }
   HFT.loaded = true; HFT.loading = false;
   if (state.view === "video") render();
 }
 function hftUse(r, shared) {
+  if (r.base === HF_FREE) {
+    const o = hfCleanOpts(HF_FREE, r.opts);
+    Object.assign(HF.form, { recipe: o.recipe, recipeName: r.name, format: o.format, seconds: o.seconds });
+    if (shared && sb && !state.demo) sb.rpc("video_template_use", { p_id: r.id }).then(() => {}, () => {});
+    render(); setTimeout(hfGoCreate, 50); toast(`Plantilla "${r.name}" lista: escribí de qué trata y tocá "Generar video".`);
+    return null;
+  }
   const it = hfAdd({ tpl: r.base, opts: hfCleanOpts(r.base, r.opts, shared), title: r.name, idea: shared ? "Plantilla de la comunidad" : "Mi plantilla", myTpl: shared ? null : r.id });
   if (shared && sb && !state.demo) sb.rpc("video_template_use", { p_id: r.id }).then(() => {}, () => {});
   render(); scrollTo({ top: 0, behavior: "smooth" });
@@ -4649,19 +4719,29 @@ function hftUse(r, shared) {
 }
 // Crear (o guardar como) una plantilla propia. from = video abierto con plantilla, para guardar lo que ya armaste.
 function hftDialog(from) {
-  const base = sel(Object.entries(HF_TPL).map(([k, t]) => [k, `${t.name} — ${t.desc}`]), from?.tpl || "tips");
+  const base = sel([[HF_FREE, "Libre — describís cómo querés que sea y la IA arma cada video con ese estilo"],
+    ...Object.entries(HF_TPL).sort(([a], [b]) => (b === "simple") - (a === "simple")).map(([k, t]) => [k, `${t.name} — ${t.desc}`])], from?.tpl || "simple");
+  const recipe = ta("", { rows: 4, maxLength: 1200, placeholder: "Ej: fondo negro, letras blancas enormes, una palabra clave en naranja; arranca con una pregunta, después 3 datos rápidos y cierra pidiendo que comenten LIVET" });
+  const rFmt = sel(Object.entries(HF_FORMATS).map(([k, v]) => [k, v[0]]), "vertical");
+  const rSecs = sel(HF_SECS.map(x => [x, `${x} segundos`]), "15");
+  const freeBox = h("div", { style: "display:grid;gap:12px" }, F("¿Cómo es tu plantilla?", recipe, "Estilo, colores, cómo arranca, qué partes tiene y cómo cierra. Cada vez que la uses, solo contás el tema."),
+    h("div", { class: "row2" }, F("Formato", rFmt), F("Duración", rSecs)));
+  const syncFree = () => { freeBox.style.display = base.value === HF_FREE ? "grid" : "none"; };
+  base.onchange = syncFree; syncFree();
   const name = inp({ maxLength: 60, required: true, value: from ? (from.title || "") : "", placeholder: "Ej: Mis tips de los lunes" });
   const desc = inp({ maxLength: 160, placeholder: "Para qué sirve (opcional)" });
   const pub = h("input", { type: "checkbox" });
   modal({ title: from ? "Guardar como mi plantilla" : "Crear mi propia plantilla", submit: from ? "Guardar plantilla" : "Crear plantilla", body: [
     h("p", { class: "hint", style: "margin-top:0" }, from ? "Se guardan los textos, colores, formato y diseño de este video para reusarlos cuando quieras."
       : "Elegí un diseño base, después cambiá textos, colores y formato a tu gusto. Queda guardada en tu cuenta para usarla las veces que quieras."),
-    from ? null : F("Diseño base", base), F("Nombre", name), F("Descripción", desc),
+    from ? null : F("Diseño base", base, "\"Sin diseño\" es fondo liso con tus frases. \"Libre\" no tiene diseño fijo: lo describís con tus palabras."), from ? null : freeBox, F("Nombre", name), F("Descripción", desc),
     h("label", { class: "check-row", style: "display:flex;gap:8px;align-items:flex-start" }, pub,
       h("span", {}, h("b", {}, "Compartirla con la comunidad"), h("br"), h("span", { class: "hint" }, "Otras personas de LIVET la van a poder usar con su propia marca. Tus imágenes y tu logo no se comparten; se muestra solo tu primer nombre.")))],
     onSubmit: async () => {
       const b = from?.tpl || base.value;
-      const row = { name: name.value.trim(), description: desc.value.trim(), base: b, opts: hfCleanOpts(b, from ? from.opts : hfTplDefaults(b), false), is_public: pub.checked,
+      if (b === HF_FREE && !recipe.value.trim()) throw new Error("Contá cómo es tu plantilla: estilo, partes y cierre.");
+      const opts = b === HF_FREE ? hfCleanOpts(HF_FREE, { recipe: recipe.value.trim(), format: rFmt.value, seconds: rSecs.value }) : hfCleanOpts(b, from ? from.opts : hfTplDefaults(b), false);
+      const row = { name: name.value.trim(), description: desc.value.trim(), base: b, opts, is_public: pub.checked,
         author: ((state.profile?.full_name || "").split(" ")[0] || "Alguien de LIVET").slice(0, 40) };
       if (!row.name) throw new Error("Ponele un nombre a la plantilla.");
       let saved = { ...row, id: "local-" + Date.now(), uses: 0, created_at: new Date().toISOString() };
@@ -4671,6 +4751,7 @@ function hftDialog(from) {
       }
       HFT.mine.unshift(saved);
       if (from) { from.myTpl = saved.id; hfSave(); toast("Plantilla guardada. La encontrás en \"Mis plantillas\"."); }
+      else if (b === HF_FREE) hftUse(saved, false);
       else { hftUse(saved, false); toast("Plantilla creada: cambiá textos, colores y formato en \"Personalizar\" y tocá \"Guardar en mi plantilla\"."); }
     } });
 }
@@ -4697,17 +4778,37 @@ async function hftDelete(r) {
 }
 function hftArt(r) {
   const o = r.opts || {}, c = k => HF_HEX.test(o[k] || "") ? o[k] : null;
-  const f = HF_FORMATS[o.format] ? o.format : HF_TPL[r.base].fmt;
+  const f = HF_FORMATS[o.format] ? o.format : (HF_TPL[r.base]?.fmt || "vertical");
+  if (r.base === HF_FREE) return h("span", { class: "hf-tpl-art", "data-f": f }, h("i"), h("i"), h("i"));
   return h("span", { class: "hf-tpl-art own", "data-f": f, style: `${c("c2") ? `background:${c("c2")};` : ""}--tc1:${c("c1") || "var(--orange)"};--tc3:${c("c3") || "#fff"}` }, h("i"), h("i"), h("i"));
+}
+// Vista previa animada de una plantilla: corre aislada (sin acceso a la app) y solo cuando la tarjeta se ve en pantalla.
+const hftUsesTxt = n => !n ? "" : n >= 1000 ? `+${Math.floor(n / 1000)}K usos` : `${n} uso${n > 1 ? "s" : ""}`;
+function HftLive(r) {
+  if (r.base === HF_FREE || !HF_TPL[r.base]) return hftArt(r);
+  const o = { ...hfCleanOpts(r.base, r.opts, true), logo: "" }, [, W, H] = HF_FORMATS[o.format] || HF_FORMATS[HF_TPL[r.base].fmt];
+  const boxH = 150, boxW = Math.round(boxH * W / H) > 230 ? 230 : Math.round(boxH * W / H), sc = Math.min(boxW / W, boxH / H);
+  const box = h("div", { class: "hf-live-box", style: `width:${Math.round(W * sc)}px;height:${Math.round(H * sc)}px;background:${o.c2}` });
+  const wrap = h("span", { class: "hf-live" }, r.author === "Equipo LIVET" ? h("span", { class: "hf-badge" }, "Destacada") : null, box);
+  const load = () => {
+    if (box.firstChild) return;
+    const html = hfHtml({ tpl: r.base, opts: o, title: r.name, layers: [] }).replace(/<\/body>(?![\s\S]*<\/body>)/i,
+      `<script>addEventListener("load",function(){var n=0,go=function(){var t=window.__timelines&&Object.values(window.__timelines)[0];if(!t){if(n++<100)setTimeout(go,60);return}t.repeat(-1).repeatDelay(0.6).play()};go()})<\/script></body>`);
+    const f = h("iframe", { sandbox: "allow-scripts", title: "Vista previa de " + r.name, loading: "lazy", style: `width:${W}px;height:${H}px;transform:scale(${sc})` });
+    f.srcdoc = html; box.append(f);
+  };
+  try { const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { load(); io.disconnect(); } }, { rootMargin: "200px" }); setTimeout(() => io.observe(wrap), 0); }
+  catch { setTimeout(load, 0); }
+  return wrap;
 }
 function HfCommunity() {
   hftLoad();
   const list = HFT.community;
   return Card("Plantillas de la comunidad", h("span", { class: "muted", style: "font-size:12px" }, "Creadas por otras personas de LIVET"),
     h("div", { class: "card-p" }, !HFT.loaded ? h("p", { class: "muted" }, h("span", { class: "ai-dots" }, h("i"), h("i"), h("i")), " Cargando…")
-      : list.length ? h("div", { class: "hf-tpls" }, list.map(r => h("button", { class: "hf-tpl", type: "button", "data-k": r.base, onclick: () => hftUse(r, true) },
-          hftArt(r), h("span", { class: "hf-tpl-t" }, r.name), r.description ? h("span", { class: "hf-tpl-d" }, r.description) : null,
-          h("span", { class: "hf-tpl-m" }, `${HF_TPL[r.base].dur} s · por ${r.author || "alguien de LIVET"}${r.uses ? ` · ${r.uses} uso${r.uses > 1 ? "s" : ""}` : ""}`))))
+      : list.length ? h("div", { class: "hf-tpls", style: "grid-template-columns:repeat(auto-fill,minmax(190px,1fr))" }, list.map(r => h("button", { class: "hf-tpl", type: "button", "data-k": r.base, onclick: () => hftUse(r, true) },
+          HftLive(r), h("span", { class: "hf-tpl-t" }, r.name), r.description ? h("span", { class: "hf-tpl-d" }, r.description) : null,
+          h("span", { class: "hf-tpl-m" }, [hftDur(r), `por ${r.author || "alguien de LIVET"}`, hftUsesTxt(r.uses), HF_FONTS[r.opts?.font] ? HF_FONTS[r.opts.font][0].split(" (")[0] : ""].filter(Boolean).join(" · ")))))
       : h("p", { class: "muted", style: "margin:0" }, "Todavía nadie compartió plantillas. ¡Creá la tuya y compartila para ser la primera persona!")));
 }
 function HfTemplates() {
@@ -4724,7 +4825,7 @@ function HfTemplates() {
       HFT.mine.map(r => h("div", { class: "hf-tpl", "data-k": r.base, role: "group", "aria-label": r.name },
         h("button", { type: "button", class: "linkbtn", style: "all:unset;cursor:pointer;display:grid;gap:4px", onclick: () => hftUse(r, false) },
           hftArt(r), h("span", { class: "hf-tpl-t" }, r.name), r.description ? h("span", { class: "hf-tpl-d" }, r.description) : null,
-          h("span", { class: "hf-tpl-m" }, `${HF_TPL[r.base].dur} s · ${r.is_public ? `compartida${r.uses ? ` · ${r.uses} uso${r.uses > 1 ? "s" : ""}` : ""}` : "privada"}`)),
+          h("span", { class: "hf-tpl-m" }, `${hftDur(r)} · ${r.is_public ? `compartida${r.uses ? ` · ${hftUsesTxt(r.uses)}` : ""}` : "privada"}`)),
         h("div", { class: "hf-tpl-row" },
           h("button", { class: "btn sm ghost", type: "button", onclick: () => hftShare(r).catch(e => toast(errMsg(e))) }, r.is_public ? "Dejar de compartir" : "Compartir"),
           h("button", { class: "btn sm ghost danger", type: "button", "aria-label": "Borrar plantilla", onclick: e => {
@@ -4751,6 +4852,7 @@ function HfCustomize(item) {
   return Card("Personalizar", h("span", { class: "muted", style: "font-size:12px" }, t.name),
     h("div", { class: "card-p hf-form" },
       h("div", { class: "row2" }, F("Formato", fmt), F("Logo", logo)),
+      F("Tipografía", (() => { const f = sel(Object.entries(HF_FONTS).map(([k, v]) => [k, v[0]]), o.font || "impacto"); f.onchange = () => { o.font = f.value; apply(true); }; return f; })()),
       h("div", { class: "row3" }, color("c1", "Acento"), color("c2", "Fondo"), color("c3", "Texto")),
       ...fields,
       F("Web o usuario", (() => { const i = inp({ value: o.url, maxLength: 60 }); i.addEventListener("input", () => { o.url = i.value; apply(); }); return i; })()),
@@ -4833,6 +4935,8 @@ function VideoView() {
         HfAssets(),
         HfBrand(),
         Card("Crear video con IA", null, h("div", { class: "card-p", id: "hf-new", style: "display:grid;gap:12px" },
+          f.recipe ? h("div", { class: "note", style: "display:flex;gap:8px;align-items:center;justify-content:space-between" }, h("span", {}, "Usando tu plantilla ", h("b", {}, f.recipeName || "libre")),
+            h("button", { class: "btn sm ghost", type: "button", "aria-label": "Quitar plantilla", onclick: () => { f.recipe = ""; f.recipeName = ""; render(); } }, "✕")) : null,
           F("¿De qué trata?", idea), h("div", { class: "row2" }, F("Formato", fmt), F("Duración", secs)), F("Estilo", style),
           h("div", {}, h("div", { class: "field" }, "Usar mis recursos"), useAssets),
           aiButton("Generar video", hfGenerate, { cls: "btn primary", ic: "spark" }),
