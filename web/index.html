@@ -1467,7 +1467,7 @@ function LangSelect(cls = "lang-sel", short = false) {
     const go = () => {
       // Lo que se dibujó antes de tener el diccionario (portada, demo) se vuelve a armar ya traducido.
       try { if (state.demo) { trDeep(state.db); for (const k of ["list", "members", "clients", "tasks", "msgs", "demoThreads", "demoFiles"]) if (Co[k]) trDeep(Co[k]); } render(); } catch { /* todavía no arrancó la app */ }
-      i18nWalk(document.body); document.title = tr(document.title);
+      i18nWalk(document.body); document.title = tr(document.title); dispatchEvent(new Event("livet-i18n"));
       new MutationObserver(ms => { for (const m of ms) {
         if (m.type === "characterData") { if (!m.target.parentElement?.closest("[data-no-i18n],[contenteditable=true],textarea")) i18nText(m.target); }
         else if (m.type === "attributes") { if (!m.target.closest("[data-no-i18n]")) i18nEl(m.target); }
@@ -6542,7 +6542,7 @@ function WhoPicker() {
       h("h3", { class: "serif" }, u.label), h("p", { class: "lead" }, u.line),
       h("ul", { class: "who-ex" }, WHO_EX[cur].map(x => h("li", {}, x))),
       h("div", { class: "who-mods" }, u.modules.map(m => h("span", {}, MODULES[m][0]))),
-      h("div", { class: "cta-row" }, h("button", { type: "button", class: "btn primary", onclick: () => enterDemo(cur) }, `Ver la demo como ${u.label.toLowerCase()}`)));
+      h("div", { class: "cta-row" }, h("button", { type: "button", class: "btn primary", onclick: () => enterDemo(cur) }, tr(`Ver la demo como ${tr(u.label).toLowerCase()}`))));
   };
   draw(); return h("div", { class: "who" + "pick" }, tabs, panel);
 }
@@ -6605,12 +6605,15 @@ function HomePage() {
   const fold = (title, ...kids) => h("details", { class: "fold" }, h("summary", {}, title), h("div", {}, ...kids));
   const tag = h("span", { class: "hero-tag" }), h1 = h("h1", {}), lead = h("p", { class: "lead" });
   const copy = h("div", { class: "hero-text", "aria-live": "polite" }, tag, h1, lead);
+  let curK = 0;
   const setCopy = k => {
+    curK = k;
     const c = HERO_COPY[k], parts = /^([\s\S]*?)\*([\s\S]+?)\*([\s\S]*)$/.exec(tr(c.t)) || ["", tr(c.t).replace(/\*/g, ""), "", ""];
     tag.textContent = tr(c.tag); h1.replaceChildren(parts[1], h("span", { class: "mark" }, parts[2]), parts[3]); lead.textContent = tr(c.lead);
     copy.classList.remove("swap"); void copy.offsetWidth; copy.classList.add("swap");
   };
   setCopy(0); copy.classList.remove("swap");
+  if (I18N.lang !== "es" && !I18N.s) addEventListener("livet-i18n", () => { if (copy.isConnected) { setCopy(curK); copy.classList.remove("swap"); } }, { once: true });
   return h("div", {},
     h("section", { class: "hero" },
       h("div", { class: "hero-copy" },
