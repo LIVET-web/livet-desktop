@@ -5579,10 +5579,41 @@ async function plansLoad() {
 function refreshPlans() { if (state.user && state.view === "plans" && document.body.getAttribute("data-screen") === "app") render(); else route(); }
 
 // Abre el pago (Polar). Devuelve false si el cobro todavía no está activado en el servidor.
+// Para que los botones de pago respondan al instante: el servidor se "despierta" al abrir Suscripción,
+// el enlace de pago se prepara mientras la persona mira el resumen y hay un aviso de "abriendo" apenas toca.
+const Pay = { pre: {}, portal: null, warm: false };
+function billingCall(body) {
+  return sb.functions.invoke("billing", { body }).then(async ({ data, error }) => {
+    let b = data; if (error) { try { b = await error.context.json(); } catch { b = null; } } return b;
+  });
+}
+function warmBilling() {
+  if (Pay.warm) return; Pay.warm = true;
+  try { fetch(SUPABASE_URL + "/functions/v1/billing", { method: "OPTIONS" }).catch(() => {}); } catch { /* nada */ }
+}
+function prepCheckout(key) {
+  if (!state.user || state.demo) return;
+  const c = Pay.pre[key]; if (c && Date.now() - c.t < 15 * 60e3) return;
+  Pay.pre[key] = { t: Date.now(), p: billingCall({ action: "checkout", key }).catch(() => null) };
+}
+function prepPortal() {
+  if (!state.user || state.demo || (Pay.portal && Date.now() - Pay.portal.t < 15 * 60e3)) return;
+  Pay.portal = { t: Date.now(), p: billingCall({ action: "portal" }).catch(() => null) };
+}
+function busyOn(msg) {
+  busyOff();
+  document.body.appendChild(h("div", { id: "pay-busy", role: "status", "aria-live": "polite",
+    style: "position:fixed;inset:0;z-index:10000;display:grid;place-items:center;background:rgba(0,0,0,.35);backdrop-filter:blur(2px)" },
+    h("div", { style: "display:flex;gap:12px;align-items:center;padding:16px 22px;border-radius:14px;background:var(--surface);color:var(--text);border:1px solid var(--line-strong);box-shadow:var(--shadow);font-weight:600" },
+      h("span", { class: "ai-dots" }, h("i"), h("i"), h("i")), msg)));
+}
+function busyOff() { document.getElementById("pay-busy")?.remove(); }
+window.addEventListener("pageshow", busyOff); // al volver con "atrás" desde Polar
+
 async function startCheckout(key) {
-  const { data, error } = await sb.functions.invoke("billing", { body: { action: "checkout", key } });
-  let body = data;
-  if (error) { try { body = await error.context.json(); } catch { body = null; } }
+  const c = Pay.pre[key]; delete Pay.pre[key];
+  let body = c && Date.now() - c.t < 15 * 60e3 ? await c.p : null;
+  if (!body?.ok) body = await billingCall({ action: "checkout", key });
   if (body?.ok && body.url) { location.href = body.url; return true; }
   if (body?.code === "not_configured") return false;
   throw new Error(body?.message || "No se pudo abrir el pago. Probá de nuevo.");
@@ -5596,8 +5627,8 @@ function cancelSubscription(p) {
       h("p", { class: "muted" }, end ? `Seguís usando el plan hasta el ${end}. Después tu cuenta pasa al acceso gratuito y conservás todos tus datos.` : "Seguís usando el plan hasta el final del período ya pagado. Después tu cuenta pasa al acceso gratuito y conservás todos tus datos."),
       h("p", { class: "hint" }, "Los pagos ya hechos no son reembolsables.")),
     onSubmit: async () => {
-      const { data, error } = await sb.functions.invoke("billing", { body: { action: "cancel" } });
-      let body = data; if (error) { try { body = await error.context.json(); } catch { body = null; } }
+      busyOn("Cancelando…");
+      const body = await billingCall({ action: "cancel" }).finally(busyOff);
       if (!body?.ok) throw new Error(body?.message || "No se pudo cancelar. Probá desde \"Administrar suscripción\".");
       Plans.sub = { ...Plans.sub, status: "canceling", current_period_end: body.period_end || Plans.sub?.current_period_end };
       Access.sub = Plans.sub; toast("Listo: tu suscripción se cancela al final del período.");
@@ -5610,17 +5641,20 @@ async function syncAfterPayment() {
   Plans.loaded = false; plansLoad();
 }
 async function openPortal() {
+  busyOn("Abriendo tu suscripción…");
   try {
-    const { data, error } = await sb.functions.invoke("billing", { body: { action: "portal" } });
-    let body = data; if (error) { try { body = await error.context.json(); } catch { body = null; } }
+    const c = Pay.portal; Pay.portal = null;
+    let body = c && Date.now() - c.t < 15 * 60e3 ? await c.p : null;
+    if (!body?.ok) body = await billingCall({ action: "portal" });
     if (body?.ok && body.url) { location.href = body.url; return; }
-    toast(body?.message || "No se pudo abrir el panel de tu suscripción.");
-  } catch (e) { toast(errMsg(e)); }
+    busyOff(); toast(body?.message || "No se pudo abrir el panel de tu suscripción.");
+  } catch (e) { busyOff(); toast(errMsg(e)); }
 }
 async function rechargeCredits() {
   if (!state.user) { navTo("entrar"); return; }
   if (state.demo) { toast("En la demo no se cobra. Creá una cuenta para recargar."); return; }
-  try { if (!(await startCheckout("pack100"))) toast("El pago todavía no está activado. Te avisamos cuando lo esté."); } catch (e) { toast(errMsg(e)); }
+  busyOn("Abriendo el pago seguro…");
+  try { if (!(await startCheckout("pack100"))) { busyOff(); toast("El pago todavía no está activado. Te avisamos cuando lo esté."); } } catch (e) { busyOff(); toast(errMsg(e)); }
 }
 async function requestPlan(p) {
   if (!state.user) { navTo("entrar"); return; }
@@ -5628,12 +5662,14 @@ async function requestPlan(p) {
   if (Plans.busy) return; Plans.busy = true;
   try {
     // Si el cobro está activado, va directo al pago; si no, se registra el pedido de acceso.
+    busyOn("Abriendo el pago seguro…");
     if (await startCheckout(`${p.id}-${Plans.billing === "anual" ? "anual" : "mensual"}`)) { Plans.busy = false; return; }
+    busyOff();
     const { error } = await sb.from("plan_interest").upsert({ user_id: state.user.id, tier: p.id, billing: Plans.billing === "anual" ? "anual" : "mensual" }, { onConflict: "user_id" });
     if (error) throw error;
     Plans.interest = { tier: p.id, billing: Plans.billing === "anual" ? "anual" : "mensual" };
     toast(`Listo: te avisamos cuando el plan ${p.name} esté disponible.`);
-  } catch (e) { toast(errMsg(e)); }
+  } catch (e) { busyOff(); toast(errMsg(e)); }
   Plans.busy = false; refreshPlans();
 }
 async function cancelInterest() {
@@ -5646,6 +5682,7 @@ async function cancelInterest() {
 function planCheckout(p) {
   if (!state.user) { requestPlan(p); return; }
   const yearly = Plans.billing === "anual", total = yearly ? p.year : p.month;
+  prepCheckout(`${p.id}-${yearly ? "anual" : "mensual"}`); // se prepara mientras mira el resumen
   const go = h("button", { class: "btn primary lg co-go", type: "button", onclick: async e => {
     const b = e.currentTarget; b.disabled = true; b.replaceChildren(h("span", { class: "ai-dots" }, h("i"), h("i"), h("i")), "Abriendo el pago");
     $("#dlg").close(); await requestPlan(p); } }, "Confirmar y pagar ", h("b", {}, usd(total)), " →");
@@ -5739,7 +5776,8 @@ function CreditsCard() {
       h("span", {}, h("b", {}, "Recarga automática. "), `Cuando te queden 10 créditos, te mostramos un aviso con un botón para recargar ${PACK.credits} créditos por ${usd(PACK.usd)}. El cobro automático sin tocar nada todavía no está disponible.`))));
 }
 function PlansView() {
-  plansLoad();
+  plansLoad(); warmBilling();
+  if (Plans.sub && Plans.sub.status !== "canceled") prepPortal();
   return h("div", {}, PageHead("Suscripción", "Elegí tu plan."), CreditsCard(), h("div", { style: "height:16px" }), PlansBody());
 }
 VIEWS.plans = PlansView;
