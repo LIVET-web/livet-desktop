@@ -1464,7 +1464,10 @@ function LangSelect(cls = "lang-sel", short = false) {
     if (!d) return;
     I18N.s = d.s || {};
     I18N.p = (d.p || []).map(([a, b]) => [new RegExp("^" + a.split(/\{\d+\}/).map(x => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("(.+?)") + "$"), b, [...a.matchAll(/\{(\d+)\}/g)].map(m => +m[1])]);
-    const go = () => { i18nWalk(document.body); document.title = tr(document.title);
+    const go = () => {
+      // Lo que se dibujó antes de tener el diccionario (portada, demo) se vuelve a armar ya traducido.
+      try { if (state.demo) { trDeep(state.db); for (const k of ["list", "members", "clients", "tasks", "msgs", "demoThreads", "demoFiles"]) if (Co[k]) trDeep(Co[k]); } render(); } catch { /* todavía no arrancó la app */ }
+      i18nWalk(document.body); document.title = tr(document.title);
       new MutationObserver(ms => { for (const m of ms) {
         if (m.type === "characterData") { if (!m.target.parentElement?.closest("[data-no-i18n],[contenteditable=true],textarea")) i18nText(m.target); }
         else if (m.type === "attributes") { if (!m.target.closest("[data-no-i18n]")) i18nEl(m.target); }
