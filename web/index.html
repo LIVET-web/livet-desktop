@@ -1604,10 +1604,29 @@ function evSpan(e) {
   } else end = isoDay(new Date(new Date(e.ends_at).getTime() - 1));
   return [start, end < start ? start : end];
 }
-const evOnDay = (e, d) => { const [a, b] = evSpan(e); return d >= a && d <= b; };
+// Eventos que se repiten (cada semana, mes o año): devuelve el inicio y fin de la repetición que cae en el día d.
+const REPEAT_LBL = { weekly: "Cada semana", monthly: "Cada mes", yearly: "Cada año" };
+const dayN = s => Math.round(new Date(s + "T12:00").getTime() / 864e5);
+const dayS = n => ymd(new Date(n * 864e5));
+function evOcc(e, d) {
+  const [a, b] = evSpan(e);
+  if (d >= a && d <= b) return [a, b];
+  if (!e.repeat || d < a) return null;
+  const dur = dayN(b) - dayN(a);
+  for (let back = 0; back <= dur; back++) {
+    const s = dayS(dayN(d) - back);
+    if (s <= a) break;
+    const ok = e.repeat === "weekly" ? (dayN(s) - dayN(a)) % 7 === 0
+      : e.repeat === "monthly" ? s.slice(8) === a.slice(8)
+      : s.slice(5) === a.slice(5);
+    if (ok) return [s, dayS(dayN(s) + dur)];
+  }
+  return null;
+}
+const evOnDay = (e, d) => !!evOcc(e, d);
 // Hora a mostrar en un día: el primero muestra el inicio, los siguientes dicen hasta cuándo sigue.
 function evLabel(e, d) {
-  const [a, b] = evSpan(e);
+  const [a, b] = evOcc(e, d) || evSpan(e);
   if (a === b) return e.all_day ? "Todo el día" : fmtTime(e.starts_at);
   if (d === a) return e.all_day ? "Desde hoy" : "Desde " + fmtTime(e.starts_at);
   if (d === b) return e.all_day ? "Último día" : "Hasta " + fmtTime(e.ends_at);
@@ -2645,6 +2664,7 @@ function EventDialog(ev, preset = {}) {
   const st = inp({ type: "time", value: ev && !ev.all_day ? fmtTime(ev.starts_at) : "09:00" });
   const en = inp({ type: "time", value: ev?.ends_at && !ev.all_day ? fmtTime(ev.ends_at) : "" });
   const notes = ta(ev?.notes);
+  const repeat = sel([["", "No se repite"], ["weekly", "Cada 1 semana"], ["monthly", "Cada 1 mes"], ["yearly", "Cada 1 año"]], ev?.repeat || "", { "aria-label": "Repetir" });
   const sw = Swatches("e-color", ev?.color);
   const times = h("div", { class: "row2" }, F("Hora de inicio", st), F("Hora de fin (opcional)", en));
   const sync = () => times.classList.toggle("hidden", allDay.checked);
@@ -2662,7 +2682,7 @@ function EventDialog(ev, preset = {}) {
     title: ev ? "Editar evento" : "Nuevo evento",
     body: [F("Título", title), h("div", { class: "row2" }, F("Fecha de inicio", date), F("Fecha de fin", dateEnd)),
       h("label", { style: "display:flex;gap:8px;align-items:center" }, allDay, "Todo el día"), times,
-      F("Notas", notes), h("div", {}, h("label", { class: "field" }, "Color"), sw), shareBox],
+      F("Repetir", repeat), F("Notas", notes), h("div", {}, h("label", { class: "field" }, "Color"), sw), shareBox],
     onDelete: ev ? () => Store.remove("events", ev.id) : null,
     onSubmit: async () => {
       const t = title.value.trim(); if (!t) throw new Error("Escribí el título del evento."); if (!date.value) throw new Error("Elegí una fecha.");
@@ -2672,10 +2692,10 @@ function EventDialog(ev, preset = {}) {
       let ends = null;
       if (all) { if (endDay > date.value) ends = new Date(`${endDay}T00:00`); }
       else if (en.value || endDay > date.value) { ends = new Date(`${endDay}T${en.value || st.value || "09:00"}`); if (ends < starts) throw new Error("El fin no puede ser anterior al inicio."); }
-      const p = { title: t, starts_at: starts.toISOString(), ends_at: ends ? ends.toISOString() : null, all_day: all, notes: notes.value.trim() || null, color: swatchValue(sw, "e-color") };
+      const p = { title: t, starts_at: starts.toISOString(), ends_at: ends ? ends.toISOString() : null, all_day: all, notes: notes.value.trim() || null, color: swatchValue(sw, "e-color"), repeat: repeat.value || null };
       if (share.checked) {
         const cid = coSel.value || cos[0][0];
-        const { data, error } = await sb.from("company_events").insert({ company_id: cid, title: t, starts_at: p.starts_at, ends_at: p.ends_at, all_day: all, notes: p.notes, created_by: state.user.id }).select().single();
+        const { data, error } = await sb.from("company_events").insert({ company_id: cid, title: t, starts_at: p.starts_at, ends_at: p.ends_at, all_day: all, notes: p.notes, repeat: p.repeat, created_by: state.user.id }).select().single();
         if (error) throw error;
         Ext.team.push(data);
         if (ev) await Store.remove("events", ev.id); // pasa a ser del equipo: no queda repetido
@@ -2696,14 +2716,14 @@ function DayColumn(d, opts) {
     h("div", { class: "day-b" },
       evs.map(e => h("button", { class: "item ev", type: "button", onclick: () => EventDialog(e) },
         h("span", { class: "it-t" }, e.title),
-        h("span", { class: "it-m" }, h("span", { class: "dot", style: `--c:${e.color}` }), evLabel(e, d)))),
+        h("span", { class: "it-m" }, h("span", { class: "dot", style: `--c:${e.color}` }), evLabel(e, d), e.repeat ? h("span", { title: REPEAT_LBL[e.repeat] }, " ↻") : null))),
       cts.map(c => h("button", { class: "item ct", type: "button", onclick: () => ContentDialog(c) },
         h("span", { class: "it-t" }, c.title),
         h("span", { class: "it-m" }, Plat(c.platform), fmtTime(c.publish_at), StatusPill(c.status)))),
       tks.map(t => h("button", { class: "item tk", type: "button", onclick: () => TaskDialog(t) },
         h("span", { class: "it-t" }, t.title), h("span", { class: "it-m" }, "Tarea · " + PRI[t.priority]))),
       Ext.team.filter(e => evOnDay(e, d)).sort(byStart).map(e => h("button", { class: "item team", type: "button", onclick: () => TeamEventDialog(e) },
-        h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, icon("team"), evLabel(e, d) + " · " + (Ext.coNames[e.company_id] || "Equipo")))),
+        h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, icon("team"), evLabel(e, d) + " · " + (Ext.coNames[e.company_id] || "Equipo") + (e.repeat ? " ↻" : "")))),
       Ext.coTasks.filter(t => t.due_date === d).map(t => h("button", { class: "item tk team", type: "button", onclick: () => { Co.cur = t.company_id; Co.loaded = false; Co.tab = "tareas"; go("company"); } },
         h("span", { class: "it-t" }, t.title), h("span", { class: "it-m" }, icon("team"), "Tarea · " + (Ext.coNames[t.company_id] || "Empresa") + (t.status === "corregir" ? " · a corregir" : "")))),
       Ext.mac.filter(e => evOnDay(e, d)).sort(byStart).map(e => h("button", { class: "item ext mac", type: "button", style: `--mc:${e.color || "#9aa4ad"}`, onclick: () => ExtEventDialog(e) },
@@ -2746,7 +2766,7 @@ async function extLoad(force) {
     const from = new Date(Date.now() - 60 * 864e5).toISOString(), to = new Date(Date.now() + 240 * 864e5).toISOString();
     const [cals, team, cos, ctk] = await Promise.all([
       sb.from("external_calendars").select("id,name,url").order("created_at"),
-      sb.from("company_events").select("id,company_id,title,starts_at,ends_at,all_day,place,notes,created_by").gte("starts_at", from).lte("starts_at", to).limit(2000),
+      sb.from("company_events").select("id,company_id,title,starts_at,ends_at,all_day,place,notes,created_by,repeat").or(`starts_at.gte."${from}",repeat.not.is.null`).lte("starts_at", to).limit(2000),
       sb.from("companies").select("id,name"),
       // Solo de la empresa hacia tu calendario: tareas de la empresa asignadas a vos, sin terminar.
       sb.from("company_tasks").select("id,company_id,title,due_date,status").eq("assignee_id", state.user.id).in("status", ["pendiente", "corregir"]).not("due_date", "is", null).gte("due_date", from.slice(0, 10)).lte("due_date", to.slice(0, 10)).limit(1000),
@@ -2796,11 +2816,12 @@ function TeamEventDialog(ev, preset = {}) {
   const notes = ta(ev?.notes);
   const times = h("div", { class: "row2" }, F("Hora de inicio", st), F("Hora de fin", en));
   allDay.onchange = () => times.classList.toggle("hidden", allDay.checked); allDay.onchange();
+  const repeat = sel([["", "No se repite"], ["weekly", "Cada 1 semana"], ["monthly", "Cada 1 mes"], ["yearly", "Cada 1 año"]], ev?.repeat || "", { "aria-label": "Repetir" });
   const mine = !ev || ev.created_by === state.user?.id || state.demo || Co.boss();
   modal({
     title: ev ? (mine ? "Editar evento" : ev.title) : "Nuevo evento del equipo",
     body: [h("p", { class: "hint" }, "La ve todo el equipo" + (Ext.coNames[cid] || Co.company()?.name ? " de " + (Ext.coNames[cid] || Co.company()?.name) : "") + ", también en su celular."),
-      F("Qué es", title), h("div", { class: "row2" }, F("Fecha de inicio", date), F("Fecha de fin", dateEnd)), h("label", { style: "display:flex;gap:8px;align-items:center" }, allDay, "Todo el día"), times, F("Dónde (opcional)", place), F("Notas (opcional)", notes)],
+      F("Qué es", title), h("div", { class: "row2" }, F("Fecha de inicio", date), F("Fecha de fin", dateEnd)), h("label", { style: "display:flex;gap:8px;align-items:center" }, allDay, "Todo el día"), times, F("Repetir", repeat), F("Dónde (opcional)", place), F("Notas (opcional)", notes)],
     submit: mine ? "Guardar" : undefined, hideSubmit: !mine,
     onDelete: ev && mine ? async () => { if (!state.demo) { const { error } = await sb.from("company_events").delete().eq("id", ev.id); if (error) throw error; } Ext.team = Ext.team.filter(x => x.id !== ev.id); } : null,
     onSubmit: async () => {
@@ -2811,7 +2832,7 @@ function TeamEventDialog(ev, preset = {}) {
       let ends = null;
       if (all) { if (endDay > date.value) ends = new Date(`${endDay}T00:00:00Z`); }
       else if (en.value || endDay > date.value) { ends = new Date(`${endDay}T${en.value || st.value || "10:00"}`); if (ends < starts) throw new Error("El fin no puede ser anterior al inicio."); }
-      const row = { title: t, starts_at: starts.toISOString(), ends_at: ends ? ends.toISOString() : null, all_day: all, place: place.value.trim() || null, notes: notes.value.trim() || null };
+      const row = { title: t, starts_at: starts.toISOString(), ends_at: ends ? ends.toISOString() : null, all_day: all, place: place.value.trim() || null, notes: notes.value.trim() || null, repeat: repeat.value || null };
       if (state.demo) {
         if (ev) Object.assign(ev, row); else Ext.team.push({ id: "d" + Date.now(), company_id: cid, created_by: Co.uid(), ...row });
       } else if (ev) {
