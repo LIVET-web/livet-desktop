@@ -5787,7 +5787,7 @@ function profileDone() {
 
 /* ------------------------- Notificaciones ------------------------- */
 // Avisos de la empresa (mensajes, tareas, eventos, gente nueva), felicitaciones del mes y recordatorios semanales.
-const NOTIF_IC = { message: "chat", task: "check", event: "cal", team: "team", cheer: "star", tip: "spark" };
+const NOTIF_IC = { message: "chat", task: "check", event: "cal", team: "team", cheer: "star", tip: "spark", reminder: "bell", announce: "bell" };
 const Notif = {
   list: [], unread: 0, timer: null, lastTop: null, loaded: false,
   async load() {
@@ -5828,6 +5828,43 @@ const Notif = {
     else if (l.view) go(l.view); else render();
   },
 };
+async function NewNotifDialog() {
+  if (state.demo) return toast("En la demo no se crean avisos reales. Creá tu cuenta para usarlo.");
+  // A quién: yo siempre; si sos dueño o jefe, tu equipo entero o una persona.
+  const opts = [["me", "Para mí (recordatorio)"]], coOf = {};
+  try {
+    const mine = await sb.from("company_members").select("company_id,role").eq("user_id", state.user.id).in("role", ["owner", "jefe"]);
+    const cids = (mine.data || []).map(r => r.company_id);
+    if (cids.length) {
+      const [cos, mem] = await Promise.all([sb.from("companies").select("id,name").in("id", cids), sb.from("company_members").select("company_id,user_id,display_name").in("company_id", cids).order("display_name")]);
+      for (const c of cos.data || []) {
+        const others = (mem.data || []).filter(m => m.company_id === c.id && m.user_id !== state.user.id);
+        if (!others.length) continue;
+        opts.push(["team:" + c.id, `Todo el equipo de ${c.name}`]);
+        others.forEach(m => opts.push([m.user_id + ":" + c.id, `${m.display_name} (${c.name})`]));
+      }
+    }
+  } catch { /* solo "para mí" */ }
+  const to = sel(opts, "me", { "aria-label": "Para quién" });
+  const title = inp({ required: true, maxLength: 120, placeholder: "Ej: Llamar al contador, Reunión mañana 10 h" });
+  const body = ta(""); body.maxLength = 500; body.placeholder = "Detalle (opcional)";
+  const when = sel([["now", "Ahora"], ["later", "Programar fecha y hora"]], "now", { "aria-label": "Cuándo" });
+  const d = inp({ type: "date", value: today() }), t = inp({ type: "time", value: new Date(Date.now() + 3600000).toTimeString().slice(0, 5) });
+  const dt = h("div", { class: "row2 hidden" }, F("Día", d), F("Hora", t));
+  when.onchange = () => dt.classList.toggle("hidden", when.value !== "later");
+  modal({ title: "Nueva notificación", submit: "Crear", body: [F("Para", to), F("Título", title), F("Texto", body), F("Cuándo", when), dt,
+    h("p", { class: "hint" }, "Llega a la bandeja de Notificaciones (y como aviso de la compu, si lo activaste). Las programadas aparecen a esa hora.")],
+    onSubmit: async () => {
+      const ti = title.value.trim(); if (!ti) throw new Error("Poné un título.");
+      let at = null;
+      if (when.value === "later") { at = new Date(`${d.value}T${t.value || "09:00"}`); if (isNaN(at) || at < new Date()) throw new Error("Elegí un día y hora que todavía no pasaron."); }
+      const [who, cid] = to.value === "me" ? ["me", null] : to.value.split(":");
+      const { data, error } = await sb.rpc("create_notification", { p_to: who, p_company: cid, p_title: ti, p_body: body.value, p_at: at ? at.toISOString() : null });
+      if (error) throw error;
+      toast(at ? `Programada para el ${fmtShort(d.value)} a las ${t.value}` : who === "me" ? "Notificación creada" : `Enviada a ${data} persona${data > 1 ? "s" : ""}`);
+      Notif.load();
+    } });
+}
 function ago(iso) {
   const m = Math.round((Date.now() - new Date(iso)) / 60000);
   if (m < 1) return "recién"; if (m < 60) return `hace ${m} min`;
@@ -5843,6 +5880,7 @@ function NotificationsView() {
   const ask = can && perm === "default" && !state.demo ? h("button", { class: "btn", type: "button", onclick: async () => { try { await Notification.requestPermission(); } catch { /* nada */ } render(); } }, icon("bell"), "Avisarme en esta compu") : null;
   return h("div", {},
     PageHead("Notificaciones", "Lo que pasa en tu empresa y algún que otro aliento.",
+      h("button", { class: "btn primary", type: "button", onclick: NewNotifDialog }, icon("plus"), "Nueva notificación"),
       ask, Notif.unread ? h("button", { class: "btn", type: "button", onclick: () => Notif.markRead(Notif.list.filter(n => !n.read_at).map(n => n.id)).then(render) }, icon("check"), "Marcar todo como leído") : null),
     perm === "granted" ? h("p", { class: "hint", style: "margin-bottom:12px" }, "Los avisos de esta compu están activados: te llegan aunque tengas la app en segundo plano.") : null,
     list.length ? Card(null, null, h("div", {}, list.map(n => h("button", { type: "button", class: "notif" + (n.read_at ? "" : " unread"), onclick: () => state.demo ? toast("En la demo es solo un ejemplo.") : Notif.open(n) },
