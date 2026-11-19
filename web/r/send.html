@@ -1,0 +1,8 @@
+<!doctype html><meta charset="utf-8"><title>LIVET · envío</title><body style="font:16px system-ui;background:#111315;color:#fff;padding:24px">
+<p id="s">Preparando…</p>
+<script>
+(async()=>{const s=document.getElementById('s');const f=new URLSearchParams(location.search).get('f')||'maquina-a.mp4';
+if(!/^[\w.-]+\.mp4$/.test(f)){s.textContent='Archivo inválido';return}
+const b=await (await fetch(f)).blob();s.textContent='Listo: '+f+' ('+b.size+' bytes)';
+if(window.opener){window.opener.postMessage({livetVideo:b,name:f},'https://www.instagram.com');s.textContent+=' · enviado';}else s.textContent+=' · sin ventana de origen';})();
+</script>
