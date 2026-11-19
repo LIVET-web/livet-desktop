@@ -634,6 +634,8 @@ button.ccard:hover{border-color:var(--accent)}
 .msg-b b{font-size:12px;color:var(--muted)}
 .msg-b p{white-space:pre-wrap;overflow-wrap:anywhere}
 .msg-b small{display:block;font-size:11px;color:var(--muted);text-align:right}
+.msg-b .tick{font-weight:600;letter-spacing:-.5px}
+.msg-b .tick.seen{color:#3b9eff}
 .chat-form{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line)}
 .chat-form .input{flex:1;min-width:0}
 /* tablero de la portada */
@@ -2647,11 +2649,20 @@ function EventDialog(ev, preset = {}) {
   const times = h("div", { class: "row2" }, F("Hora de inicio", st), F("Hora de fin (opcional)", en));
   const sync = () => times.classList.toggle("hidden", allDay.checked);
   allDay.onchange = sync; sync();
+  // Compartir con la empresa: el evento pasa al calendario del equipo (y lo seguís viendo en el tuyo, en violeta).
+  const cos = Object.entries(Ext.coNames || {});
+  const share = h("input", { type: "checkbox", id: "e-share" });
+  const coSel = sel(cos.map(([id, n]) => [id, n]), cos[0]?.[0] || "", { "aria-label": "Empresa" });
+  const coWrap = h("div", { class: "hidden" }, cos.length > 1 ? F("¿Con qué empresa?", coSel) : null,
+    h("p", { class: "hint" }, "Lo ve todo el equipo y les llega una notificación. Lo seguís viendo en tu calendario, en violeta."));
+  share.onchange = () => coWrap.classList.toggle("hidden", !share.checked);
+  const shareBox = cos.length && !state.demo ? h("div", { class: "card", style: "padding:12px 14px;display:grid;gap:8px;border-color:#8b5cf6" },
+    h("label", { style: "display:flex;gap:8px;align-items:center;font-weight:600" }, share, icon("team"), cos.length > 1 ? "COMPARTIR CON EMPRESA" : `COMPARTIR CON ${String(cos[0][1]).toUpperCase()}`), coWrap) : null;
   modal({
     title: ev ? "Editar evento" : "Nuevo evento",
     body: [F("Título", title), h("div", { class: "row2" }, F("Fecha de inicio", date), F("Fecha de fin", dateEnd)),
       h("label", { style: "display:flex;gap:8px;align-items:center" }, allDay, "Todo el día"), times,
-      F("Notas", notes), h("div", {}, h("label", { class: "field" }, "Color"), sw)],
+      F("Notas", notes), h("div", {}, h("label", { class: "field" }, "Color"), sw), shareBox],
     onDelete: ev ? () => Store.remove("events", ev.id) : null,
     onSubmit: async () => {
       const t = title.value.trim(); if (!t) throw new Error("Escribí el título del evento."); if (!date.value) throw new Error("Elegí una fecha.");
@@ -2662,6 +2673,15 @@ function EventDialog(ev, preset = {}) {
       if (all) { if (endDay > date.value) ends = new Date(`${endDay}T00:00`); }
       else if (en.value || endDay > date.value) { ends = new Date(`${endDay}T${en.value || st.value || "09:00"}`); if (ends < starts) throw new Error("El fin no puede ser anterior al inicio."); }
       const p = { title: t, starts_at: starts.toISOString(), ends_at: ends ? ends.toISOString() : null, all_day: all, notes: notes.value.trim() || null, color: swatchValue(sw, "e-color") };
+      if (share.checked) {
+        const cid = coSel.value || cos[0][0];
+        const { data, error } = await sb.from("company_events").insert({ company_id: cid, title: t, starts_at: p.starts_at, ends_at: p.ends_at, all_day: all, notes: p.notes, created_by: state.user.id }).select().single();
+        if (error) throw error;
+        Ext.team.push(data);
+        if (ev) await Store.remove("events", ev.id); // pasa a ser del equipo: no queda repetido
+        toast(`Compartido con ${Ext.coNames[cid] || "la empresa"}`);
+        return;
+      }
       if (ev) await Store.update("events", ev.id, p); else await Store.add("events", p);
       toast("Guardado");
     },
@@ -5187,7 +5207,7 @@ const Co = {
   chatWith: null, filterWho: "all", loaded: false, loading: false, err: "", timer: null,
   demoUser: null, demoThreads: {}, demoFiles: {},
   reset() { Co.stop(); Object.assign(Co, { list: [], cur: null, tab: "tareas", me: null, members: [], clients: [], tasks: [], invites: [], msgs: [],
-    chatWith: null, filterWho: "all", loaded: false, loading: false, err: "", demoUser: null, demoThreads: {}, demoFiles: {}, clientFilter: null, setupHidden: false }); },
+    chatWith: null, filterWho: "all", loaded: false, loading: false, err: "", demoUser: null, demoThreads: {}, demoFiles: {}, clientFilter: null, setupHidden: false, seen: [], seenSig: "" }); },
   stop() { if (Co.timer) { clearInterval(Co.timer); Co.timer = null; } },
   uid() { return state.demo ? Co.demoUser : state.user?.id; },
   boss() { return !!Co.me && (Co.me.role === "owner" || Co.me.role === "jefe"); },
@@ -5686,6 +5706,20 @@ function chatThread() {
   return Co.msgs.filter(m => w ? ((m.sender_id === me && m.recipient_id === w) || (m.sender_id === w && m.recipient_id === me)) : !m.recipient_id)
     .sort((a, b) => a.created_at.localeCompare(b.created_at));
 }
+// Tics: ✓ enviado · ✓✓ visto (en privado) o "visto por N" (en el general).
+const ZERO = "00000000-0000-0000-0000-000000000000";
+function seenTick(m) {
+  if (state.demo) return h("span", { class: "tick seen", title: "Visto" }, " ✓✓");
+  const seen = Co.seen || [], t = m.created_at;
+  if (m.recipient_id) {
+    const ok = seen.some(r => r.user_id === m.recipient_id && r.peer === m.sender_id && r.last_seen_at >= t);
+    return h("span", { class: "tick" + (ok ? " seen" : ""), title: ok ? "Visto" : "Enviado" }, ok ? " ✓✓ Visto" : " ✓");
+  }
+  const others = Co.members.filter(x => x.user_id !== m.sender_id).length;
+  const n = seen.filter(r => r.peer === ZERO && r.user_id !== m.sender_id && r.last_seen_at >= t).length;
+  if (!n) return h("span", { class: "tick", title: "Enviado" }, " ✓");
+  return h("span", { class: "tick seen", title: "Visto" }, n >= others ? " ✓✓ Visto" + (others > 1 ? " por todos" : "") : ` ✓✓ Visto por ${n}`);
+}
 function ChatTab() {
   const me = Co.uid();
   const log = h("div", { class: "chat-log", role: "log", "aria-live": "polite", "aria-label": "Mensajes", tabindex: "0" });
@@ -5693,7 +5727,7 @@ function ChatTab() {
     const items = chatThread();
     const near = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
     log.replaceChildren(...(items.length ? items.map(m => h("div", { class: "msg-b" + (m.sender_id === me ? " mine" : "") },
-      m.sender_id === me ? null : h("b", {}, Co.name(m.sender_id)), h("p", {}, m.body), h("small", {}, stamp(m.created_at))))
+      m.sender_id === me ? null : h("b", {}, Co.name(m.sender_id)), h("p", {}, m.body), h("small", {}, stamp(m.created_at), m.sender_id === me ? seenTick(m) : null)))
       : [h("p", { class: "muted" }, Co.chatWith ? "Todavía no hay mensajes con esta persona." : "Todavía no hay mensajes en el chat general.")]));
     if (stick || near) log.scrollTop = log.scrollHeight;
   };
@@ -5710,11 +5744,15 @@ function ChatTab() {
     Pill("General", !Co.chatWith, () => { Co.chatWith = null; render(); }),
     Co.members.filter(m => m.user_id !== me).map(m => Pill(m.display_name, Co.chatWith === m.user_id, () => { Co.chatWith = m.user_id; render(); })));
   if (!state.demo) {
+    const markSeen = () => { if (document.visibilityState === "visible") sb.rpc("chat_seen", { p_company: Co.cur, p_peer: Co.chatWith || null }).then(() => Notif.load(), () => {}); };
+    const loadSeen = async () => { const { data } = await sb.from("company_chat_seen").select("user_id,peer,last_seen_at").eq("company_id", Co.cur); if (data) { const sig = JSON.stringify(data); if (sig !== Co.seenSig) { Co.seenSig = sig; Co.seen = data; paint(false); } } };
+    markSeen(); loadSeen();
     Co.timer = setInterval(async () => {
+      loadSeen();
       try {
         const last = Co.msgs.length ? Co.msgs[Co.msgs.length - 1].created_at : "1970-01-01";
         const { data } = await sb.from("company_messages").select("*").eq("company_id", Co.cur).gt("created_at", last).order("created_at");
-        if (data?.length) { const seen = new Set(Co.msgs.map(m => m.id)); const fresh = data.filter(m => !seen.has(m.id)); if (fresh.length) { Co.msgs.push(...fresh); paint(false); } }
+        if (data?.length) { const seen = new Set(Co.msgs.map(m => m.id)); const fresh = data.filter(m => !seen.has(m.id)); if (fresh.length) { Co.msgs.push(...fresh); paint(false); markSeen(); } }
       } catch { /* se reintenta en el próximo ciclo */ }
     }, 5000);
   }
@@ -5813,8 +5851,8 @@ const Notif = {
   start() {
     this.stop(); this.lastTop = null;
     try { const q = new URLSearchParams(location.search); if (q.has("notif")) { q.delete("notif"); history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash); setTimeout(() => go("notifications"), 0); } } catch { /* nada */ }
-    this.load(); setTimeout(() => pushAutoPrompt().catch(() => {}), 2500); this.timer = setInterval(() => this.load(), 30000); document.addEventListener("visibilitychange", Notif.onVis); },
-  stop() { clearInterval(this.timer); this.timer = null; this.list = []; this.unread = 0; this.loaded = false; document.removeEventListener("visibilitychange", Notif.onVis); try { document.title = "LIVET Work"; } catch { /* nada */ } },
+    this.load(); setTimeout(() => pushAutoPrompt().catch(() => {}), 2500); clearTimeout(Notif.instT); Notif.instT = setTimeout(() => installAutoPrompt().catch(() => {}), 3 * 60000); this.timer = setInterval(() => this.load(), 30000); document.addEventListener("visibilitychange", Notif.onVis); },
+  stop() { clearInterval(this.timer); clearTimeout(this.instT); this.timer = null; this.list = []; this.unread = 0; this.loaded = false; document.removeEventListener("visibilitychange", Notif.onVis); try { document.title = "LIVET Work"; } catch { /* nada */ } },
   onVis() { if (document.visibilityState === "visible") Notif.load(); },
   system(n) {
     try { if (!("Notification" in window) || Notification.permission !== "granted") return;
@@ -5936,6 +5974,50 @@ async function pushAutoPrompt() {
           : "Mensajes del equipo, tareas, recordatorios y felicitaciones, aunque tengas LIVET cerrado.")),
     h("div", { style: "display:flex;gap:8px;justify-content:flex-end" }, h("button", { type: "button", class: "btn", onclick: () => close(7) }, "Ahora no"), yes));
   document.body.appendChild(bar);
+}
+/* ----- Instalar LIVET como app (ícono en el celular y en la Mac), unos minutos después de entrar ----- */
+let installEvt = null;
+try { addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; }); addEventListener("appinstalled", () => { installEvt = null; document.getElementById("install-bar")?.remove(); }); } catch { /* nada */ }
+const INSTALL_SNOOZE = "livet-install-snooze";
+const isMac = () => /Macintosh/i.test(navigator.userAgent) && !isIOS();
+const isSafari = () => /^((?!chrome|android|crios|fxios|edg).)*safari/i.test(navigator.userAgent);
+async function installAutoPrompt() {
+  if (state.demo || !state.user || isDesktopApp() || isStandalone()) return;
+  try { if (+localStorage.getItem(INSTALL_SNOOZE) > Date.now()) return; } catch { /* nada */ }
+  for (let i = 0; i < 300 && (document.getElementById("push-bar") || document.getElementById("ads-bar") || $("#dlg").open); i++) await new Promise(r => setTimeout(r, 1000));
+  if (!state.user || document.getElementById("install-bar")) return;
+  const android = /android/i.test(navigator.userAgent), phone = android || isIOS();
+  let text, btn;
+  if (installEvt) { text = phone ? "Tené LIVET como app en tu celular: un toque desde la pantalla de inicio, sin buscar la página." : "Instalá LIVET en tu compu: se abre en su propia ventana, como cualquier app.";
+    btn = ["Instalar", async () => { const e = installEvt; installEvt = null; try { await e.prompt(); const r = await e.userChoice; if (r?.outcome === "accepted") toast("¡Listo! LIVET quedó instalado."); } catch { /* nada */ } bar.remove(); }]; }
+  else if (isIOS()) { text = "Agregá LIVET a la pantalla de inicio: se abre como app y te llegan los avisos.";
+    btn = ["Cómo hacerlo", () => { bar.remove(); InstallHelp("ios"); }]; }
+  else if (isMac()) { text = "Tené LIVET en tu Mac como app: en el Dock y con avisos.";
+    btn = ["Ver cómo", () => { bar.remove(); InstallHelp("mac"); }]; }
+  else if (android) { text = "Agregá LIVET a la pantalla de inicio de tu celular, como una app.";
+    btn = ["Cómo hacerlo", () => { bar.remove(); InstallHelp("android"); }]; }
+  else { text = "Descargá LIVET para tu compu y tenelo siempre a mano.";
+    btn = ["Descargar", () => { bar.remove(); navTo("descargar"); }]; }
+  const snooze = days => { try { localStorage.setItem(INSTALL_SNOOZE, String(Date.now() + days * 864e5)); } catch { /* nada */ } bar.remove(); };
+  const bar = h("div", { id: "install-bar", role: "dialog", "aria-label": "Instalar LIVET",
+    style: "position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:9997;max-width:520px;margin:0 auto;padding:14px 16px;border-radius:14px;background:var(--surface);color:var(--text);border:1px solid var(--line-strong);box-shadow:var(--shadow);display:grid;gap:10px;font-size:14px;line-height:1.4" },
+    h("div", { style: "display:flex;gap:12px;align-items:center" }, h("img", { src: "/icon-192.png", alt: "", width: 40, height: 40, style: "border-radius:10px;flex:none" }),
+      h("span", {}, h("b", {}, phone ? "Llevá LIVET en tu celular" : "Llevá LIVET en tu compu"), h("br"), text)),
+    h("div", { style: "display:flex;gap:8px;justify-content:flex-end" }, h("button", { type: "button", class: "btn", onclick: () => snooze(10) }, "Ahora no"),
+      h("button", { type: "button", class: "btn primary", onclick: btn[1] }, btn[0])));
+  document.body.appendChild(bar);
+}
+function InstallHelp(kind) {
+  const steps = {
+    ios: ["Abrí app.livet.work en Safari.", "Tocá Compartir (el cuadrado con la flecha hacia arriba).", "Elegí «Agregar a pantalla de inicio» y tocá Agregar.", "Abrí LIVET desde el ícono nuevo."],
+    android: ["Abrí app.livet.work en Chrome.", "Tocá el menú ⋮ (arriba a la derecha).", "Elegí «Instalar app» o «Agregar a la pantalla principal».", "Listo: LIVET aparece con su ícono."],
+    mac: isSafari() ? ["En Safari, con LIVET abierto, andá al menú Archivo.", "Elegí «Agregar al Dock…» y tocá Agregar.", "LIVET queda en el Dock y en Aplicaciones, como una app."]
+      : ["En Chrome o Edge, con LIVET abierto, mirá la barra de direcciones.", "Tocá el ícono de instalar (una pantalla con una flecha) o el menú ⋮ → «Instalar LIVET».", "LIVET queda en el Dock y en Aplicaciones."],
+  }[kind];
+  modal({ title: kind === "mac" ? "LIVET en tu Mac" : "LIVET en tu celular", hideSubmit: true, body: [
+    h("ol", { style: "padding-left:20px;display:grid;gap:6px" }, steps.map(x => h("li", {}, x))),
+    kind === "mac" ? h("p", { class: "hint", style: "margin-top:8px" }, "¿Preferís la app descargable? ", h("button", { type: "button", class: "linkbtn", onclick: () => { $("#dlg").close(); navTo("descargar"); } }, "Descargar LIVET para Mac")) : null,
+    kind === "ios" ? h("p", { class: "hint", style: "margin-top:8px" }, "Así además te llegan los avisos al celular (iOS 16.4 o más nuevo).") : null] });
 }
 function PushIOSHelp() {
   modal({ title: "Avisos en el iPhone", hideSubmit: true, body: [
