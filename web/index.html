@@ -2654,10 +2654,10 @@ function EventDialog(ev, preset = {}) {
   const share = h("input", { type: "checkbox", id: "e-share" });
   const coSel = sel(cos.map(([id, n]) => [id, n]), cos[0]?.[0] || "", { "aria-label": "Empresa" });
   const coWrap = h("div", { class: "hidden" }, cos.length > 1 ? F("¿Con qué empresa?", coSel) : null,
-    h("p", { class: "hint" }, "Lo ve todo el equipo y les llega una notificación. Lo seguís viendo en tu calendario, en violeta."));
+    h("p", { class: "hint" }, "Lo ve todo el equipo (también las notas) y les llega una notificación. Vos lo seguís viendo en tu calendario, en violeta."));
   share.onchange = () => coWrap.classList.toggle("hidden", !share.checked);
-  const shareBox = cos.length && !state.demo ? h("div", { class: "card", style: "padding:12px 14px;display:grid;gap:8px;border-color:#8b5cf6" },
-    h("label", { style: "display:flex;gap:8px;align-items:center;font-weight:600" }, share, icon("team"), cos.length > 1 ? "COMPARTIR CON EMPRESA" : `COMPARTIR CON ${String(cos[0][1]).toUpperCase()}`), coWrap) : null;
+  const shareBox = cos.length && !state.demo ? h("div", { class: "card", style: "padding:8px 12px;display:grid;gap:6px;border-color:#8b5cf6;border-radius:10px" },
+    h("label", { style: "display:flex;gap:8px;align-items:center;font-weight:600;font-size:13px" }, share, h("span", { style: "color:#8b5cf6;display:inline-flex;flex:none" }, icon("team", 16)), cos.length > 1 ? "COMPARTIR CON EMPRESA" : `COMPARTIR CON ${String(cos[0][1]).toUpperCase()}`), coWrap) : null;
   modal({
     title: ev ? "Editar evento" : "Nuevo evento",
     body: [F("Título", title), h("div", { class: "row2" }, F("Fecha de inicio", date), F("Fecha de fin", dateEnd)),
