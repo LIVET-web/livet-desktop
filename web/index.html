@@ -5810,7 +5810,10 @@ const Notif = {
     if (changed || state.view === "notifications") { renderNav(); if (state.view === "notifications" && !$("#dlg").open) render(); }
     try { document.title = (this.unread ? `(${this.unread}) ` : "") + "LIVET Work"; } catch { /* nada */ }
   },
-  start() { this.stop(); this.lastTop = null; this.load(); this.timer = setInterval(() => this.load(), 30000); document.addEventListener("visibilitychange", Notif.onVis); },
+  start() {
+    this.stop(); this.lastTop = null;
+    try { const q = new URLSearchParams(location.search); if (q.has("notif")) { q.delete("notif"); history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash); setTimeout(() => go("notifications"), 0); } } catch { /* nada */ }
+    this.load(); this.timer = setInterval(() => this.load(), 30000); document.addEventListener("visibilitychange", Notif.onVis); },
   stop() { clearInterval(this.timer); this.timer = null; this.list = []; this.unread = 0; this.loaded = false; document.removeEventListener("visibilitychange", Notif.onVis); try { document.title = "LIVET Work"; } catch { /* nada */ } },
   onVis() { if (document.visibilityState === "visible") Notif.load(); },
   system(n) {
@@ -5869,6 +5872,48 @@ async function NewNotifDialog() {
       Notif.load();
     } });
 }
+/* ----- Avisos al celular (Web Push) ----- */
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const Push = {
+  on: null,
+  supported: () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window && location.protocol === "https:" && !isDesktopApp(),
+  async check() {
+    if (!this.supported()) { this.on = false; return; }
+    try { const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription(); this.on = !!sub && Notification.permission === "granted"; } catch { this.on = false; }
+  },
+  async enable() {
+    if (isIOS() && !isStandalone()) return PushIOSHelp();
+    if (!this.supported()) throw new Error("Este navegador no permite avisos. Probá desde Chrome o Safari actualizados.");
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") throw new Error("No diste permiso. Activalo en los ajustes del navegador para LIVET y probá de nuevo.");
+    const { data: key, error } = await sb.rpc("push_public_key"); if (error || !key) throw new Error("No pudimos preparar los avisos. Probá en un rato.");
+    const raw = Uint8Array.from(atob(key.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - key.length % 4) % 4)), c => c.charCodeAt(0));
+    const reg = await navigator.serviceWorker.register("/sw.js").then(() => navigator.serviceWorker.ready);
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: raw });
+    const j = sub.toJSON();
+    const device = (isIOS() ? "iPhone" : /android/i.test(navigator.userAgent) ? "Android" : "Compu") + " · " + new Date().toLocaleDateString(LOC());
+    const { error: e2 } = await sb.from("push_subscriptions").upsert({ user_id: state.user.id, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, device }, { onConflict: "endpoint" });
+    if (e2) throw e2;
+    this.on = true;
+    await sb.rpc("create_notification", { p_to: "me", p_company: null, p_title: "✅ Avisos activados en este dispositivo", p_body: "Desde ahora te llegan las notificaciones de LIVET acá, aunque la app esté cerrada.", p_at: null });
+  },
+  async disable() {
+    try { const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription();
+      if (sub) { await sb.from("push_subscriptions").delete().eq("endpoint", sub.endpoint); await sub.unsubscribe(); } } catch { /* nada */ }
+    this.on = false;
+  },
+};
+function PushIOSHelp() {
+  modal({ title: "Avisos en el iPhone", hideSubmit: true, body: [
+    h("p", {}, "En iPhone, Apple solo deja mandar avisos si LIVET está en tu pantalla de inicio. Es una vez:"),
+    h("ol", { style: "padding-left:20px;display:grid;gap:6px;margin-top:8px" },
+      h("li", {}, "Abrí app.livet.work en ", h("b", {}, "Safari"), "."),
+      h("li", {}, "Tocá el botón ", h("b", {}, "Compartir"), " (el cuadrado con la flecha hacia arriba)."),
+      h("li", {}, "Elegí ", h("b", {}, "Agregar a pantalla de inicio"), " y después ", h("b", {}, "Agregar"), "."),
+      h("li", {}, "Abrí LIVET desde ese ícono nuevo, entrá a Notificaciones y tocá ", h("b", {}, "Recibir en este celular"), ".")),
+    h("p", { class: "hint", style: "margin-top:8px" }, "Necesita iOS 16.4 o más nuevo.")] });
+}
 function ago(iso) {
   const m = Math.round((Date.now() - new Date(iso)) / 60000);
   if (m < 1) return "recién"; if (m < 60) return `hace ${m} min`;
@@ -5881,12 +5926,18 @@ function NotificationsView() {
     { id: "d1", kind: "message", title: "Lucía te escribió", body: "Subí el borrador a la tarea.", created_at: new Date(Date.now() - 5 * 60000).toISOString(), count: 1 },
     { id: "d2", kind: "cheer", title: "¡Ahorraste en octubre! 💪", body: "Te quedó el 18% de lo que entró. Seguí así.", created_at: new Date(Date.now() - 864e5).toISOString(), count: 1, read_at: "x" }] : Notif.list;
   const can = "Notification" in window, perm = can ? Notification.permission : "denied";
-  const ask = can && perm === "default" && !state.demo ? h("button", { class: "btn", type: "button", onclick: async () => { try { await Notification.requestPermission(); } catch { /* nada */ } render(); } }, icon("bell"), "Avisarme en esta compu") : null;
+  if (Push.on === null && !state.demo) Push.check().then(() => { if (state.view === "notifications") render(); });
+  const phone = /android|iphone|ipad|ipod/i.test(navigator.userAgent) || isIOS();
+  const pushBtn = state.demo || isDesktopApp() ? null : Push.on
+    ? h("button", { class: "btn", type: "button", onclick: async () => { await Push.disable(); toast("Avisos desactivados en este dispositivo"); render(); } }, "Desactivar avisos acá")
+    : h("button", { class: "btn", type: "button", onclick: async e => { const b = e.currentTarget; b.disabled = true; try { await Push.enable(); toast("¡Listo! Te va a llegar un aviso de prueba."); } catch (err) { toast(errMsg(err)); } b.disabled = false; render(); } }, icon("bell"), phone ? "Recibir en este celular" : "Recibir en esta compu");
+  const ask = pushBtn || (can && perm === "default" && !state.demo ? h("button", { class: "btn", type: "button", onclick: async () => { try { await Notification.requestPermission(); } catch { /* nada */ } render(); } }, icon("bell"), "Avisarme en esta compu") : null);
   return h("div", {},
     PageHead("Notificaciones", "Lo que pasa en tu empresa y algún que otro aliento.",
       h("button", { class: "btn primary", type: "button", onclick: NewNotifDialog }, icon("plus"), "Nueva notificación"),
       ask, Notif.unread ? h("button", { class: "btn", type: "button", onclick: () => Notif.markRead(Notif.list.filter(n => !n.read_at).map(n => n.id)).then(render) }, icon("check"), "Marcar todo como leído") : null),
-    perm === "granted" ? h("p", { class: "hint", style: "margin-bottom:12px" }, "Los avisos de esta compu están activados: te llegan aunque tengas la app en segundo plano.") : null,
+    Push.on ? h("p", { class: "hint", style: "margin-bottom:12px" }, "Avisos activados en este dispositivo: te llegan aunque la app esté cerrada.")
+      : perm === "granted" ? h("p", { class: "hint", style: "margin-bottom:12px" }, "Los avisos de esta compu están activados mientras la app esté abierta.") : null,
     list.length ? Card(null, null, h("div", {}, list.map(n => h("button", { type: "button", class: "notif" + (n.read_at ? "" : " unread"), onclick: () => state.demo ? toast("En la demo es solo un ejemplo.") : Notif.open(n) },
       h("span", { class: "n-ic", "aria-hidden": "true" }, icon(NOTIF_IC[n.kind] || "bell")),
       h("span", {}, h("b", {}, n.title + (n.count > 1 ? ` (${n.count})` : "")), n.body ? h("p", {}, n.body) : null),
@@ -7049,7 +7100,10 @@ const mobileOS = () => { const ua = navigator.userAgent || ""; if (/iPhone|iPad|
 const browserName = () => { const ua = navigator.userAgent || ""; if (/Edg\//.test(ua)) return "edge"; if (/Chrome\//.test(ua) && !/OPR\//.test(ua)) return "chrome"; if (/Safari\//.test(ua)) return "safari"; return "otro"; };
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); PWA_PROMPT = e; if (state.page === "descargar") renderSite("descargar"); });
 window.addEventListener("appinstalled", () => { PWA_PROMPT = null; toast("LIVET Work quedó instalada."); });
-if ("serviceWorker" in navigator && location.protocol === "https:" && !isDesktopApp()) addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+if ("serviceWorker" in navigator && location.protocol === "https:" && !isDesktopApp()) {
+  addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+  navigator.serviceWorker.addEventListener("message", e => { if (e.data?.type === "open-notif" && state.user) { Notif.load(); go("notifications"); } });
+}
 
 const INSTALL_STEPS = {
   ios: ["Abrí app.livet.work en Safari.", "Tocá Compartir (el cuadrado con la flecha hacia arriba).", "Elegí «Agregar a pantalla de inicio» y tocá Agregar."],
