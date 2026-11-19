@@ -4,5 +4,5 @@
 (async()=>{const s=document.getElementById('s');const f=new URLSearchParams(location.search).get('f')||'maquina-a.mp4';
 if(!/^[\w.-]+\.mp4$/.test(f)){s.textContent='Archivo inválido';return}
 const b=await (await fetch(f)).blob();s.textContent='Listo: '+f+' ('+b.size+' bytes)';
-if(window.opener){window.opener.postMessage({livetVideo:b,name:f},'https://www.instagram.com');s.textContent+=' · enviado';}else s.textContent+=' · sin ventana de origen';})();
+const t=window.opener||(window.parent!==window?window.parent:null);if(t){t.postMessage({livetVideo:b,name:f},'https://www.instagram.com');s.textContent+=' · enviado';}else if(false){window.opener.postMessage({livetVideo:b,name:f},'https://www.instagram.com');s.textContent+=' · enviado';}else s.textContent+=' · sin ventana de origen';})();
 </script>
