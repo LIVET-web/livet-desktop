@@ -5813,7 +5813,7 @@ const Notif = {
   start() {
     this.stop(); this.lastTop = null;
     try { const q = new URLSearchParams(location.search); if (q.has("notif")) { q.delete("notif"); history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash); setTimeout(() => go("notifications"), 0); } } catch { /* nada */ }
-    this.load(); this.timer = setInterval(() => this.load(), 30000); document.addEventListener("visibilitychange", Notif.onVis); },
+    this.load(); setTimeout(() => pushAutoPrompt().catch(() => {}), 2500); this.timer = setInterval(() => this.load(), 30000); document.addEventListener("visibilitychange", Notif.onVis); },
   stop() { clearInterval(this.timer); this.timer = null; this.list = []; this.unread = 0; this.loaded = false; document.removeEventListener("visibilitychange", Notif.onVis); try { document.title = "LIVET Work"; } catch { /* nada */ } },
   onVis() { if (document.visibilityState === "visible") Notif.load(); },
   system(n) {
@@ -5904,6 +5904,39 @@ const Push = {
     this.on = false;
   },
 };
+// Al abrir la app: si este dispositivo todavía no recibe avisos, lo ofrece solo (sin entrar a Notificaciones).
+const PUSH_SNOOZE = "livet-push-snooze";
+async function pushAutoPrompt() {
+  if (state.demo || !state.user || isDesktopApp()) return;
+  try { if (+localStorage.getItem(PUSH_SNOOZE) > Date.now()) return; } catch { /* sin almacenamiento */ }
+  const iosTab = isIOS() && !isStandalone();
+  if (!iosTab) {
+    if (!Push.supported() || Notification.permission === "denied") return;
+    await Push.check(); if (Push.on) return;
+    // Si ya diste permiso antes, se registra solo, sin preguntar.
+    if (Notification.permission === "granted") { try { await Push.enable(); } catch { /* se ofrece abajo */ } if (Push.on) return; }
+  }
+  // Espera a que se cierre el cartel de cookies o un diálogo abierto, para no taparse.
+  for (let i = 0; i < 120 && (document.getElementById("ads-bar") || $("#dlg").open); i++) await new Promise(r => setTimeout(r, 1000));
+  if (document.getElementById("push-bar") || $("#dlg").open || !state.user) return;
+  const close = days => { try { localStorage.setItem(PUSH_SNOOZE, String(Date.now() + days * 864e5)); } catch { /* nada */ } bar.remove(); };
+  const phone = /android|iphone|ipad|ipod/i.test(navigator.userAgent) || isIOS();
+  const yes = h("button", { type: "button", class: "btn primary" }, iosTab ? "Cómo activarlo" : "Activar avisos");
+  yes.onclick = async () => {
+    if (iosTab) { bar.remove(); return PushIOSHelp(); }
+    yes.disabled = true;
+    try { await Push.enable(); bar.remove(); toast("¡Listo! Te va a llegar un aviso de prueba."); }
+    catch (e) { toast(errMsg(e)); yes.disabled = false; if (Notification.permission === "denied") close(30); }
+  };
+  const bar = h("div", { id: "push-bar", role: "dialog", "aria-label": "Activar avisos",
+    style: "position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:9998;max-width:520px;margin:0 auto;padding:14px 16px;border-radius:14px;background:var(--surface);color:var(--text);border:1px solid var(--line-strong);box-shadow:var(--shadow);display:grid;gap:10px;font-size:14px;line-height:1.4" },
+    h("div", { style: "display:flex;gap:10px;align-items:flex-start" }, h("span", { style: "color:var(--accent);flex:none;margin-top:2px" }, icon("bell")),
+      h("span", {}, h("b", {}, phone ? "¿Te avisamos en este celular?" : "¿Te avisamos en esta compu?"), h("br"),
+        iosTab ? "En iPhone, Apple pide agregar LIVET a la pantalla de inicio para mandarte avisos. Es un minuto."
+          : "Mensajes del equipo, tareas, recordatorios y felicitaciones, aunque tengas LIVET cerrado.")),
+    h("div", { style: "display:flex;gap:8px;justify-content:flex-end" }, h("button", { type: "button", class: "btn", onclick: () => close(7) }, "Ahora no"), yes));
+  document.body.appendChild(bar);
+}
 function PushIOSHelp() {
   modal({ title: "Avisos en el iPhone", hideSubmit: true, body: [
     h("p", {}, "En iPhone, Apple solo deja mandar avisos si LIVET está en tu pantalla de inicio. Es una vez:"),
