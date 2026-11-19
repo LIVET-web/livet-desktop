@@ -5345,7 +5345,7 @@ const Invite = {
     const display = ((state.profile?.full_name || "").trim().split(/\s+/)[0] || (state.user.email || "").split("@")[0] || "Yo").slice(0, 60);
     const open = async cid => {
       if (!enabledModules().includes("company") && state.profile?.modules?.length) { try { await saveProfile({ modules: [...state.profile.modules, "company"] }); } catch { /* igual se abre */ } }
-      Co.reset(); if (cid) Co.cur = cid; go("company");
+      Co.reset(); MyCos.rows = null; if (cid) Co.cur = cid; go("company");
     };
     try {
       const { data, error } = await sb.rpc("join_company", { p_code: c, p_display: display });
@@ -5623,7 +5623,7 @@ function TeamTab() {
     } });
   const members = h("div", { class: "card-b" }, Co.members.map(m => h("div", { class: "mrow" },
     h("span", { class: "avatar sm", "aria-hidden": "true" }, (m.display_name[0] || "?").toUpperCase()),
-    h("span", { class: "mname" }, m.display_name, m.user_id === me ? h("small", {}, " (vos)") : null),
+    h("span", { class: "mname" }, m.display_name, m.user_id === me ? h("small", {}, " (vos) ") : null, m.user_id === me && !state.demo ? h("button", { class: "linkbtn", type: "button", onclick: () => RenameInCompanyDialog(Co.cur, m.display_name, Co.company()?.name) }, "cambiar") : null),
     owner && m.role !== "owner" ? sel([["jefe", "Jefe/a"], ["empleado", "Empleado/a"]], m.role, { "aria-label": `Rol de ${m.display_name}`, onchange: e => setRole(m, e.target.value) }) : h("span", { class: "role", "data-r": m.role }, tr(ROLE_LBL[m.role])),
     owner && m.role !== "owner" ? h("button", { class: "btn sm ghost", type: "button", onclick: () => removeM(m, false) }, "Quitar")
       : (m.user_id === me && m.role !== "owner" ? h("button", { class: "btn sm ghost", type: "button", onclick: () => removeM(m, true) }, "Salir") : null))));
@@ -5764,6 +5764,64 @@ function profileDone() {
   return Math.round(parts.filter(x => typeof x === "string" && x.trim()).length / parts.length * 100);
 }
 
+/* ----- Mis equipos: cada persona cambia su nombre en cada empresa o se va ----- */
+const MyCos = { rows: null, loading: false, uid: null, at: 0 };
+async function myCosLoad() {
+  if (state.demo || !sb || MyCos.loading) return;
+  MyCos.loading = true;
+  try {
+    const uid = state.user.id;
+    const [m, c] = await Promise.all([sb.from("company_members").select("company_id,role,display_name").eq("user_id", uid), sb.from("companies").select("id,name,kind")]);
+    if (m.error) throw m.error; if (c.error) throw c.error;
+    const names = Object.fromEntries((c.data || []).map(x => [x.id, x]));
+    MyCos.rows = (m.data || []).map(r => ({ ...r, company: names[r.company_id] || { name: "Empresa" } })); MyCos.uid = uid; MyCos.at = Date.now();
+  } catch (e) { MyCos.rows = []; toast(errMsg(e)); }
+  MyCos.loading = false; if (state.view === "profile") render();
+}
+function RenameInCompanyDialog(cid, current, coName) {
+  const v = inp({ maxLength: 60, value: current || "", placeholder: "Cómo te ven tus compañeros" });
+  modal({ title: "Tu nombre en " + (coName || "la empresa"), submit: "Guardar", body: [F("Nombre", v, "Así te ven en tareas, chat y la lista del equipo.")],
+    onSubmit: async () => {
+      const n = v.value.trim();
+      if (!n) throw new Error("Poné tu nombre.");
+      if (!state.demo) { const { error } = await sb.rpc("set_my_company_name", { p_company: cid, p_name: n }); if (error) throw error; }
+      if (MyCos.rows) MyCos.rows = MyCos.rows.map(r => r.company_id === cid ? { ...r, display_name: n } : r);
+      Co.members = Co.members.map(m => m.company_id === cid && m.user_id === Co.uid() ? { ...m, display_name: n } : m);
+      if (Co.me && Co.cur === cid) Co.me = { ...Co.me, display_name: n };
+      toast("Nombre actualizado");
+    } });
+}
+function LeaveCompanyDialog(cid, coName) {
+  modal({ title: "Salir de " + (coName || "la empresa"), submit: "Salir", body: [h("p", {}, "Dejás de ver las tareas, clientes y chats de esta empresa. Para volver, te tienen que invitar de nuevo.")],
+    onSubmit: async () => {
+      if (!state.demo) { const { error } = await sb.from("company_members").delete().eq("company_id", cid).eq("user_id", state.user.id); if (error) throw error; }
+      if (MyCos.rows) MyCos.rows = MyCos.rows.filter(r => r.company_id !== cid);
+      Co.reset(); toast("Saliste de la empresa");
+    } });
+}
+function MyTeamsCard() {
+  if (state.demo) {
+    const c = Co.loaded ? Co.company() : null;
+    return Card(companyLabel(), null, h("div", { class: "card-b", style: "display:grid;gap:8px" },
+      c ? [h("b", {}, c.name), h("p", { class: "muted" }, `Tu rol: ${tr(ROLE_LBL[Co.me?.role]) || "sin rol"}`)] : h("p", { class: "muted" }, "En la demo hay una empresa de ejemplo."),
+      h("div", {}, h("button", { class: "btn", type: "button", onclick: () => go("company") }, "Abrir"))));
+  }
+  if (MyCos.uid !== state.user?.id) { MyCos.rows = null; MyCos.uid = state.user?.id; }
+  if (MyCos.rows === null) { myCosLoad(); return Card(companyLabel(), null, h("div", { class: "card-b" }, h("p", { class: "muted" }, "Cargando…"))); }
+  if (Date.now() - MyCos.at > 20000) myCosLoad();
+  const rows = MyCos.rows;
+  return Card(rows.length > 1 ? "Mis empresas" : companyLabel(), null, h("div", { class: "card-b", style: "display:grid;gap:12px" },
+    rows.length ? rows.map(r => h("div", { style: "display:grid;gap:6px;padding-bottom:10px;border-bottom:1px solid var(--line)" },
+      h("b", {}, r.company.name),
+      h("p", { class: "muted" }, `Tu nombre en el equipo: `, h("b", {}, r.display_name), ` · rol: ${tr(ROLE_LBL[r.role]) || r.role}`),
+      h("div", { style: "display:flex;gap:8px;flex-wrap:wrap" },
+        h("button", { class: "btn sm", type: "button", onclick: () => RenameInCompanyDialog(r.company_id, r.display_name, r.company.name) }, "Cambiar mi nombre"),
+        h("button", { class: "btn sm ghost", type: "button", onclick: () => { Co.cur = r.company_id; Co.loaded = false; go("company"); } }, "Abrir"),
+        r.role !== "owner" ? h("button", { class: "btn sm ghost", type: "button", onclick: () => LeaveCompanyDialog(r.company_id, r.company.name) }, "Salir") : null)))
+      : h("p", { class: "muted" }, "Creá tu empresa o unite con un enlace de invitación: equipo, clientes, tareas con revisión y chat."),
+    rows.length ? null : h("div", {}, h("button", { class: "btn", type: "button", onclick: () => go("company") }, "Crear o unirme"))));
+}
+
 function ProfileView() {
   const p = state.profile || {};
   const name = inp({ maxLength: 80, value: p.full_name || "", placeholder: "Cómo te llamás" });
@@ -5779,7 +5837,6 @@ function ProfileView() {
   };
   const ut = USE_TYPES[p.use_type];
   const s = AI.status || {};
-  const c = Co.loaded ? Co.company() : null;
   const pct = profileDone();
   return h("div", {},
     PageHead("Mi perfil", "Con esto LIVET se adapta a vos."),
@@ -5796,10 +5853,7 @@ function ProfileView() {
       Card("Cómo uso LIVET", h("button", { class: "btn sm", type: "button", onclick: PersonalizeDialog }, "Cambiar"), h("div", { class: "card-b", style: "display:grid;gap:8px" },
         h("b", {}, ut ? ut.label : "Sin elegir"), h("p", { class: "muted" }, ut ? ut.line : "Elegí tu caso y te mostramos solo lo que necesitás."),
         h("div", { class: "who-mods" }, enabledModules().map(k => h("span", {}, MODULES[k][0]))))),
-      Card(companyLabel(), null, h("div", { class: "card-b", style: "display:grid;gap:8px" },
-        c ? [h("b", {}, c.name), h("p", { class: "muted" }, `${KIND_LBL[c.kind] || "Empresa"} · tu rol: ${tr(ROLE_LBL[Co.me?.role]) || "sin rol"} · ${Co.members.length} integrante(s)`)]
-          : h("p", { class: "muted" }, "Creá tu empresa o unite con un código: equipo, clientes, tareas con revisión y chat."),
-        h("div", {}, h("button", { class: "btn", type: "button", onclick: () => go("company") }, c ? "Abrir" : "Crear o unirme")))),
+      MyTeamsCard(),
       Card("Plan y asistente", null, h("div", { class: "card-b", style: "display:grid;gap:8px" },
         h("b", {}, p.plan === "admin" ? "Plan Admin" : p.plan === "pro" ? "Plan Pro" : "Plan gratuito"),
         h("p", { class: "muted" }, state.demo ? "En la demo la IA no está conectada." : s.configured ? (p.plan === "admin" ? "IA activa, sin tope." : `IA activa. Te quedan ${s.remaining ?? "—"} créditos este mes.`) : "La IA todavía no está activada en el servidor."),
