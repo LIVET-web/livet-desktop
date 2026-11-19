@@ -6261,7 +6261,8 @@ function ledgerAddDialog() {
 async function ledgerDelete(r) { try { const { error } = await sb.from("admin_ledger").delete().eq("id", r.id); if (error) throw error; await ledgerLoad(); } catch (e) { toast(errMsg(e)); } }
 function LedgerCard() {
   const sum = k => Ledger.rows.filter(r => r.kind === k).reduce((a, r) => a + Number(r.amount), 0);
-  const inc = sum("ingreso"), ads = sum("ads"), oth = sum("otro"), ai = Number(Ledger.ai.cost || 0), net = inc - ads - oth - ai;
+  const polar = polarMonth(Ledger.month), manual = sum("ingreso");
+  const inc = manual + polar, ads = sum("ads"), oth = sum("otro"), ai = Number(Ledger.ai.cost || 0), net = inc - ads - oth - ai;
   const f = n => (n < 0 ? "−" : "") + "US$ " + Math.abs(n).toLocaleString(LOC(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const st = (l, v, note, cls) => h("div", { class: "card stat " + (cls || "") }, h("span", {}, l), h("b", { class: "serif tnum", style: "white-space:nowrap;font-size:clamp(18px,2vw,24px)" }, v), note ? h("small", {}, note) : null);
   const month = inp({ type: "month", value: Ledger.month, "aria-label": "Mes" });
@@ -6270,13 +6271,13 @@ function LedgerCard() {
       h("button", { class: "btn primary", type: "button", onclick: ledgerAddDialog }, "Agregar movimiento")),
     h("div", { class: "card-b" },
       h("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:12px" },
-        st("Ingresos", f(inc), "lo que cargás", "tone-in"), st("Publicidad (ads)", f(ads), null, "tone-out"), st("Otros gastos", f(oth), null, "tone-out"),
+        st("Ingresos", f(inc), manual ? `suscripciones ${f(polar)} + cargados ${f(manual)}` : "de las suscripciones (Polar)", "tone-in"), st("Publicidad (ads)", f(ads), null, "tone-out"), st("Otros gastos", f(oth), null, "tone-out"),
         st("Costo de IA", f(ai), `${Ledger.ai.calls || 0} consultas, medido`, "tone-out"), st("Ganancia neta", f(net), inc > 0 ? `margen ${Math.round(net / inc * 100)}%` : "cargá ingresos para ver el margen", "tone-bal")),
       Ledger.rows.length ? h("div", { style: "overflow-x:auto" }, h("table", { style: "width:100%;border-collapse:collapse;font-size:14px" },
         h("tbody", {}, Ledger.rows.map(r => h("tr", {}, ...[dDay(r.entry_date), LEDGER_KIND[r.kind], r.label, (r.kind === "ingreso" ? "+ " : "− ") + f(Number(r.amount)).replace("US$ ", "US$ ")].map(t => h("td", { style: "padding:8px;border-top:1px solid var(--line)" }, t)),
           h("td", { style: "padding:8px;border-top:1px solid var(--line);text-align:right" }, h("button", { class: "btn sm ghost", type: "button", "aria-label": "Borrar movimiento " + r.label, onclick: () => ledgerDelete(r) }, "Borrar")))))))
         : h("p", { class: "muted" }, "Este mes no cargaste movimientos."),
-      h("p", { class: "hint", style: "margin-top:8px" }, "Ingresos fuera de Polar: cargalos a mano. Impuestos y comisiones, como «Otro gasto».")));
+      h("p", { class: "hint", style: "margin-top:8px" }, "Los cobros de las suscripciones (Polar) se suman solos. Otros ingresos, cargalos a mano. Impuestos y comisiones, como «Otro gasto».")));
 }
 // ---- Cobro: IDs de producto de Polar ----
 const Billing = { map: {} };
@@ -6301,26 +6302,31 @@ function BillingCard() {
       h("br"), "Activá los eventos order.paid, subscription.active, subscription.updated, subscription.canceled y subscription.revoked.")));
 }
 // Ingresos de las suscripciones: lo que entra por mes con las suscripciones vigentes y lo cobrado por Polar.
+// Cobros de Polar de un mes ("YYYY-MM"), en hora de Uruguay.
+const polarMonth = ym => (Admin.billing?.orders || []).filter(o => isoDay(o.paid_at).slice(0, 7) === ym).reduce((a, o) => a + Number(o.amount || 0), 0);
+// Ingresos de las suscripciones y ganancia: lo cobrado por Polar, lo que entra por mes y lo que queda después de gastos.
 function SubsIncomeCard() {
   const b = Admin.billing || {}, subs = b.subs || [];
   const price = x => { const p = PLANS.find(q => q.id === x.tier); return p ? (x.billing === "anual" ? p.year / 12 : p.month) : 0; };
   const mrr = subs.reduce((a, x) => a + price(x), 0);
-  const renew = subs.filter(x => x.status !== "canceling"), leaving = subs.filter(x => x.status === "canceling");
-  const mrrRenew = renew.reduce((a, x) => a + price(x), 0);
-  const usd = n => "US$ " + Number(n || 0).toLocaleString(LOC(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const box = (label, value, small, hot) => h("div", { class: "card stat", style: hot ? "border-color:var(--accent)" : "" }, h("span", {}, label), h("b", { class: "serif tnum" }, value), small ? h("small", {}, small) : null);
-  const byPlan = PLANS.map(p => { const xs = subs.filter(x => x.tier === p.id); return xs.length ? `${p.name}: ${xs.length} (${usd(xs.reduce((a, x) => a + price(x), 0))}/mes)` : null; }).filter(Boolean);
+  const renew = subs.filter(x => x.status !== "canceling"), mrrRenew = renew.reduce((a, x) => a + price(x), 0);
+  const usd = n => (n < 0 ? "−" : "") + "US$ " + Math.abs(Number(n || 0)).toLocaleString(LOC(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const box = (label, value, small, cls) => h("div", { class: "card stat " + (cls || "") }, h("span", {}, label), h("b", { class: "serif tnum", style: "white-space:nowrap" }, value), small ? h("small", {}, small) : null);
+  // Ganancia del mes que está elegido en "Ganancias netas" (por defecto, este mes).
+  const ym = Ledger.month, sumK = k => Ledger.rows.filter(r => r.kind === k).reduce((a, r) => a + Number(r.amount), 0);
+  const cobradoMes = polarMonth(ym), costos = sumK("ads") + sumK("otro") + Number(Ledger.ai.cost || 0), ganancia = cobradoMes + sumK("ingreso") - costos;
+  const allOrders = b.orders || [], total = allOrders.reduce((a, o) => a + Number(o.amount || 0), 0);
+  const mesTxt = new Date(ym + "-15").toLocaleDateString(LOC(), { month: "long" });
   return Card("Ingresos de las suscripciones", null, h("div", { class: "card-b", style: "display:grid;gap:12px" },
     h("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px" },
-      box("Ingreso mensual", usd(mrr), `${subs.length} suscripción${subs.length === 1 ? "" : "es"} vigente${subs.length === 1 ? "" : "s"}`, true),
-      box("Se renueva el mes que viene", usd(mrrRenew), leaving.length ? `${leaving.length} con baja programada (${usd(mrr - mrrRenew)})` : "Nadie se dio de baja"),
-      box("Ingreso al año (proyectado)", usd(mrrRenew * 12), "Si se mantienen las de hoy"),
-      box("Cobrado este mes", usd(b.month_total), `${b.month_count || 0} pago${b.month_count === 1 ? "" : "s"} registrado${b.month_count === 1 ? "" : "s"}`),
-      box("Cobrado en total", usd(b.all_total), b.first_at ? `Desde el ${dShort(b.first_at)}` : "Desde hoy se registra cada pago")),
-    byPlan.length ? h("p", { class: "muted" }, byPlan.join(" · ")) : null,
-    (b.recent || []).length ? h("div", { style: "overflow-x:auto" }, h("table", { style: "width:100%;border-collapse:collapse;font-size:13px" },
-      h("tbody", {}, b.recent.map(o => h("tr", {}, ...[dShort(o.paid_at), o.email || "—", o.product_key || "", usd(o.amount)].map(t => h("td", { style: "padding:6px 8px;border-top:1px solid var(--line)" }, t))))))) : null,
-    h("p", { class: "hint" }, "El ingreso mensual sale de las suscripciones vigentes con el precio de lista (las anuales, divididas en 12; sin descuentos ni comisión de Polar). «Cobrado» suma los pagos reales que avisa Polar: empezó a registrarse el 19/11/2026, así que los pagos anteriores no figuran.")));
+      box(`Cobrado en ${mesTxt}`, usd(cobradoMes), `${allOrders.filter(o => isoDay(o.paid_at).slice(0, 7) === ym).length} pago(s)`, "tone-in"),
+      box("Cobrado en total", usd(total), `${allOrders.length} pago(s) desde que existe LIVET`, "tone-in"),
+      box(`Gastos de ${mesTxt}`, usd(costos), "ads + otros gastos + IA", "tone-out"),
+      box(`Ganancia de ${mesTxt}`, usd(ganancia), cobradoMes ? `margen ${Math.round(ganancia / (cobradoMes + sumK("ingreso")) * 100)}%` : "todavía sin cobros este mes", "tone-bal"),
+      box("Ingreso mensual (suscripciones vigentes)", usd(mrr), mrrRenew < mrr ? `el mes que viene se renueva ${usd(mrrRenew)}` : `${subs.length} vigente(s)`)),
+    allOrders.length ? h("div", { style: "overflow-x:auto" }, h("table", { style: "width:100%;border-collapse:collapse;font-size:13px" },
+      h("tbody", {}, allOrders.slice(0, 10).map(o => h("tr", {}, ...[dShort(o.paid_at), o.email || "—", (BILL_KEYS.find(k => k[0] === o.product_key) || [, o.product_key])[1], usd(o.amount) + (o.estimated ? " *" : "")].map(t => h("td", { style: "padding:6px 8px;border-top:1px solid var(--line)" }, t))))))) : null,
+    h("p", { class: "hint" }, "Los gastos salen de «Ganancias netas» (abajo): ahí cargás ads y otros gastos, y la IA se mide sola. " + (b.any_estimated ? "* Pago anterior al 19/11/2026: se registró a precio de lista porque todavía no se guardaba el monto exacto." : ""))));
 }
 async function adminSetPlan(u, plan) {
   try {
@@ -6420,13 +6426,12 @@ function AdminView() {
         PLANS.map(p => h("span", { class: "chip", style: "font-size:14px;padding:6px 12px" }, `${p.name}: `, h("b", {}, String((d.subs || {})[p.id] || 0)))),
         h("span", { class: "chip", style: "font-size:14px;padding:6px 12px" }, "Total pagando: ", h("b", {}, String(Object.values(d.subs || {}).reduce((a, b) => a + Number(b), 0))))),
       d.subs_canceling ? h("p", { class: "hint" }, `${d.subs_canceling} se ${d.subs_canceling > 1 ? "dieron" : "dio"} de baja y sigue${d.subs_canceling > 1 ? "n" : ""} activo${d.subs_canceling > 1 ? "s" : ""} hasta fin de su período.`) : null,
+      (Admin.billing?.subs || []).length ? h("div", { style: "overflow-x:auto" }, h("table", { style: "width:100%;border-collapse:collapse;font-size:14px" },
+        h("thead", {}, h("tr", {}, ["Usuario", "Plan", "Estado"].map(t => h("th", { style: "text-align:left;padding:8px;font-weight:600" }, t)))),
+        h("tbody", {}, Admin.billing.subs.map(x => h("tr", {}, ...[h("span", {}, h("b", {}, x.name || "Sin nombre"), h("div", { class: "muted", style: "font-size:12px" }, x.email || "")),
+          `${PLANS.find(p => p.id === x.tier)?.name || x.tier} · ${x.billing}`,
+          x.status === "canceling" ? `Dado de baja · activo hasta el ${dShort(x.end)}` : x.end ? `Activo · renueva el ${dShort(x.end)}` : "Activo"].map(t => h("td", { style: "padding:8px;border-top:1px solid var(--line)" }, t))))))) : h("p", { class: "muted" }, "Todavía no hay suscriptores."),
       h("p", { class: "hint" }, "Cuenta las suscripciones pagas por Polar que están vigentes hoy."))) : null,
-    h("div", { style: "height:16px" }),
-    d ? Card("Interés en planes (lista de espera)", null, h("div", { class: "card-b" },
-      h("div", { style: "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px" }, PLANS.map(p => h("span", { class: "chip" }, `${p.name}: `, h("b", {}, String(Admin.interest.filter(i => i.tier === p.id).length))))),
-      Admin.interest.length ? h("div", { style: "overflow-x:auto" }, h("table", { style: "width:100%;border-collapse:collapse;font-size:14px" },
-        h("tbody", {}, Admin.interest.map(i => h("tr", {}, ...[i.full_name || i.email, PLANS.find(p => p.id === i.tier)?.name || i.tier, i.billing, dShort(i.created_at)].map(t => h("td", { style: "padding:8px;border-top:1px solid var(--line)" }, t)))))))
-        : h("p", { class: "muted" }, "Todavía nadie pidió acceso a un plan."))) : null,
     h("div", { style: "height:16px" }),
     Card("Usuarios", null, h("div", { class: "card-b", style: "overflow-x:auto" },
       users.length ? h("table", { style: "width:100%;border-collapse:collapse;font-size:14px" },
