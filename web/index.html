@@ -2546,6 +2546,32 @@ function Swatches(name, value, list = COLORS) {
 }
 const swatchValue = (root, name, list = COLORS) => root.querySelector(`input[name="${name}"]:checked`)?.value || (Array.isArray(list[0]) ? list[0][0] : list[0]);
 // Colores para los eventos de la empresa (para marcar reuniones, entregas, urgentes, etc.).
+// Nombre que cada empresa le dio a un color (ej. "Urgente"); lo editan dueño y jefes.
+const colorLabels = cid => (Co.list.find(c => c.id === cid)?.color_labels) || (Ext.coLabels || {})[cid] || {};
+const colorLabel = (cid, hex) => (hex ? colorLabels(cid)[String(hex).toLowerCase()] : "") || "";
+function ColorLabelsDialog(cid) {
+  const cur = colorLabels(cid);
+  const fields = TEAM_COLORS.map(([c, n]) => [c, inp({ maxLength: 40, value: cur[c] || "", placeholder: `Ej: ${({ "#8b5cf6": "Equipo", "#3b82f6": "Reunión", "#06b6d4": "Cliente", "#22c55e": "Entrega", "#facc15": "Salida", "#f97316": "Lanzamiento", "#ef4444": "Urgente", "#ec4899": "Cumpleaños", "#9ca3af": "Interno" })[c] || n}` })]);
+  modal({ title: "Qué significa cada color", submit: "Guardar", body: [
+    h("p", { class: "hint" }, "Ponele un nombre a cada color. Lo ve todo el equipo, en la leyenda del calendario y al elegir el color de un evento. Dejá vacío el que no uses."),
+    h("div", { style: "display:grid;gap:8px" }, fields.map(([c, i]) => h("label", { style: "display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:center" },
+      h("span", { style: `width:18px;height:18px;border-radius:50%;background:${c}` }), i)))],
+    onSubmit: async () => {
+      const labels = {}; fields.forEach(([c, i]) => { if (i.value.trim()) labels[c] = i.value.trim(); });
+      if (!state.demo) { const { error } = await sb.rpc("set_color_labels", { p_company: cid, p_labels: labels }); if (error) throw error; }
+      const co = Co.list.find(c => c.id === cid); if (co) co.color_labels = labels;
+      if (Ext.coLabels) Ext.coLabels[cid] = labels;
+      toast("Colores guardados");
+    } });
+}
+function ColorLegend(cid) {
+  const labels = colorLabels(cid), used = TEAM_COLORS.filter(([c]) => labels[c]);
+  return h("div", { class: "co-legend", style: "display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 10px" },
+    used.length ? used.map(([c]) => h("span", { style: `display:inline-flex;gap:6px;align-items:center;padding:4px 10px;border-radius:999px;font-size:13px;background:color-mix(in srgb,${c} 14%,transparent);border:1px solid color-mix(in srgb,${c} 45%,transparent)` },
+      h("span", { style: `width:10px;height:10px;border-radius:50%;background:${c}` }), labels[c]))
+      : h("span", { class: "muted", style: "font-size:13px" }, Co.boss() ? "Todavía no le pusiste nombre a los colores." : "Los colores todavía no tienen nombre."),
+    Co.boss() ? h("button", { class: "btn sm ghost", type: "button", onclick: () => ColorLabelsDialog(cid) }, used.length ? "Editar colores" : "Nombrar colores") : null);
+}
 const TEAM_COLORS = [["#8b5cf6", "Violeta"], ["#3b82f6", "Azul"], ["#06b6d4", "Celeste"], ["#22c55e", "Verde"], ["#facc15", "Amarillo"], ["#f97316", "Naranja"], ["#ef4444", "Rojo"], ["#ec4899", "Rosa"], ["#9ca3af", "Gris"]];
 
 /* ------------------------- Objetivos ------------------------- */
@@ -2726,7 +2752,7 @@ function DayColumn(d, opts) {
       tks.map(t => h("button", { class: "item tk", type: "button", onclick: () => TaskDialog(t) },
         h("span", { class: "it-t" }, t.title), h("span", { class: "it-m" }, "Tarea · " + PRI[t.priority]))),
       Ext.team.filter(e => evOnDay(e, d)).sort(byStart).map(e => h("button", { class: "item team", type: "button", style: e.color ? `--tc:${e.color}` : null, onclick: () => TeamEventDialog(e) },
-        h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, icon("team"), evLabel(e, d) + " · " + (Ext.coNames[e.company_id] || "Equipo") + (e.repeat ? " ↻" : "")))),
+        h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, icon("team"), evLabel(e, d) + " · " + (colorLabel(e.company_id, e.color) || Ext.coNames[e.company_id] || "Equipo") + (e.repeat ? " ↻" : "")))),
       Ext.coTasks.filter(t => t.due_date === d).map(t => h("button", { class: "item tk team", type: "button", onclick: () => { Co.cur = t.company_id; Co.loaded = false; Co.tab = "tareas"; go("company"); } },
         h("span", { class: "it-t" }, t.title), h("span", { class: "it-m" }, icon("team"), "Tarea · " + (Ext.coNames[t.company_id] || "Empresa") + (t.status === "corregir" ? " · a corregir" : "")))),
       Ext.mac.filter(e => evOnDay(e, d)).sort(byStart).map(e => h("button", { class: "item ext mac", type: "button", style: `--mc:${e.color || "#9aa4ad"}`, onclick: () => ExtEventDialog(e) },
@@ -2770,12 +2796,13 @@ async function extLoad(force) {
     const [cals, team, cos, ctk] = await Promise.all([
       sb.from("external_calendars").select("id,name,url").order("created_at"),
       sb.from("company_events").select("id,company_id,title,starts_at,ends_at,all_day,place,notes,created_by,repeat,color").or(`starts_at.gte."${from}",repeat.not.is.null`).lte("starts_at", to).limit(2000),
-      sb.from("companies").select("id,name"),
+      sb.from("companies").select("id,name,color_labels"),
       // Solo de la empresa hacia tu calendario: tareas de la empresa asignadas a vos, sin terminar.
       sb.from("company_tasks").select("id,company_id,title,due_date,status").eq("assignee_id", state.user.id).in("status", ["pendiente", "corregir"]).not("due_date", "is", null).gte("due_date", from.slice(0, 10)).lte("due_date", to.slice(0, 10)).limit(1000),
     ]);
     Ext.cals = cals.data || []; Ext.team = team.data || []; Ext.coTasks = ctk.data || [];
     Ext.coNames = Object.fromEntries((cos.data || []).map(c => [c.id, c.name]));
+    Ext.coLabels = Object.fromEntries((cos.data || []).map(c => [c.id, c.color_labels || {}]));
     if (Ext.cals.length) {
       const r = await sb.functions.invoke("cal-import", { body: { from, to } });
       if (r.data?.ok) { Ext.events = (r.data.events || []).map(e => ({ ...e, exclusiveEnd: !!e.all_day })); Ext.errors = r.data.errors || []; }
@@ -2820,12 +2847,16 @@ function TeamEventDialog(ev, preset = {}) {
   const times = h("div", { class: "row2" }, F("Hora de inicio", st), F("Hora de fin", en));
   allDay.onchange = () => times.classList.toggle("hidden", allDay.checked); allDay.onchange();
   const repeat = sel([["", "No se repite"], ["weekly", "Cada 1 semana"], ["monthly", "Cada 1 mes"], ["yearly", "Cada 1 año"]], ev?.repeat || "", { "aria-label": "Repetir" });
-  const sw = Swatches("te-color", ev?.color || "#8b5cf6", TEAM_COLORS);
+  const labs = colorLabels(cid);
+  const sw = Swatches("te-color", ev?.color || "#8b5cf6", TEAM_COLORS.map(([c, n]) => [c, labs[c] ? `${labs[c]} (${n})` : n]));
+  const swName = h("p", { class: "hint", style: "margin-top:6px" });
+  const paintName = () => { const c = swatchValue(sw, "te-color", TEAM_COLORS); swName.textContent = labs[c] ? "Este color es: " + labs[c] : "Usalos para marcar tipos de evento: reuniones, entregas, urgentes, salidas…"; };
+  sw.addEventListener("change", paintName); paintName();
   const mine = !ev || ev.created_by === state.user?.id || state.demo || Co.boss();
   modal({
     title: ev ? (mine ? "Editar evento" : ev.title) : "Nuevo evento del equipo",
     body: [h("p", { class: "hint" }, "La ve todo el equipo" + (Ext.coNames[cid] || Co.company()?.name ? " de " + (Ext.coNames[cid] || Co.company()?.name) : "") + ", también en su celular."),
-      F("Qué es", title), h("div", { class: "row2" }, F("Fecha de inicio", date), F("Fecha de fin", dateEnd)), h("label", { style: "display:flex;gap:8px;align-items:center" }, allDay, "Todo el día"), times, F("Repetir", repeat), h("div", {}, h("label", { class: "field" }, "Color"), sw, h("p", { class: "hint" }, "Usalos para marcar tipos de evento: reuniones, entregas, urgentes, salidas…")), F("Dónde (opcional)", place), F("Notas (opcional)", notes)],
+      F("Qué es", title), h("div", { class: "row2" }, F("Fecha de inicio", date), F("Fecha de fin", dateEnd)), h("label", { style: "display:flex;gap:8px;align-items:center" }, allDay, "Todo el día"), times, F("Repetir", repeat), h("div", {}, h("label", { class: "field" }, "Color"), sw, swName), F("Dónde (opcional)", place), F("Notas (opcional)", notes)],
     submit: mine ? "Guardar" : undefined, hideSubmit: !mine,
     onDelete: ev && mine ? async () => { if (!state.demo) { const { error } = await sb.from("company_events").delete().eq("id", ev.id); if (error) throw error; } Ext.team = Ext.team.filter(x => x.id !== ev.id); } : null,
     onSubmit: async () => {
@@ -2860,12 +2891,13 @@ function CoCalendarTab() {
     h("div", { class: "co-tools" },
       h("button", { class: "btn primary", type: "button", onclick: () => TeamEventDialog(null, { company_id: cid }) }, icon("plus"), "Nuevo evento"),
       h("p", { class: "muted" }, "Eventos del equipo. Todos los ven, también en su calendario personal y en el celular. Los eventos personales de cada uno no aparecen acá.")),
+    ColorLegend(cid),
     WeekNav("cocal", fmtRange(start)),
     h("div", { class: "week" }, weekDays(start).map(d => h("div", { class: "day" + (d === today() ? " today" : d < today() ? " past" : "") },
       h("div", { class: "day-h" }, h("span", {}, DOW[parseD(d).getDay()]), h("b", {}, String(parseD(d).getDate()))),
       h("div", { class: "day-b" },
         evs.filter(e => evOnDay(e, d)).sort(byStart).map(e => h("button", { class: "item team", type: "button", style: e.color ? `--tc:${e.color}` : null, onclick: () => TeamEventDialog(e) },
-          h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, evLabel(e, d) + (e.place ? " · " + e.place : "")))),
+          h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, evLabel(e, d) + (colorLabel(cid, e.color) ? " · " + colorLabel(cid, e.color) : "") + (e.place ? " · " + e.place : "") + (e.repeat ? " ↻" : "")))),
         h("button", { class: "add-day", type: "button", "aria-label": `Agregar evento el ${fmtShort(d)}`, onclick: () => TeamEventDialog(null, { company_id: cid, date: d }) }, "+"))))));
 }
 // Enlace privado (bajo el dominio de LIVET) para ver el calendario en iCloud, Google u Outlook.
