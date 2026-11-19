@@ -6390,7 +6390,14 @@ function AdminView() {
     h("div", { style: "height:16px" }),
     d ? BillingCard() : null,
     h("div", { style: "height:16px" }),
-    d ? Card("Interés en planes", null, h("div", { class: "card-b" },
+    d ? Card("Suscripciones activas", null, h("div", { class: "card-b", style: "display:grid;gap:10px" },
+      h("div", { style: "display:flex;gap:10px;flex-wrap:wrap" },
+        PLANS.map(p => h("span", { class: "chip", style: "font-size:14px;padding:6px 12px" }, `${p.name}: `, h("b", {}, String((d.subs || {})[p.id] || 0)))),
+        h("span", { class: "chip", style: "font-size:14px;padding:6px 12px" }, "Total pagando: ", h("b", {}, String(Object.values(d.subs || {}).reduce((a, b) => a + Number(b), 0))))),
+      d.subs_canceling ? h("p", { class: "hint" }, `${d.subs_canceling} se ${d.subs_canceling > 1 ? "dieron" : "dio"} de baja y sigue${d.subs_canceling > 1 ? "n" : ""} activo${d.subs_canceling > 1 ? "s" : ""} hasta fin de su período.`) : null,
+      h("p", { class: "hint" }, "Cuenta las suscripciones pagas por Polar que están vigentes hoy."))) : null,
+    h("div", { style: "height:16px" }),
+    d ? Card("Interés en planes (lista de espera)", null, h("div", { class: "card-b" },
       h("div", { style: "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px" }, PLANS.map(p => h("span", { class: "chip" }, `${p.name}: `, h("b", {}, String(Admin.interest.filter(i => i.tier === p.id).length))))),
       Admin.interest.length ? h("div", { style: "overflow-x:auto" }, h("table", { style: "width:100%;border-collapse:collapse;font-size:14px" },
         h("tbody", {}, Admin.interest.map(i => h("tr", {}, ...[i.full_name || i.email, PLANS.find(p => p.id === i.tier)?.name || i.tier, i.billing, dShort(i.created_at)].map(t => h("td", { style: "padding:8px;border-top:1px solid var(--line)" }, t)))))))
@@ -6401,8 +6408,14 @@ function AdminView() {
         h("thead", {}, h("tr", {}, ["Usuario (tocá para ver)", "Perfil", "Alta", "Último ingreso", "Ingresos 7 días", "Ingresos total", "IA hoy", "IA 30 días", "Plan", ""].map(t => h("th", { style: "text-align:left;padding:8px;font-weight:600;white-space:nowrap" }, t)))),
         h("tbody", {}, users.map(u => {
           const me = u.id === state.user.id, isAdm = u.plan === "admin";
-          const s = sel(Object.entries(PLAN_LBL), u.plan, { "aria-label": "Plan de " + u.email, disabled: me });
-          s.addEventListener("change", () => adminSetPlan(u, s.value));
+          // Plan real: lo que pagó en Polar (o admin / invitado a una empresa / gratis). Se ve solo, sin elegir nada.
+          const pn = PLANS.find(p => p.id === u.sub_tier)?.name || u.sub_tier;
+          const badge = (txt, bg, sub) => h("div", {}, h("span", { style: `display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap;background:${bg}` }, txt), sub ? h("div", { class: "muted", style: "font-size:11px;margin-top:3px;white-space:nowrap" }, sub) : null);
+          const s = isAdm ? badge("Admin", "var(--accent-soft)")
+            : u.sub_on ? badge(`${pn} · ${u.sub_billing || ""}`, "color-mix(in srgb,#22c55e 22%,transparent)", u.sub_status === "canceling" ? `Se da de baja el ${dShort(u.sub_end)}` : u.sub_end ? `Renueva el ${dShort(u.sub_end)}` : "")
+            : u.plan === "pro" ? badge("Pro (manual)", "var(--accent-soft)")
+            : u.invited_member ? badge("Gratis · en equipo", "var(--surface-2)", "Invitado a una empresa")
+            : badge("Gratis", "var(--surface-2)", u.sub_tier ? `Tuvo ${pn} (vencido)` : "");
           const td = (...c) => h("td", { style: "padding:8px;border-top:1px solid var(--line);vertical-align:middle" }, ...c);
           return h("tr", {}, td(h("button", { type: "button", class: "linkbtn", style: "font-weight:600;text-align:left", title: "Ver actividad", onclick: () => adminDetailDialog(u) }, u.full_name || "Sin nombre"), h("div", { class: "muted", style: "font-size:12px" }, u.email + (me ? " (vos)" : ""))),
             td(USE_TYPES[u.use_type]?.label || "—"), td(dShort(u.created_at)), td(dShort(u.last_visit || u.last_sign_in_at)),
