@@ -5297,6 +5297,80 @@ function JoinCompanyDialog() {
     } });
 }
 
+/* ----- invitación por enlace: app.livet.work/?unirme=CODIGO → ingresar o crear cuenta → se une solo ----- */
+const INV_KEY = "livet-join";
+const Invite = {
+  info: null,
+  get code() { try { return localStorage.getItem(INV_KEY) || ""; } catch { return ""; } },
+  set code(v) { try { if (v) localStorage.setItem(INV_KEY, v); else localStorage.removeItem(INV_KEY); } catch { /* sin almacenamiento */ } },
+  link: c => "https://app.livet.work/?unirme=" + encodeURIComponent(c),
+  // Lee el código del enlace, lo guarda y lo saca de la barra de direcciones.
+  capture() {
+    let q; try { q = new URLSearchParams(location.search); } catch { return false; }
+    const c = (q.get("unirme") || "").trim().toLowerCase();
+    if (!q.has("unirme")) return false;
+    q.delete("unirme");
+    try { history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash); } catch { /* sin historial */ }
+    if (!/^[a-z0-9]{6,20}$/.test(c)) return false;
+    this.code = c; return true;
+  },
+  async preview() {
+    if (!sb || !this.code) return;
+    try { const { data } = await sb.rpc("invite_preview", { p_code: this.code }); this.info = data || false; } catch { this.info = null; }
+    this.banner();
+  },
+  // Aviso arriba del formulario de ingreso.
+  banner() {
+    $("#inv-banner")?.remove();
+    if (!this.code || state.user) return;
+    const i = this.info, card = document.querySelector("#auth-main .auth-card"), tabs = document.querySelector("#auth-main .tabs");
+    if (!card || !tabs) return;
+    const b = h("div", { id: "inv-banner", role: "status", style: "margin:14px 0 18px;padding:12px 14px;border-radius:12px;border:1px solid var(--line-strong);background:var(--surface);display:grid;gap:4px;font-size:14px;line-height:1.4" },
+      i === false
+        ? [h("b", {}, "Este enlace de invitación ya no es válido"), h("span", { class: "muted" }, "Venció o ya se usó. Pedile uno nuevo a quien te invitó.")]
+        : [h("b", {}, i ? `${i.by ? i.by + " te invitó" : "Te invitaron"} a ${i.company} en LIVET` : "Te invitaron a una empresa en LIVET"),
+           h("span", { class: "muted" }, "Creá tu cuenta gratis o ingresá si ya tenés una. Te sumamos al equipo automáticamente.")]);
+    if (i === false) this.code = "";
+    card.insertBefore(b, tabs);
+  },
+  // Con la sesión iniciada: se une a la empresa y abre Empresa.
+  async consume() {
+    if (state.demo || !state.user || !sb) return;
+    let c = this.code;
+    const meta = state.user.user_metadata?.join_code;
+    if (!c && meta) c = meta;
+    if (meta) sb.auth.updateUser({ data: { join_code: null } }).catch(() => {});
+    if (!c) return;
+    this.code = "";
+    const display = ((state.profile?.full_name || "").trim().split(/\s+/)[0] || (state.user.email || "").split("@")[0] || "Yo").slice(0, 60);
+    const open = async cid => {
+      if (!enabledModules().includes("company") && state.profile?.modules?.length) { try { await saveProfile({ modules: [...state.profile.modules, "company"] }); } catch { /* igual se abre */ } }
+      Co.reset(); if (cid) Co.cur = cid; go("company");
+    };
+    try {
+      const { data, error } = await sb.rpc("join_company", { p_code: c, p_display: display });
+      if (error) throw error;
+      await open(data);
+      toast("¡Listo! Ya sos parte del equipo.");
+    } catch (e) {
+      const m = errMsg(e);
+      if (/Ya sos parte/i.test(m)) { await open(null); toast("Ya sos parte de esa empresa."); }
+      else toast(/no es válido|venció/i.test(m) ? "El enlace de invitación venció o ya se usó. Pedile uno nuevo a tu jefe." : m);
+    }
+  },
+};
+function shareInvite(code, role) {
+  const url = Invite.link(code), co = Co.company()?.name || "la empresa";
+  const text = `Te invito a ${co} en LIVET como ${tr(ROLE_LBL[role] || "Empleado/a").toLowerCase()}. Entrá con este enlace (vale 7 días, un solo uso):`;
+  return h("div", { style: "display:grid;gap:10px" },
+    h("input", { class: "input code", readonly: true, value: url, "aria-label": "Enlace de invitación", onfocus: e => e.target.select() }),
+    h("div", { class: "actions-row", style: "display:flex;flex-wrap:wrap;gap:8px" },
+      h("button", { class: "btn primary", type: "button", onclick: () => copyText(url) }, icon("copy"), "Copiar enlace"),
+      navigator.share ? h("button", { class: "btn", type: "button", onclick: () => navigator.share({ title: "Invitación a LIVET", text, url }).catch(() => {}) }, "Compartir") : null,
+      h("a", { class: "btn", href: "https://wa.me/?text=" + encodeURIComponent(text + " " + url), target: "_blank", rel: "noopener" }, "WhatsApp")),
+    h("p", { class: "hint" }, "La persona abre el enlace, crea su cuenta o ingresa, y queda unida sola. Código manual: ", h("code", {}, code)));
+}
+
 /* ----- vista principal ----- */
 function CompanyView() {
   Co.stop();
@@ -5523,17 +5597,16 @@ function CompanySetup() {
 function InviteDialog() {
   const owner = Co.me?.role === "owner";
   const role = sel(owner ? [["empleado", "Empleado/a"], ["jefe", "Jefe/a"]] : [["empleado", "Empleado/a"]], "empleado");
-  modal({ title: "Invitar a la empresa", submit: "Crear código", body: [F("Rol de la persona", role, "Vale 7 días y se puede usar una sola vez. Pasáselo solo a esa persona."),
-    h("p", { class: "hint" }, "La persona crea su cuenta en LIVET, entra a Empresa y elige \"Tengo un código\".")],
+  modal({ title: "Invitar a la empresa", submit: "Crear enlace", body: [F("Rol de la persona", role, "Vale 7 días y se puede usar una sola vez. Pasáselo solo a esa persona."),
+    h("p", { class: "hint" }, "Te damos un enlace para mandarle. Lo abre, crea su cuenta o ingresa, y queda en tu equipo automáticamente.")],
     onSubmit: async () => {
       if (state.demo) { toast("En la demo no se crean códigos reales."); return; }
       const { data, error } = await sb.from("company_invites").insert({ company_id: Co.cur, role: role.value, created_by: state.user.id }).select().single();
       if (error) throw error;
       Co.invites.unshift(data);
-      setTimeout(() => modal({ title: "Código creado", hideSubmit: true, body: [
+      setTimeout(() => modal({ title: "Enlace de invitación listo", hideSubmit: true, body: [
         h("p", {}, `Rol: ${tr(ROLE_LBL[data.role])}. Vence el ${fmtShort(data.expires_at.slice(0, 10))}.`),
-        h("input", { class: "input code", readonly: true, value: data.code, "aria-label": "Código de invitación", onfocus: e => e.target.select() }),
-        h("div", { class: "actions-row" }, h("button", { class: "btn primary", type: "button", onclick: () => copyText(data.code) }, icon("copy"), "Copiar código"))] }), 0);
+        shareInvite(data.code, data.role)] }), 0);
       return false;
     } });
 }
@@ -5558,6 +5631,7 @@ function TeamTab() {
   if (boss) blocks.push(Card("Invitaciones activas", null, h("div", { class: "card-b" }, Co.invites.filter(i => i.uses_left > 0 && new Date(i.expires_at) > new Date()).length
     ? Co.invites.filter(i => i.uses_left > 0 && new Date(i.expires_at) > new Date()).map(i => h("div", { class: "mrow" },
       h("code", {}, i.code), h("span", { class: "role", "data-r": i.role }, tr(ROLE_LBL[i.role])), h("small", { class: "muted" }, "vence " + fmtShort(i.expires_at.slice(0, 10))),
+      h("button", { class: "btn sm", type: "button", onclick: () => modal({ title: "Enlace de invitación", hideSubmit: true, body: [shareInvite(i.code, i.role)] }) }, icon("copy"), "Enlace"),
       h("button", { class: "btn sm ghost", type: "button", onclick: async () => { try { if (!state.demo) { const { error } = await sb.from("company_invites").delete().eq("code", i.code); if (error) throw error; } Co.invites = Co.invites.filter(x => x.code !== i.code); } catch (e) { toast(errMsg(e)); } render(); } }, "Revocar")))
     : h("p", { class: "muted", style: "padding:12px" }, "No hay invitaciones activas."))));
   if (owner) blocks.push(Card("Zona de riesgo", null, h("div", { class: "card-p", style: "display:grid;gap:10px" },
@@ -7123,7 +7197,7 @@ $("#auth-form").onsubmit = async e => {
         return authMsg("Para crear la cuenta tenés que marcar las tres casillas: mayoría de edad, términos y privacidad, y almacenamiento en EE. UU.", "err");
       const redirect = /^https:$/.test(location.protocol) ? { emailRedirectTo: location.origin + "/" } : {};
       const { data, error } = await sb.auth.signUp({ email, password, options: { ...redirect, data: {
-        full_name: $("#a-name").value.trim(), consent_version: LEGAL_VERSION, consent_terms: "true", consent_transfer: "true" } } });
+        full_name: $("#a-name").value.trim(), consent_version: LEGAL_VERSION, consent_terms: "true", consent_transfer: "true", ...(Invite.code ? { join_code: Invite.code } : {}) } } });
       if (error) throw error;
       Ads.track("CompleteRegistration", { status: true }, data.user?.id ? "reg_" + data.user.id : undefined);
       if (!data.session) ConfirmWait(email, password);
@@ -7212,6 +7286,7 @@ async function enter(session) {
     const name = state.profile?.full_name || session.user.email;
     showApp(name, state.profile?.plan === "admin" ? "Admin" : state.profile?.plan === "pro" ? "Plan Pro" : "Plan gratuito");
     if (recovering) { recovering = false; NewPasswordDialog(); }
+    Invite.consume();
   } catch (err) {
     state.page = "entrar"; route();
     authMsg("No se pudieron cargar tus datos: " + errMsg(err), "err");
@@ -7250,6 +7325,8 @@ $("#auth-legal").append(LegalLinks());
 $("#side-legal").append(LangSelect("lang-sel side"), LegalLinks(), isDesktopApp() ? "" : h("button", { type: "button", class: "linkbtn", onclick: () => navTo("descargar") }, "Descargar la app"), h("button", { type: "button", class: "linkbtn", onclick: PersonalizeDialog }, "Personalizar"), h("button", { type: "button", class: "linkbtn", onclick: MyDataDialog }, "Mis datos"), h("button", { type: "button", class: "linkbtn", onclick: () => NewPasswordDialog(false) }, "Cambiar contraseña"));
 for (const k of ["terms", "privacy"]) { const b = document.querySelector(`[data-doc="${k}"]`); if (b) b.addEventListener("click", () => openLegal(k)); }
 
+// Enlace de invitación: guarda el código y, sin sesión, abre "Crear cuenta" con el aviso.
+if (Invite.capture() || Invite.code) { if (state.page !== "demo") state.page = "entrar"; setMode("signup"); Invite.banner(); Invite.preview(); }
 let currentUid = null;
 if (sb) sb.auth.onAuthStateChange((event, session) => {
   if (state.demo) return;
