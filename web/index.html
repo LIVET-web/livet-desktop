@@ -612,8 +612,9 @@ button.ccard:hover{border-color:var(--accent)}
 .role[data-r="owner"]{background:var(--hot-soft);color:var(--hot-ink)}
 .role[data-r="jefe"]{background:var(--accent-soft);color:var(--accent-strong)}
 .input.code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:20px;letter-spacing:.08em;text-align:center}
-.chat{display:grid;grid-template-rows:1fr auto;overflow:hidden}
-.chat-log{height:min(52vh,460px);overflow-y:auto;padding:14px;display:grid;gap:8px;align-content:start}
+.co-chat{display:grid;grid-template-rows:auto auto;overflow:hidden;padding:0}
+.chat-log:focus:not(:focus-visible){outline:none}
+.chat-log{height:min(50vh,440px);overflow-y:auto;padding:14px;display:grid;gap:8px;align-content:start}
 .msg-b{max-width:78%;padding:8px 12px;border-radius:14px;background:var(--surface-2);justify-self:start}
 .msg-b.mine{justify-self:end;background:var(--accent-soft)}
 .msg-b b{font-size:12px;color:var(--muted)}
@@ -2668,6 +2669,8 @@ function DayColumn(d, opts) {
         h("span", { class: "it-t" }, t.title), h("span", { class: "it-m" }, "Tarea · " + PRI[t.priority]))),
       Ext.team.filter(e => evOnDay(e, d)).sort(byStart).map(e => h("button", { class: "item team", type: "button", onclick: () => TeamEventDialog(e) },
         h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, icon("team"), evLabel(e, d) + " · " + (Ext.coNames[e.company_id] || "Equipo")))),
+      Ext.coTasks.filter(t => t.due_date === d).map(t => h("button", { class: "item tk team", type: "button", onclick: () => { Co.cur = t.company_id; Co.loaded = false; Co.tab = "tareas"; go("company"); } },
+        h("span", { class: "it-t" }, t.title), h("span", { class: "it-m" }, icon("team"), "Tarea · " + (Ext.coNames[t.company_id] || "Empresa") + (t.status === "corregir" ? " · a corregir" : "")))),
       Ext.mac.filter(e => evOnDay(e, d)).sort(byStart).map(e => h("button", { class: "item ext mac", type: "button", style: `--mc:${e.color || "#9aa4ad"}`, onclick: () => ExtEventDialog(e) },
         h("span", { class: "it-t" }, e.title), h("span", { class: "it-m" }, evLabel(e, d), " · ", e.cal))),
       Ext.events.filter(e => evOnDay(e, d)).sort(byStart).map(e => h("button", { class: "item ext", type: "button", onclick: () => ExtEventDialog(e) },
@@ -2676,7 +2679,7 @@ function DayColumn(d, opts) {
 }
 
 /* ----- Calendarios conectados (iPhone / iCloud) y reuniones del equipo ----- */
-const Ext = { events: [], team: [], cals: [], mac: [], coNames: {}, errors: [], at: 0, loading: false, timer: null };
+const Ext = { events: [], team: [], coTasks: [], cals: [], mac: [], coNames: {}, errors: [], at: 0, loading: false, timer: null };
 // Calendario de la Mac (solo en la app de escritorio): trae TODO lo que tiene la Mac, incluido iCloud del iPhone.
 const macCalAvailable = () => !!(window.livetDesktop && window.livetDesktop.platform === "darwin" && window.livetDesktop.readCalendar);
 const macCalOn = () => { try { return localStorage.getItem("livet-maccal") === "1"; } catch { return false; } };
@@ -2706,12 +2709,14 @@ async function extLoad(force) {
   Ext.loading = true;
   try {
     const from = new Date(Date.now() - 60 * 864e5).toISOString(), to = new Date(Date.now() + 240 * 864e5).toISOString();
-    const [cals, team, cos] = await Promise.all([
+    const [cals, team, cos, ctk] = await Promise.all([
       sb.from("external_calendars").select("id,name,url").order("created_at"),
       sb.from("company_events").select("id,company_id,title,starts_at,ends_at,all_day,place,notes,created_by").gte("starts_at", from).lte("starts_at", to).limit(2000),
       sb.from("companies").select("id,name"),
+      // Solo de la empresa hacia tu calendario: tareas de la empresa asignadas a vos, sin terminar.
+      sb.from("company_tasks").select("id,company_id,title,due_date,status").eq("assignee_id", state.user.id).in("status", ["pendiente", "corregir"]).not("due_date", "is", null).gte("due_date", from.slice(0, 10)).lte("due_date", to.slice(0, 10)).limit(1000),
     ]);
-    Ext.cals = cals.data || []; Ext.team = team.data || [];
+    Ext.cals = cals.data || []; Ext.team = team.data || []; Ext.coTasks = ctk.data || [];
     Ext.coNames = Object.fromEntries((cos.data || []).map(c => [c.id, c.name]));
     if (Ext.cals.length) {
       const r = await sb.functions.invoke("cal-import", { body: { from, to } });
@@ -2794,7 +2799,7 @@ function CoCalendarTab() {
   return h("div", {},
     h("div", { class: "co-tools" },
       h("button", { class: "btn primary", type: "button", onclick: () => TeamEventDialog(null, { company_id: cid }) }, icon("plus"), "Nuevo evento"),
-      h("p", { class: "muted" }, "Eventos del equipo. Todos los ven, también en el calendario de su celular.")),
+      h("p", { class: "muted" }, "Eventos del equipo. Todos los ven, también en su calendario personal y en el celular. Los eventos personales de cada uno no aparecen acá.")),
     WeekNav("cocal", fmtRange(start)),
     h("div", { class: "week" }, weekDays(start).map(d => h("div", { class: "day" + (d === today() ? " today" : "") },
       h("div", { class: "day-h" }, h("span", {}, DOW[parseD(d).getDay()]), h("b", {}, String(parseD(d).getDate()))),
@@ -2905,7 +2910,7 @@ function CalendarView() {
       h("button", { class: "btn primary", onclick: () => EventDialog(null, { date: today() }) }, icon("plus"), "Nuevo evento")),
     WeekNav("cal", fmtRange(start)),
     h("div", { class: "week" }, weekDays(start).map(d => DayColumn(d, { content: true }))),
-    h("div", { class: "hint" }, "Naranja: tus eventos · Amarillo: publicaciones · Punteado: tareas · Violeta: eventos del equipo."));
+    h("div", { class: "hint" }, "Naranja: tus eventos · Amarillo: publicaciones · Punteado: tareas · Violeta: eventos y tareas de tu empresa (tus cosas personales nunca se muestran en la empresa)."));
 }
 
 /* ------------------------- Hábitos ------------------------- */
@@ -5699,7 +5704,7 @@ function ChatTab() {
     }, 5000);
   }
   setTimeout(() => paint(true), 0);
-  return h("div", { class: "grid", style: "gap:12px" }, peers, h("div", { class: "card chat" }, log, form),
+  return h("div", { class: "grid", style: "gap:12px" }, peers, h("div", { class: "card co-chat" }, log, form),
     h("p", { class: "hint" }, "No están cifrados de extremo a extremo: no compartas contraseñas."));
 }
 
