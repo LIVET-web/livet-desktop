@@ -6228,6 +6228,7 @@ async function adminLoad() {
     if (error) throw error;
     Admin.data = data;
     const r = await sb.rpc("admin_interest"); Admin.interest = r.data || [];
+    const rb = await sb.rpc("admin_billing"); Admin.billing = rb.data || null;
     await ledgerLoad(true);
     const bp = await sb.from("billing_products").select("key,provider_product_id"); Billing.map = Object.fromEntries((bp.data || []).map(r => [r.key, r.provider_product_id]));
   } catch (e) { Admin.error = errMsg(e); }
@@ -6298,6 +6299,28 @@ function BillingCard() {
     h("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px" }, fields.map(([, i, l]) => F(l, i))),
     h("div", { class: "note" }, h("b", {}, "Dirección para los avisos de Polar: "), h("span", { style: "overflow-wrap:anywhere;user-select:all" }, hook),
       h("br"), "Activá los eventos order.paid, subscription.active, subscription.updated, subscription.canceled y subscription.revoked.")));
+}
+// Ingresos de las suscripciones: lo que entra por mes con las suscripciones vigentes y lo cobrado por Polar.
+function SubsIncomeCard() {
+  const b = Admin.billing || {}, subs = b.subs || [];
+  const price = x => { const p = PLANS.find(q => q.id === x.tier); return p ? (x.billing === "anual" ? p.year / 12 : p.month) : 0; };
+  const mrr = subs.reduce((a, x) => a + price(x), 0);
+  const renew = subs.filter(x => x.status !== "canceling"), leaving = subs.filter(x => x.status === "canceling");
+  const mrrRenew = renew.reduce((a, x) => a + price(x), 0);
+  const usd = n => "US$ " + Number(n || 0).toLocaleString(LOC(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const box = (label, value, small, hot) => h("div", { class: "card stat", style: hot ? "border-color:var(--accent)" : "" }, h("span", {}, label), h("b", { class: "serif tnum" }, value), small ? h("small", {}, small) : null);
+  const byPlan = PLANS.map(p => { const xs = subs.filter(x => x.tier === p.id); return xs.length ? `${p.name}: ${xs.length} (${usd(xs.reduce((a, x) => a + price(x), 0))}/mes)` : null; }).filter(Boolean);
+  return Card("Ingresos de las suscripciones", null, h("div", { class: "card-b", style: "display:grid;gap:12px" },
+    h("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px" },
+      box("Ingreso mensual", usd(mrr), `${subs.length} suscripción${subs.length === 1 ? "" : "es"} vigente${subs.length === 1 ? "" : "s"}`, true),
+      box("Se renueva el mes que viene", usd(mrrRenew), leaving.length ? `${leaving.length} con baja programada (${usd(mrr - mrrRenew)})` : "Nadie se dio de baja"),
+      box("Ingreso al año (proyectado)", usd(mrrRenew * 12), "Si se mantienen las de hoy"),
+      box("Cobrado este mes", usd(b.month_total), `${b.month_count || 0} pago${b.month_count === 1 ? "" : "s"} registrado${b.month_count === 1 ? "" : "s"}`),
+      box("Cobrado en total", usd(b.all_total), b.first_at ? `Desde el ${dShort(b.first_at)}` : "Desde hoy se registra cada pago")),
+    byPlan.length ? h("p", { class: "muted" }, byPlan.join(" · ")) : null,
+    (b.recent || []).length ? h("div", { style: "overflow-x:auto" }, h("table", { style: "width:100%;border-collapse:collapse;font-size:13px" },
+      h("tbody", {}, b.recent.map(o => h("tr", {}, ...[dShort(o.paid_at), o.email || "—", o.product_key || "", usd(o.amount)].map(t => h("td", { style: "padding:6px 8px;border-top:1px solid var(--line)" }, t))))))) : null,
+    h("p", { class: "hint" }, "El ingreso mensual sale de las suscripciones vigentes con el precio de lista (las anuales, divididas en 12; sin descuentos ni comisión de Polar). «Cobrado» suma los pagos reales que avisa Polar: empezó a registrarse el 19/11/2026, así que los pagos anteriores no figuran.")));
 }
 async function adminSetPlan(u, plan) {
   try {
@@ -6377,13 +6400,15 @@ function AdminView() {
       h("button", { class: "btn", type: "button", onclick: adminLoad }, Admin.loading ? "Actualizando…" : "Actualizar")),
     Admin.error ? h("div", { class: "note" }, h("b", {}, "No se pudo cargar. "), Admin.error) : null,
     d ? h("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px" },
-      stat("Usuarios", users.length, `${users.filter(u => u.plan !== "free").length} con plan Pro o Admin`),
-      stat("Ingresos hoy", today?.visits ?? 0, `${today?.people ?? 0} persona(s)`),
-      stat("Ingresos en 7 días", week),
+      stat("Usuarios", users.length, `${users.filter(u => u.sub_on).length} con plan pago`),
+      stat("Entradas hoy", today?.visits ?? 0, `${today?.people ?? 0} persona(s)`),
+      stat("Entradas en 7 días", week),
       stat("Empresas", d.companies), stat("Tareas creadas", d.tasks),
       stat("Usos de IA hoy", users.reduce((a, u) => a + Number(u.ai_today || 0), 0)),
       stat("Costo de IA, 30 días", "US$ " + Number(d.ai_cost_30d || 0).toFixed(2), `${d.ai_calls_30d || 0} consultas`)) : null,
-    d ? Card("Ingresos por día", null, h("div", { class: "card-b" }, VisitsChart(days),
+    d ? SubsIncomeCard() : null,
+    h("div", { style: "height:16px" }),
+    d ? Card("Entradas por día", null, h("div", { class: "card-b" }, VisitsChart(days),
       h("p", { class: "hint", style: "margin-top:8px" }, "Entradas de usuarios con cuenta (una cada 30 min como máximo)."))) : null,
     h("div", { style: "height:16px" }),
     d ? LedgerCard() : null,
@@ -6405,7 +6430,7 @@ function AdminView() {
     h("div", { style: "height:16px" }),
     Card("Usuarios", null, h("div", { class: "card-b", style: "overflow-x:auto" },
       users.length ? h("table", { style: "width:100%;border-collapse:collapse;font-size:14px" },
-        h("thead", {}, h("tr", {}, ["Usuario (tocá para ver)", "Perfil", "Alta", "Último ingreso", "Ingresos 7 días", "Ingresos total", "IA hoy", "IA 30 días", "Plan", ""].map(t => h("th", { style: "text-align:left;padding:8px;font-weight:600;white-space:nowrap" }, t)))),
+        h("thead", {}, h("tr", {}, ["Usuario (tocá para ver)", "Perfil", "Alta", "Última entrada", "Entradas 7 días", "Entradas total", "IA hoy", "IA 30 días", "Plan", ""].map(t => h("th", { style: "text-align:left;padding:8px;font-weight:600;white-space:nowrap" }, t)))),
         h("tbody", {}, users.map(u => {
           const me = u.id === state.user.id, isAdm = u.plan === "admin";
           // Plan real: lo que pagó en Polar (o admin / invitado a una empresa / gratis). Se ve solo, sin elegir nada.
