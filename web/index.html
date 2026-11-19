@@ -2480,7 +2480,7 @@ function MoreDialog() {
     h("button", { class: "btn", type: "button", onclick: MyDataDialog }, "Mis datos"),
     isDesktopApp() ? null : h("button", { class: "btn", type: "button", onclick: () => { $("#dlg").close(); navTo("descargar"); } }, icon("download"), "Descargar la app"),
     state.demo ? null : h("button", { class: "btn", type: "button", onclick: () => NewPasswordDialog(false) }, "Cambiar contraseña"),
-    h("button", { class: "btn", type: "button", onclick: () => { $("#dlg").close(); logout(); } }, icon("logout"), "Cerrar sesión"),
+    h("button", { class: "btn", type: "button", onclick: confirmLogout }, icon("logout"), "Cerrar sesión"),
     LegalLinks()) });
 }
 function render() {
@@ -3326,12 +3326,14 @@ function MyDataDialog() {
   delBtn.onclick = async () => {
     if (state.demo) return toast("En la demo no hay una cuenta real para borrar.");
     if (confirmInput.value.trim() !== "BORRAR") return toast("Escribí BORRAR para confirmar.");
-    delBtn.disabled = true;
-    try {
-      const { data, error } = await sb.functions.invoke("delete-account", { body: { confirm: "BORRAR" } });
-      if (error || !data?.ok) throw new Error(data?.message || "No pudimos borrar la cuenta. Escribinos por email.");
-      $("#dlg").close(); await sb.auth.signOut(); toast("Tu cuenta y tus datos fueron eliminados");
-    } catch (e) { toast(errMsg(e)); delBtn.disabled = false; }
+    modal({ title: "¿Seguro que querés eliminar tu cuenta?", submit: "Sí, eliminar mi cuenta para siempre",
+      body: [h("p", {}, "Se borran tu cuenta, tus tareas, finanzas, clientes, calendario y todo lo que guardaste en LIVET."),
+        h("p", { class: "muted", style: "margin-top:8px" }, "No se puede deshacer. Si querés, antes descargá tus datos desde «Mis datos».")],
+      onSubmit: async () => {
+        const { data, error } = await sb.functions.invoke("delete-account", { body: { confirm: "BORRAR" } });
+        if (error || !data?.ok) throw new Error(data?.message || "No pudimos borrar la cuenta. Escribinos por email.");
+        await sb.auth.signOut(); toast("Tu cuenta y tus datos fueron eliminados");
+      } });
   };
   const revoke = h("button", { class: "btn", type: "button" }, "Retirar permiso de IA");
   revoke.onclick = async () => {
@@ -5615,7 +5617,7 @@ function TeamTab() {
   const setRole = async (m, r) => { try {
     if (!state.demo) { const { error } = await sb.from("company_members").update({ role: r }).eq("company_id", Co.cur).eq("user_id", m.user_id); if (error) throw error; }
     Co.members = Co.members.map(x => x.user_id === m.user_id ? { ...x, role: r } : x); toast("Rol actualizado"); render(); } catch (e) { toast(errMsg(e)); render(); } };
-  const removeM = (m, self) => modal({ title: self ? "Salir de la empresa" : `Quitar a ${m.display_name}`, submit: self ? "Salir" : "Quitar",
+  const removeM = (m, self) => modal({ title: self ? "¿Seguro que querés salir de la empresa?" : `¿Seguro que querés quitar a ${m.display_name}?`, submit: self ? "Sí, salir" : "Sí, quitar",
     body: [h("p", {}, self ? "Dejás de ver las tareas, clientes y chats de esta empresa." : "Esta persona deja de ver la empresa. Sus tareas quedan registradas.")],
     onSubmit: async () => {
       if (!state.demo) { const { error } = await sb.from("company_members").delete().eq("company_id", Co.cur).eq("user_id", m.user_id); if (error) throw error; }
@@ -5792,7 +5794,7 @@ function RenameInCompanyDialog(cid, current, coName) {
     } });
 }
 function LeaveCompanyDialog(cid, coName) {
-  modal({ title: "Salir de " + (coName || "la empresa"), submit: "Salir", body: [h("p", {}, "Dejás de ver las tareas, clientes y chats de esta empresa. Para volver, te tienen que invitar de nuevo.")],
+  modal({ title: "¿Seguro que querés salir de " + (coName || "la empresa") + "?", submit: "Sí, salir", body: [h("p", {}, "Dejás de ver las tareas, clientes y chats de esta empresa. Para volver, te tienen que invitar de nuevo.")],
     onSubmit: async () => {
       if (!state.demo) { const { error } = await sb.from("company_members").delete().eq("company_id", cid).eq("user_id", state.user.id); if (error) throw error; }
       if (MyCos.rows) MyCos.rows = MyCos.rows.filter(r => r.company_id !== cid);
@@ -7316,7 +7318,12 @@ async function logout() {
   if (state.user) { currentUid = null; Access.sub = null; Access.member = false; leave(); }
 }
 $("#logout").append(icon("logout", 16));
-$("#logout").onclick = logout;
+function confirmLogout() {
+  modal({ title: state.demo ? "¿Seguro que querés salir de la demo?" : "¿Seguro que querés cerrar sesión?", submit: state.demo ? "Sí, salir" : "Sí, cerrar sesión",
+    body: [h("p", { class: "muted" }, state.demo ? "Los datos de ejemplo que cargaste se pierden." : `Vas a salir de ${state.user?.email || "tu cuenta"}. Tus datos quedan guardados y volvés cuando quieras.`)],
+    onSubmit: async () => { await logout(); } });
+}
+$("#logout").onclick = confirmLogout;
 
 /* ------------------------- Entrada y salida ------------------------- */
 function showApp(name, plan) {
