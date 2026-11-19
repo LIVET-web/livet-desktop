@@ -5578,10 +5578,13 @@ function ClientsTab() {
 
 /* ----- primeros pasos (aparece de a uno) ----- */
 function CompanySetup() {
-  if (!Co.boss()) return null;
-  const solo = Co.company()?.kind === "independiente";
+  // Solo lo ve la persona dueña (ni jefes ni empleados). "Ocultar" queda guardado por empresa.
+  if (state.demo ? !Co.boss() : Co.me?.role !== "owner") return null;
+  const hideKey = "livet-setup-hidden-" + Co.cur;
+  try { if (localStorage.getItem(hideKey)) return null; } catch { /* sin almacenamiento */ }
+  const solo = Co.company()?.kind === "independiente" && Co.members.length <= 1;
   const steps = [
-    ...(solo ? [] : [{ done: Co.members.length > 1, t: "Sumá a tu equipo", d: "Creá un código de invitación y pasáselo a cada persona. Vos elegís si es jefe o empleado.", a: "Invitar", f: InviteDialog }]),
+    ...(solo ? [] : [{ done: Co.members.length > 1, t: "Sumá a tu equipo", d: "Creá un enlace de invitación y mandáselo a cada persona. Vos elegís si es jefe o empleado.", a: "Invitar", f: InviteDialog }]),
     { done: Co.clients.length > 0, t: "Cargá tus clientes", d: solo ? "Anotá a quién le trabajás. Después le colgás tareas a cada cliente." : "Cargalos y derivá cada uno a quien lo atiende.", a: "Nuevo cliente", f: () => ClientForm() },
     { done: Co.tasks.length > 0, t: "Asigná la primera tarea", d: solo ? "Creá una tarea con fecha y asociala a un cliente." : "Asignala a una persona, con fecha y cliente. Ella la marca y vos la revisás.", a: "Nueva tarea", f: () => TaskForm() },
   ];
@@ -5592,7 +5595,7 @@ function CompanySetup() {
     h("ol", { class: "setup-list" }, steps.map((x, i) => h("li", { class: x.done ? "done" : i === cur ? "cur" : "" },
       h("span", { class: "sl-t" }, x.t), i === cur ? h("p", { class: "muted" }, x.d) : null,
       i === cur ? h("button", { class: "btn primary", type: "button", onclick: x.f }, x.a) : null))),
-    h("div", {}, h("button", { class: "btn ghost sm", type: "button", onclick: () => { Co.setupHidden = true; render(); } }, "Ocultar"))));
+    h("div", {}, h("button", { class: "btn ghost sm", type: "button", onclick: () => { Co.setupHidden = true; try { localStorage.setItem(hideKey, "1"); } catch { /* sin almacenamiento */ } render(); } }, "Ocultar"))));
 }
 
 /* ----- equipo e invitaciones ----- */
