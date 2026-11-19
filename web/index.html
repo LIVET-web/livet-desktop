@@ -216,7 +216,11 @@ main{min-width:0;padding:32px clamp(16px,4vw,48px) 72px;max-width:1120px;width:1
 .day.today .day-h b{color:var(--accent-strong)}
 .day.past{opacity:.55}
 .day.past .day-h span,.day.past .day-h b{text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:var(--accent)}
-.nav .count.hot{background:var(--accent);color:var(--on-accent)}
+.nav .count.hot{background:var(--accent);color:var(--on-accent);min-width:20px;height:20px;padding:0 6px;border-radius:999px;display:inline-grid;place-items:center;font-weight:700;font-size:11px}
+.nav button.has-new svg{color:var(--accent);stroke:var(--accent);animation:bell-ring 1.2s ease-in-out 2;transform-origin:50% 10%}
+.nav button.has-new{color:var(--text)}
+@keyframes bell-ring{0%,100%{transform:rotate(0)}20%{transform:rotate(14deg)}40%{transform:rotate(-12deg)}60%{transform:rotate(8deg)}80%{transform:rotate(-4deg)}}
+@media (prefers-reduced-motion:reduce){.nav button.has-new svg{animation:none}}
 .notif{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;padding:12px 14px;border-bottom:1px solid var(--line);text-align:left;width:100%;background:none;border-left:3px solid transparent;color:inherit;font:inherit;cursor:pointer}
 .notif.unread{border-left-color:var(--accent);background:var(--accent-soft)}
 .notif .n-ic{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2)}
@@ -2476,7 +2480,7 @@ function go(id) { state.view = id; render(); window.scrollTo(0, 0); }
 function renderNav() {
   $("#nav").replaceChildren(...enabledNav().map(g => h("div", {},
     g.group ? h("div", { class: "nav-label" }, g.group) : null,
-    h("div", { class: "nav" }, g.items.map(n => h("button", { type: "button", class: canUse(n.id) ? null : "locked", "aria-current": state.view === n.id ? "page" : null, onclick: () => go(n.id), title: canUse(n.id) ? null : "Disponible con " + plansFor(n.id).map(t => TIER_NAME[t]).join(" o ") },
+    h("div", { class: "nav" }, g.items.map(n => h("button", { type: "button", class: (canUse(n.id) ? "" : "locked") + (n.id === "notifications" && Notif.unread ? " has-new" : "") || null, "aria-current": state.view === n.id ? "page" : null, onclick: () => go(n.id), title: canUse(n.id) ? null : "Disponible con " + plansFor(n.id).map(t => TIER_NAME[t]).join(" o ") },
       icon(n.icon), n.label, n.id === "tasks" && canUse("tasks") ? h("span", { class: "count" }, String(Logic.open().length)) : null, n.id === "notifications" && Notif.unread ? h("span", { class: "count hot", "aria-label": Notif.unread + " sin leer" }, String(Notif.unread)) : null, canUse(n.id) ? null : h("span", { class: "nav-lock" }, icon("lock"))))))));
   const primary = ["home", "tasks", "money", "habits"].map(id => ALL_NAV.find(n => n.id === id));
   const inMore = !primary.some(n => n.id === state.view);
@@ -2487,7 +2491,7 @@ function renderNav() {
 function MoreDialog() {
   modal({ title: "Menú", hideSubmit: true, body: enabledNav().map(g => h("div", {},
     g.group ? h("div", { class: "nav-label", style: "padding:0 8px 4px" }, g.group) : null,
-    h("div", { class: "more-list" }, g.items.map(n => h("button", { type: "button", class: canUse(n.id) ? null : "locked", onclick: () => { $("#dlg").close(); go(n.id); } }, icon(n.icon), n.label, canUse(n.id) ? null : h("span", { class: "nav-lock" }, icon("lock"))))))).concat(
+    h("div", { class: "more-list" }, g.items.map(n => h("button", { type: "button", class: canUse(n.id) ? null : "locked", onclick: () => { $("#dlg").close(); go(n.id); } }, n.id === "notifications" && Notif.unread ? h("span", { style: "color:var(--accent);display:inline-flex" }, icon(n.icon)) : icon(n.icon), n.label + (n.id === "notifications" && Notif.unread ? ` (${Notif.unread})` : ""), canUse(n.id) ? null : h("span", { class: "nav-lock" }, icon("lock"))))))).concat(
     h("button", { class: "btn", type: "button", onclick: PersonalizeDialog }, "Personalizar"),
     h("button", { class: "btn", type: "button", onclick: MyDataDialog }, "Mis datos"),
     isDesktopApp() ? null : h("button", { class: "btn", type: "button", onclick: () => { $("#dlg").close(); navTo("descargar"); } }, icon("download"), "Descargar la app"),
