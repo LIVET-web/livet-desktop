@@ -214,6 +214,16 @@ main{min-width:0;padding:32px clamp(16px,4vw,48px) 72px;max-width:1120px;width:1
 .day-h{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;font-size:12px;color:var(--muted);font-weight:500}
 .day-h b{font-size:15px;color:var(--text);font-variant-numeric:tabular-nums}
 .day.today .day-h b{color:var(--accent-strong)}
+.day.past{opacity:.55}
+.day.past .day-h span,.day.past .day-h b{text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:var(--accent)}
+.nav .count.hot{background:var(--accent);color:var(--on-accent)}
+.notif{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;padding:12px 14px;border-bottom:1px solid var(--line);text-align:left;width:100%;background:none;border-left:3px solid transparent;color:inherit;font:inherit;cursor:pointer}
+.notif.unread{border-left-color:var(--accent);background:var(--accent-soft)}
+.notif .n-ic{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2)}
+.notif .n-ic svg{width:16px;height:16px}
+.notif b{display:block}
+.notif p{color:var(--muted);margin-top:2px;overflow-wrap:anywhere}
+.notif small{color:var(--muted);white-space:nowrap}
 .day-b{padding:0 6px 6px;display:grid;gap:6px;align-content:start;flex:1}
 .item{display:grid;gap:4px;text-align:left;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);transition:border-color .15s;min-width:0}
 .item:hover{border-color:var(--line-strong)}
@@ -1532,6 +1542,7 @@ const ICON = {
   brand: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z|M4 21a8 8 0 0 1 16 0",
   rocket: "M4.5 16.5c-1.5 1.3-2 5-2 5s3.7-.5 5-2c.7-.8.7-2.1-.1-2.9a2.2 2.2 0 0 0-2.9-.1z|M12 15l-3-3a22 22 0 0 1 2-3.9A12.9 12.9 0 0 1 22 2c0 2.7-.8 7.5-6 11a22.4 22.4 0 0 1-4 2z",
   bolt: "M13 2L4 14h7l-1 8 9-12h-7z",
+  bell: "M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9|M13.7 21a2 2 0 0 1-3.4 0",
   star: "M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z",
   book: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z|M6.5 17H20v4H6.5a2.5 2.5 0 0 1 0-4z",
   more: "M5 12h.01M12 12h.01M19 12h.01",
@@ -2377,7 +2388,7 @@ function TasksView() {
 
 /* ------------------------- Navegación y render ------------------------- */
 const NAV = [
-  { group: "Mi cuenta", items: [ { id: "profile", label: "Mi perfil", icon: "brand" }, { id: "company", label: "Empresa", icon: "building" }, { id: "plans", label: "Suscripción", icon: "star" }, { id: "admin", label: "Administración", icon: "chart" } ] },
+  { group: "Mi cuenta", items: [ { id: "profile", label: "Mi perfil", icon: "brand" }, { id: "notifications", label: "Notificaciones", icon: "bell" }, { id: "company", label: "Empresa", icon: "building" }, { id: "plans", label: "Suscripción", icon: "star" }, { id: "admin", label: "Administración", icon: "chart" } ] },
   { items: [
     { id: "home", label: "Hoy", icon: "home" }, { id: "tasks", label: "Tareas", icon: "tasks" }, { id: "clients", label: "Clientes", icon: "team" },
     { id: "goals", label: "Objetivos", icon: "goal" }, { id: "calendar", label: "Calendario", icon: "cal" },
@@ -2427,7 +2438,7 @@ function myTier() {
 }
 function canUse(id) {
   const t = myTier();
-  if (t === "admin") return true;
+  if (t === "admin" || id === "notifications") return true;
   if (id === "company" && Access.member) return true; // quien fue invitado a un equipo lo puede usar
   return (ACCESS[t] || ACCESS.free).includes(id);
 }
@@ -2466,7 +2477,7 @@ function renderNav() {
   $("#nav").replaceChildren(...enabledNav().map(g => h("div", {},
     g.group ? h("div", { class: "nav-label" }, g.group) : null,
     h("div", { class: "nav" }, g.items.map(n => h("button", { type: "button", class: canUse(n.id) ? null : "locked", "aria-current": state.view === n.id ? "page" : null, onclick: () => go(n.id), title: canUse(n.id) ? null : "Disponible con " + plansFor(n.id).map(t => TIER_NAME[t]).join(" o ") },
-      icon(n.icon), n.label, n.id === "tasks" && canUse("tasks") ? h("span", { class: "count" }, String(Logic.open().length)) : null, canUse(n.id) ? null : h("span", { class: "nav-lock" }, icon("lock"))))))));
+      icon(n.icon), n.label, n.id === "tasks" && canUse("tasks") ? h("span", { class: "count" }, String(Logic.open().length)) : null, n.id === "notifications" && Notif.unread ? h("span", { class: "count hot", "aria-label": Notif.unread + " sin leer" }, String(Notif.unread)) : null, canUse(n.id) ? null : h("span", { class: "nav-lock" }, icon("lock"))))))));
   const primary = ["home", "tasks", "money", "habits"].map(id => ALL_NAV.find(n => n.id === id));
   const inMore = !primary.some(n => n.id === state.view);
   $("#bottom-nav").replaceChildren(
@@ -2656,7 +2667,7 @@ function EventDialog(ev, preset = {}) {
 function DayColumn(d, opts) {
   const isToday = d === today();
   const evs = Logic.eventsOn(d), tks = Logic.tasksDueOn(d), cts = opts.content ? Logic.contentOn(d) : [];
-  return h("div", { class: "day" + (isToday ? " today" : "") },
+  return h("div", { class: "day" + (isToday ? " today" : d < today() ? " past" : "") },
     h("div", { class: "day-h" }, h("span", {}, DOW[parseD(d).getDay()]), h("b", {}, String(parseD(d).getDate()))),
     h("div", { class: "day-b" },
       evs.map(e => h("button", { class: "item ev", type: "button", onclick: () => EventDialog(e) },
@@ -2801,7 +2812,7 @@ function CoCalendarTab() {
       h("button", { class: "btn primary", type: "button", onclick: () => TeamEventDialog(null, { company_id: cid }) }, icon("plus"), "Nuevo evento"),
       h("p", { class: "muted" }, "Eventos del equipo. Todos los ven, también en su calendario personal y en el celular. Los eventos personales de cada uno no aparecen acá.")),
     WeekNav("cocal", fmtRange(start)),
-    h("div", { class: "week" }, weekDays(start).map(d => h("div", { class: "day" + (d === today() ? " today" : "") },
+    h("div", { class: "week" }, weekDays(start).map(d => h("div", { class: "day" + (d === today() ? " today" : d < today() ? " past" : "") },
       h("div", { class: "day-h" }, h("span", {}, DOW[parseD(d).getDay()]), h("b", {}, String(parseD(d).getDate()))),
       h("div", { class: "day-b" },
         evs.filter(e => evOnDay(e, d)).sort(byStart).map(e => h("button", { class: "item team", type: "button", onclick: () => TeamEventDialog(e) },
@@ -5727,7 +5738,7 @@ const MODULES = {
 const enabledModules = () => (state.profile?.modules?.length ? state.profile.modules.filter(k => MODULES[k]) : Object.keys(MODULES));
 const companyLabel = () => ({ independiente: "Mi negocio", agencia: "Mi agencia", empresa: "Mi empresa" })[state.profile?.use_type] || "Mi empresa";
 function enabledNav() {
-  const ids = new Set(["home", "profile", "plans"]);
+  const ids = new Set(["home", "profile", "plans", "notifications"]);
   if (isAdmin()) ids.add("admin");
   for (const k of (isAdmin() ? Object.keys(MODULES) : enabledModules())) MODULES[k][1].forEach(v => ids.add(v));
   return NAV.map(g => ({ ...g, items: g.items.filter(n => ids.has(n.id)).map(n => (n.id === "company" ? { ...n, label: companyLabel() } : n)) })).filter(g => g.items.length);
@@ -5773,6 +5784,74 @@ function profileDone() {
   const parts = [p.full_name, p.city, p.use_type, p.business_name, p.business_about];
   return Math.round(parts.filter(x => typeof x === "string" && x.trim()).length / parts.length * 100);
 }
+
+/* ------------------------- Notificaciones ------------------------- */
+// Avisos de la empresa (mensajes, tareas, eventos, gente nueva), felicitaciones del mes y recordatorios semanales.
+const NOTIF_IC = { message: "chat", task: "check", event: "cal", team: "team", cheer: "star", tip: "spark" };
+const Notif = {
+  list: [], unread: 0, timer: null, lastTop: null, loaded: false,
+  async load() {
+    if (state.demo || !sb || !state.user) return;
+    const { data, error } = await sb.from("notifications").select("*").order("created_at", { ascending: false }).limit(100);
+    if (error) return;
+    const prevTop = this.lastTop;
+    this.list = data || []; this.loaded = true;
+    const unread = this.list.filter(n => !n.read_at);
+    const changed = unread.length !== this.unread;
+    this.unread = unread.length;
+    // Aviso del sistema solo para lo nuevo, si diste permiso y no estás mirando la app.
+    const top = this.list[0];
+    if (prevTop !== null && top && top.id + top.count !== prevTop && !top.read_at && document.visibilityState !== "visible") this.system(top);
+    this.lastTop = top ? top.id + top.count : "";
+    if (changed || state.view === "notifications") { renderNav(); if (state.view === "notifications" && !$("#dlg").open) render(); }
+    try { document.title = (this.unread ? `(${this.unread}) ` : "") + "LIVET Work"; } catch { /* nada */ }
+  },
+  start() { this.stop(); this.lastTop = null; this.load(); this.timer = setInterval(() => this.load(), 30000); document.addEventListener("visibilitychange", Notif.onVis); },
+  stop() { clearInterval(this.timer); this.timer = null; this.list = []; this.unread = 0; this.loaded = false; document.removeEventListener("visibilitychange", Notif.onVis); try { document.title = "LIVET Work"; } catch { /* nada */ } },
+  onVis() { if (document.visibilityState === "visible") Notif.load(); },
+  system(n) {
+    try { if (!("Notification" in window) || Notification.permission !== "granted") return;
+      const x = new Notification(n.title, { body: n.body || "", icon: "/icon-192.png", tag: n.id });
+      x.onclick = () => { window.focus(); Notif.open(n); x.close(); }; } catch { /* sin avisos */ }
+  },
+  async markRead(ids) {
+    if (!ids.length) return;
+    const now = new Date().toISOString();
+    this.list = this.list.map(n => ids.includes(n.id) ? { ...n, read_at: now } : n); this.unread = this.list.filter(n => !n.read_at).length;
+    renderNav(); try { document.title = (this.unread ? `(${this.unread}) ` : "") + "LIVET Work"; } catch { /* nada */ }
+    if (!state.demo) await sb.from("notifications").update({ read_at: now }).in("id", ids);
+  },
+  async open(n) {
+    if (!n.read_at) await this.markRead([n.id]);
+    const l = n.link || {};
+    if (l.view === "company") { Co.cur = l.company_id || Co.cur; Co.loaded = false; Co.tab = l.tab || "tareas"; Co.chatWith = l.with || null; go("company"); }
+    else if (l.view) go(l.view); else render();
+  },
+};
+function ago(iso) {
+  const m = Math.round((Date.now() - new Date(iso)) / 60000);
+  if (m < 1) return "recién"; if (m < 60) return `hace ${m} min`;
+  const hh = Math.round(m / 60); if (hh < 24) return `hace ${hh} h`;
+  const d = Math.round(hh / 24); return d < 7 ? `hace ${d} día${d > 1 ? "s" : ""}` : fmtShort(iso.slice(0, 10));
+}
+function NotificationsView() {
+  if (!Notif.loaded && !state.demo) { Notif.load(); }
+  const list = state.demo ? [
+    { id: "d1", kind: "message", title: "Lucía te escribió", body: "Subí el borrador a la tarea.", created_at: new Date(Date.now() - 5 * 60000).toISOString(), count: 1 },
+    { id: "d2", kind: "cheer", title: "¡Ahorraste en octubre! 💪", body: "Te quedó el 18% de lo que entró. Seguí así.", created_at: new Date(Date.now() - 864e5).toISOString(), count: 1, read_at: "x" }] : Notif.list;
+  const can = "Notification" in window, perm = can ? Notification.permission : "denied";
+  const ask = can && perm === "default" && !state.demo ? h("button", { class: "btn", type: "button", onclick: async () => { try { await Notification.requestPermission(); } catch { /* nada */ } render(); } }, icon("bell"), "Avisarme en esta compu") : null;
+  return h("div", {},
+    PageHead("Notificaciones", "Lo que pasa en tu empresa y algún que otro aliento.",
+      ask, Notif.unread ? h("button", { class: "btn", type: "button", onclick: () => Notif.markRead(Notif.list.filter(n => !n.read_at).map(n => n.id)).then(render) }, icon("check"), "Marcar todo como leído") : null),
+    perm === "granted" ? h("p", { class: "hint", style: "margin-bottom:12px" }, "Los avisos de esta compu están activados: te llegan aunque tengas la app en segundo plano.") : null,
+    list.length ? Card(null, null, h("div", {}, list.map(n => h("button", { type: "button", class: "notif" + (n.read_at ? "" : " unread"), onclick: () => state.demo ? toast("En la demo es solo un ejemplo.") : Notif.open(n) },
+      h("span", { class: "n-ic", "aria-hidden": "true" }, icon(NOTIF_IC[n.kind] || "bell")),
+      h("span", {}, h("b", {}, n.title + (n.count > 1 ? ` (${n.count})` : "")), n.body ? h("p", {}, n.body) : null),
+      h("small", {}, ago(n.created_at))))))
+      : Card(null, null, Empty("No tenés notificaciones", "Acá te avisamos cuando alguien de tu equipo te escribe, te asigna una tarea o hay un evento nuevo. Y a fin de mes, si ahorraste o vendiste más, te felicitamos.")));
+}
+VIEWS.notifications = NotificationsView;
 
 /* ----- Mis equipos: cada persona cambia su nombre en cada empresa o se va ----- */
 const MyCos = { rows: null, loading: false, uid: null, at: 0 };
@@ -7356,13 +7435,14 @@ async function enter(session) {
     showApp(name, state.profile?.plan === "admin" ? "Admin" : state.profile?.plan === "pro" ? "Plan Pro" : "Plan gratuito");
     if (recovering) { recovering = false; NewPasswordDialog(); }
     Invite.consume();
+    Notif.start();
   } catch (err) {
     state.page = "entrar"; route();
     authMsg("No se pudieron cargar tus datos: " + errMsg(err), "err");
   }
 }
 function leave() {
-  Co.reset();
+  Co.reset(); Notif.stop();
   state.user = null; state.profile = null; state.creator = null; state.db = EMPTY_DB();
   $("#a-pass").value = "";
   if (state.page !== "entrar" && !SITE_PAGES[state.page]) state.page = SITE_HOME;
